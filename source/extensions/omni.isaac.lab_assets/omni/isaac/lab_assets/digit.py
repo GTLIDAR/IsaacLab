@@ -53,47 +53,37 @@ DIGITV3_CFG = ArticulationCfg(
         # joint_pos={".*": 0.0},
         joint_vel={".*": 0.0},
         joint_pos={
-            ".*left_hip_roll": 3.65171317e-01,
-            ".*left_hip_yaw": -6.58221569e-03,
-            ".*left_hip_pitch": 3.16910843e-01,
-            ".*left_knee": 3.57944829e-01,
-
-            ".*left_shin": -0.0130148100,#
-            ".*left_tarsus": -0.3311601,#
-            ".*left_heel_spring": -0.01160161,#
-
-            ".*left_toe_A": -1.32137105e-01,
-            ".*left_toe_B": 1.24904386e-01,
-
-            ".*left_toe_pitch": 0.13114588,#
-            ".*left_toe_roll": -0.01159121,#
-
+            "left_hip_roll": 3.65171317e-01,
+            "left_hip_yaw": -6.58221569e-03,
+            "left_hip_pitch": 3.16910843e-01,
+            "left_knee": 3.57944829e-01,
+            "left_shin": -0.0130148100,
+            "left_tarsus": -0.3311601,
+            "left_heel_spring": -0.01160161,
+            "left_toe_A": -1.32137105e-01,
+            "left_toe_B": 1.24904386e-01,
+            "left_toe_pitch": 0.13114588,
+            "left_toe_roll": -0.01159121,
             "left_shoulder_roll": -1.50466737e-01,
             "left_shoulder_pitch": 1.09051174e+00,
             "left_shoulder_yaw": 3.43707570e-04,
             "left_elbow": -1.39091311e-01,
-
-            ".*right_hip_roll": -3.65734576e-01,
-            ".*right_hip_yaw": 6.42881761e-03,
-            ".*right_hip_pitch": -3.16910843e-01,
-            ".*right_knee": -3.58016735e-01,
-
-            ".*right_shin":  0.01303884,#
-            ".*right_tarsus": 0.33119604,#
-            ".*right_heel_spring": 0.01160569,#
-
-            ".*right_toe_A": 1.32006717e-01,
-            ".*right_toe_B": -1.25034774e-01,
-
-            ".*right_toe_pitch": -0.13114439,#
-            ".*right_toe_roll": 0.01117851,#
-
+            "right_hip_roll": -3.65734576e-01,
+            "right_hip_yaw": 6.42881761e-03,
+            "right_hip_pitch": -3.16910843e-01,
+            "right_knee": -3.58016735e-01,
+            "right_shin":  0.01303884,
+            "right_tarsus": 0.33119604,
+            "right_heel_spring": 0.01160569,
+            "right_toe_A": 1.32006717e-01,
+            "right_toe_B": -1.25034774e-01,
+            "right_toe_pitch": -0.13114439,
+            "right_toe_roll": 0.01117851,
             "right_shoulder_roll": 1.50437975e-01,
             "right_shoulder_pitch": -1.09045901e+00,
             "right_shoulder_yaw": -3.51377474e-04,
             "right_elbow": 1.39086517e-01,
         },
-        # gear_ratio={".*": 1.0}
     ),
     soft_joint_pos_limit_factor=0.9,
     actuators={
