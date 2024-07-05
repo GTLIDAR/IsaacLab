@@ -89,7 +89,7 @@ DIGITV3_CFG = ArticulationCfg(
     actuators={
         "feet": ImplicitActuatorCfg(
             joint_names_expr=[
-                ".*left_hip_roll",
+                ".*hip_roll",
                 ".*hip_yaw",
                 ".*hip_pitch",
                 ".*knee",
@@ -139,12 +139,12 @@ DIGITV3_CFG = ArticulationCfg(
             effort_limit=20.0,
             velocity_limit=10.0,
             stiffness={
-                ".*left_toe_A":20,
-                ".*left_toe_B":20,
+                ".*toe_A":20,
+                ".*toe_B":20,
             },
             damping={
-                ".*left_toe_A": 1.0,
-                ".*left_toe_B": 1.0,
+                ".*toe_A": 1.0,
+                ".*toe_B": 1.0,
             },
         ),
     },
