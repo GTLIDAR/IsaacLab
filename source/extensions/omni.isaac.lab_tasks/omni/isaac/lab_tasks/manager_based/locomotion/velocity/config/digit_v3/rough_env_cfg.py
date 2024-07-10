@@ -55,30 +55,30 @@ class DigitV3Rewards(RewardsCfg):
     # Penalize ankle joint limits
     dof_pos_limits = RewTerm(
         func=mdp.joint_pos_limits,
-        weight=-0.1, 
+        weight=-0.1, # -1.0
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*toe_pitch", ".*toe_roll"])}, # joint_names=".*toe_roll"v
     )
     # Penalize deviation from default of the joints that are not essential for locomotion
     joint_deviation_hip = RewTerm(
         func=mdp.joint_deviation_l1,
-        weight=-0.1, 
+        weight=-0.1, #-0.2
         params={
             "asset_cfg": SceneEntityCfg(
-                "robot", joint_names=[".*hip_yaw", ".*hip_roll"] 
+                "robot", joint_names=[".*_hip_yaw", ".*_hip_roll"] 
             )
         },
     )
     joint_deviation_arms = RewTerm(
         func=mdp.joint_deviation_l1,
-        weight=-0.2, 
+        weight=-0.2, #-0.2
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot", joint_names=[
-                    ".*shoulder_pitch",
-                    ".*shoulder_roll",
-                    ".*shoulder_yaw",
-                    ".*elbow",
-                ]
+                    ".*_shoulder_pitch",
+                    ".*_shoulder_roll",
+                    ".*_shoulder_yaw",
+                    ".*_elbow",
+                ] #[".*_shoulder_.*", ".*_elbow"]
             )
         },
     )
@@ -110,26 +110,26 @@ class ActionCfg:
     joint_pos = mdp.JointPositionActionCfg(
         asset_name="robot",
         joint_names=[
-            ".*left_hip_roll",
-            ".*left_hip_yaw",
-            ".*left_hip_pitch",
-            ".*left_knee",
-            ".*right_hip_roll",
-            ".*right_hip_yaw",
-            ".*right_hip_pitch",
-            ".*right_knee",
-            ".*left_shoulder_roll",
-            ".*left_shoulder_pitch",
-            ".*left_shoulder_yaw",
-            ".*left_elbow",
-            ".*right_shoulder_roll",
-            ".*right_shoulder_pitch",
-            ".*right_shoulder_yaw",
-            ".*right_elbow",
-            ".*left_toe_A",
-            ".*left_toe_B",
-            ".*right_toe_A",
-            ".*right_toe_B",
+            "left_hip_roll",
+            "left_hip_yaw",
+            "left_hip_pitch",
+            "left_knee",
+            "right_hip_roll",
+            "right_hip_yaw",
+            "right_hip_pitch",
+            "right_knee",
+            "left_shoulder_roll",
+            "left_shoulder_pitch",
+            "left_shoulder_yaw",
+            "left_elbow",
+            "right_shoulder_roll",
+            "right_shoulder_pitch",
+            "right_shoulder_yaw",
+            "right_elbow",
+            "left_toe_A",
+            "left_toe_B",
+            "right_toe_A",
+            "right_toe_B",
         ],
         scale=0.5,
         use_default_offset=True,
@@ -171,7 +171,7 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # Terminations
         self.terminations.base_contact.params["sensor_cfg"].body_names = [".*base", ".*hip.*",
                                                                            ".*knee", ".*elbow"]
-        
+
         # # Rewards
         self.rewards.undesired_contacts = None
         self.rewards.flat_orientation_l2.weight = -1.0
