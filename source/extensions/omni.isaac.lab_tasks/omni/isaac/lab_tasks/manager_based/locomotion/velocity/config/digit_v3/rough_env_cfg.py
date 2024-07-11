@@ -163,7 +163,8 @@ class ObservationsCfg:
         #     func=mdp.projected_gravity,
         #     noise=Unoise(n_min=-0.05, n_max=0.05),
         # )
-        velocity_commands = ObsTerm(func=constant_commands)
+        # velocity_commands = ObsTerm(func=constant_commands)
+        velocity_commands = ObsTerm(func=mdp.generated_commands, params={"command_name": "base_velocity"})
         joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01),
                             params={
                                 "asset_cfg": SceneEntityCfg(
