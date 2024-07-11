@@ -6,11 +6,8 @@
 # Digit implementation made by LIDAR Gatech
 
 """Configuration for Agility robots.
-
 The following configurations are available:
-
 * :obj:`DIGITV4_CFG`: Agility Cassie robot with simple PD controller for the legs
-
 """
 
 import omni.isaac.lab.sim as sim_utils
@@ -31,7 +28,7 @@ full_path = os.path.dirname(os.path.realpath(__file__))
 
 DIGITV3_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"{full_path}/../../../assets/robot/digit_v3_july_3_with_value_range.usd", # d_i.usd
+        usd_path=f"{full_path}/../../../assets/robot/digit_v3_instanceable_2.usd", # digit_v3_july_3_with_value_range.usd
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
@@ -43,7 +40,7 @@ DIGITV3_CFG = ArticulationCfg(
             max_depenetration_velocity=1.0,
         ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
-            enabled_self_collisions=False,
+            enabled_self_collisions=True,
             solver_position_iteration_count=4,
             solver_velocity_iteration_count=0,
         ),
@@ -89,62 +86,92 @@ DIGITV3_CFG = ArticulationCfg(
     actuators={
         "feet": ImplicitActuatorCfg(
             joint_names_expr=[
-                ".*hip_roll",
-                ".*hip_yaw",
-                ".*hip_pitch",
-                ".*knee",
+                "left_hip_roll",
+                "left_hip_yaw",
+                "left_hip_pitch",
+                "left_knee",
+                "right_hip_roll",
+                "right_hip_yaw",
+                "right_hip_pitch",
+                "right_knee",
             ],
             effort_limit=200.0,
             velocity_limit=10.0,
             stiffness={
-                ".*hip_roll":800,
-                ".*hip_yaw":600,
-                ".*hip_pitch":800,
-                ".*knee":1000,
+                "left_hip_roll":100,
+                "left_hip_yaw":100,
+                "left_hip_pitch":200,
+                "left_knee":200,
+                "right_hip_roll":100,
+                "right_hip_yaw":100,
+                "right_hip_pitch":200,
+                "right_knee":200,
             },
             damping={
-                ".*hip_roll": 8.0,
-                ".*hip_yaw": 8.0,
-                ".*hip_pitch": 8.0,
-                ".*knee": 5.0,
+                "left_hip_roll": 3.0,
+                "left_hip_yaw": 3.0,
+                "left_hip_pitch": 6.0,
+                "left_knee": 6.0,
+                "right_hip_roll": 3.0,
+                "right_hip_yaw": 3.0,
+                "right_hip_pitch": 6.0,
+                "right_knee": 6.0,
             },
         ),
         "arms": ImplicitActuatorCfg(
             joint_names_expr=[
-                ".*shoulder_roll",
-                ".*shoulder_pitch",
-                ".*shoulder_yaw",
-                ".*elbow",
+                "left_shoulder_roll",
+                "left_shoulder_pitch",
+                "left_shoulder_yaw",
+                "left_elbow",
+                "right_shoulder_roll",
+                "right_shoulder_pitch",
+                "right_shoulder_yaw",
+                "right_elbow",
             ],
             effort_limit=200.0,
             velocity_limit=10.0,
             stiffness={
-                ".*shoulder_roll": 100,
-                ".*shoulder_pitch": 100,
-                ".*shoulder_yaw": 100,
-                ".*elbow": 100,
+                "left_shoulder_roll": 100,
+                "left_shoulder_pitch": 100,
+                "left_shoulder_yaw": 100,
+                "left_elbow": 100,
+                "right_shoulder_roll": 100,
+                "right_shoulder_pitch": 100,
+                "right_shoulder_yaw": 100,
+                "right_elbow": 100,
             },
             damping={
-                ".*shoulder_roll": 5.0,
-                ".*shoulder_pitch": 5.0,
-                ".*shoulder_yaw": 5.0,
-                ".*elbow": 5.0,
+                "left_shoulder_roll": 5.0,
+                "left_shoulder_pitch": 5.0,
+                "left_shoulder_yaw": 5.0,
+                "left_elbow": 5.0,
+                "right_shoulder_roll": 5.0,
+                "right_shoulder_pitch": 5.0,
+                "right_shoulder_yaw": 5.0,
+                "right_elbow": 5.0,
             },
         ),
         "toes": ImplicitActuatorCfg(
             joint_names_expr=[
-                ".*toe_A",
-                ".*toe_B",
+                "left_toe_A",
+                "left_toe_B",
+                "right_toe_A",
+                "right_toe_B",
             ],
-            effort_limit=20.0,
+            effort_limit=200.0,
             velocity_limit=10.0,
             stiffness={
-                ".*toe_A":20,
-                ".*toe_B":20,
+                "left_toe_A":20,
+                "left_toe_B":20,
+                "right_toe_A":20,
+                "right_toe_B":20,
             },
             damping={
-                ".*toe_A": 1.0,
-                ".*toe_B": 1.0,
+                "left_toe_A": 1.0,
+                "left_toe_B": 1.0,
+                "right_toe_A": 1.0,
+                "right_toe_B": 1.0,
             },
         ),
     },

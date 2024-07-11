@@ -6,6 +6,7 @@
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.utils import configclass
 
+
 from .rough_env_cfg import DigitV3RoughEnvCfg
 
 
@@ -33,6 +34,9 @@ class DigitV3FlatEnvCfg(DigitV3RoughEnvCfg):
             "robot", joint_names=[".*_hip_.*", ".*_knee"]
         )
 
+
+        # self.rewards.feet_air_time.weight = 1.0
+        # self.rewards.feet_air_time.params["threshold"] = 0.6
 
 
 

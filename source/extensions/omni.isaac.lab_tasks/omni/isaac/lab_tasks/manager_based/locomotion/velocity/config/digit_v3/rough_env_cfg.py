@@ -3,9 +3,16 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
+import torch
+
+import omni.isaac.lab.envs.mdp as mdp
 from omni.isaac.lab.managers import RewardTermCfg as RewTerm
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
+from omni.isaac.lab.managers import ObservationGroupCfg as ObsGroup
+from omni.isaac.lab.managers import ObservationTermCfg as ObsTerm
+from omni.isaac.lab.envs import ManagerBasedEnv
+from omni.isaac.lab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 from omni.isaac.lab.utils import configclass
 
 import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
@@ -32,7 +39,7 @@ class DigitV3Rewards(RewardsCfg):
     )
     track_ang_vel_z_exp = RewTerm(
         func=mdp.track_ang_vel_z_world_exp,
-        weight=2.0,
+        weight=1.0,
         params={"command_name": "base_velocity", "std": 0.5},
     )
     feet_air_time = RewTerm(
@@ -70,7 +77,7 @@ class DigitV3Rewards(RewardsCfg):
     )
     joint_deviation_arms = RewTerm(
         func=mdp.joint_deviation_l1,
-        weight=-0.2, #-0.2
+        weight=-0.2,
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot", joint_names=[
@@ -136,11 +143,118 @@ class ActionCfg:
     )
 
 
+def constant_commands(env: ManagerBasedEnv) -> torch.Tensor:
+    """The generated command from the command generator."""
+    return torch.tensor([[1, 0, 0]], device=env.device).repeat(env.num_envs, 1)
+
+
+@configclass
+class ObservationsCfg:
+    """Observation specifications for the MDP."""
+
+    @configclass
+    class PolicyCfg(ObsGroup):
+        """Observations for policy group."""
+
+        # observation terms (order preserved)
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
+        # projected_gravity = ObsTerm(
+        #     func=mdp.projected_gravity,
+        #     noise=Unoise(n_min=-0.05, n_max=0.05),
+        # )
+        velocity_commands = ObsTerm(func=constant_commands)
+        joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01),
+                            params={
+                                "asset_cfg": SceneEntityCfg(
+                                "robot", joint_names=[
+                                                "left_hip_roll",
+                                                "left_hip_yaw",
+                                                "left_hip_pitch",
+                                                "left_knee",
+                                                "left_toe_A",
+                                                "left_toe_B",
+                                                "right_hip_roll",
+                                                "right_hip_yaw",
+                                                "right_hip_pitch",
+                                                "right_knee",
+                                                "right_toe_A",
+                                                "right_toe_B",
+                                                "left_shoulder_roll",
+                                                "left_shoulder_pitch",
+                                                "left_shoulder_yaw",
+                                                "left_elbow",
+                                                "right_shoulder_roll",
+                                                "right_shoulder_pitch",
+                                                "right_shoulder_yaw",
+                                                "right_elbow",
+                                                "left_shin",
+                                                "left_tarsus",
+                                                "left_toe_pitch",
+                                                "left_toe_roll",
+                                                "left_heel_spring",
+                                                "right_shin",
+                                                "right_tarsus",
+                                                "right_toe_pitch",
+                                                "right_toe_roll",
+                                                "right_heel_spring",])
+                            })
+        
+        
+        
+        joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5),
+                            params={
+                                "asset_cfg": SceneEntityCfg(
+                                "robot", joint_names=[
+                                                "left_hip_roll",
+                                                "left_hip_yaw",
+                                                "left_hip_pitch",
+                                                "left_knee",
+                                                "left_toe_A",
+                                                "left_toe_B",
+                                                "right_hip_roll",
+                                                "right_hip_yaw",
+                                                "right_hip_pitch",
+                                                "right_knee",
+                                                "right_toe_A",
+                                                "right_toe_B",
+                                                "left_shoulder_roll",
+                                                "left_shoulder_pitch",
+                                                "left_shoulder_yaw",
+                                                "left_elbow",
+                                                "right_shoulder_roll",
+                                                "right_shoulder_pitch",
+                                                "right_shoulder_yaw",
+                                                "right_elbow",
+                                                "left_shin",
+                                                "left_tarsus",
+                                                "left_toe_pitch",
+                                                "left_toe_roll",
+                                                "left_heel_spring",
+                                                "right_shin",
+                                                "right_tarsus",
+                                                "right_toe_pitch",
+                                                "right_toe_roll",
+                                                "right_heel_spring",])})
+        actions = ObsTerm(func=mdp.last_action)
+
+
+
+        def __post_init__(self):
+            self.enable_corruption = True
+            self.concatenate_terms = True
+
+    # observation groups
+    policy: PolicyCfg = PolicyCfg()
+
+
+
 @configclass
 class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     rewards: DigitV3Rewards = DigitV3Rewards()
     terminations: TerminationsCfg = TerminationsCfg()
     actions: ActionCfg = ActionCfg()
+    observations: ObservationsCfg = ObservationsCfg()
 
     def __post_init__(self):
         # post init of parent
