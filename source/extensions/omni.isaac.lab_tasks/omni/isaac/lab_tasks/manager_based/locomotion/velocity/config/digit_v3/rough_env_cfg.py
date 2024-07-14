@@ -5,7 +5,6 @@
 
 import torch
 
-import omni.isaac.lab.envs.mdp as mdp
 from omni.isaac.lab.managers import RewardTermCfg as RewTerm
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
@@ -29,7 +28,7 @@ from omni.isaac.lab_assets.digit import DIGITV3_CFG  # isort: skip
 
 @configclass
 class DigitV3Rewards(RewardsCfg):
-    termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)
+    termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)  # type: ignore
 
     # lin_vel_z_l2 = None
     track_lin_vel_xy_exp = RewTerm(
@@ -61,7 +60,7 @@ class DigitV3Rewards(RewardsCfg):
     )
     # Penalize ankle joint limits
     dof_pos_limits = RewTerm(
-        func=mdp.joint_pos_limits,
+        func=mdp.joint_pos_limits,  # type: ignore
         weight=-0.1,  # -1.0
         params={
             "asset_cfg": SceneEntityCfg(
@@ -71,7 +70,7 @@ class DigitV3Rewards(RewardsCfg):
     )
     # Penalize deviation from default of the joints that are not essential for locomotion
     joint_deviation_hip = RewTerm(
-        func=mdp.joint_deviation_l1,
+        func=mdp.joint_deviation_l1,  # type: ignore
         weight=-0.1,  # -0.2
         params={
             "asset_cfg": SceneEntityCfg(
@@ -80,7 +79,7 @@ class DigitV3Rewards(RewardsCfg):
         },
     )
     joint_deviation_arms = RewTerm(
-        func=mdp.joint_deviation_l1,
+        func=mdp.joint_deviation_l1,  # type: ignore
         weight=-0.2,
         params={
             "asset_cfg": SceneEntityCfg(
@@ -95,7 +94,7 @@ class DigitV3Rewards(RewardsCfg):
         },
     )
     joint_deviation_torso = RewTerm(
-        func=mdp.joint_deviation_l1,
+        func=mdp.joint_deviation_l1,  # type: ignore
         weight=-0.1,
         params={"asset_cfg": SceneEntityCfg("robot", body_names="base")},
     )
@@ -105,9 +104,9 @@ class DigitV3Rewards(RewardsCfg):
 class TerminationsCfg:
     """Termination terms for the MDP."""
 
-    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)  # type: ignore
     base_contact = DoneTerm(
-        func=mdp.illegal_contact,
+        func=mdp.illegal_contact,  # type: ignore
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*base"),
             "threshold": 10.0,
@@ -119,7 +118,7 @@ class TerminationsCfg:
 class ActionCfg:
     """Action terms for the MDP."""
 
-    joint_pos = mdp.JointPositionActionCfg(
+    joint_pos = mdp.JointPositionActionCfg(  # type: ignore
         asset_name="robot",
         joint_names=[
             "left_hip_roll",
@@ -163,10 +162,10 @@ class ObservationsCfg:
 
         # observation terms (order preserved)
         base_lin_vel = ObsTerm(
-            func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1)
+            func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1)  # type: ignore
         )
         base_ang_vel = ObsTerm(
-            func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2)
+            func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2)  # type: ignore
         )
         # projected_gravity = ObsTerm(
         #     func=mdp.projected_gravity,
@@ -174,10 +173,10 @@ class ObservationsCfg:
         # )
         # velocity_commands = ObsTerm(func=constant_commands)
         velocity_commands = ObsTerm(
-            func=mdp.generated_commands, params={"command_name": "base_velocity"}
+            func=mdp.generated_commands, params={"command_name": "base_velocity"}  # type: ignore
         )
         joint_pos = ObsTerm(
-            func=mdp.joint_pos_rel,
+            func=mdp.joint_pos_rel,  # type: ignore
             noise=Unoise(n_min=-0.01, n_max=0.01),
             params={
                 "asset_cfg": SceneEntityCfg(
@@ -219,7 +218,7 @@ class ObservationsCfg:
         )
 
         joint_vel = ObsTerm(
-            func=mdp.joint_vel_rel,
+            func=mdp.joint_vel_rel,  # type: ignore
             noise=Unoise(n_min=-1.5, n_max=1.5),
             params={
                 "asset_cfg": SceneEntityCfg(
@@ -259,7 +258,7 @@ class ObservationsCfg:
                 )
             },
         )
-        actions = ObsTerm(func=mdp.last_action)
+        actions = ObsTerm(func=mdp.last_action)  # type: ignore
 
         def __post_init__(self):
             self.enable_corruption = True
