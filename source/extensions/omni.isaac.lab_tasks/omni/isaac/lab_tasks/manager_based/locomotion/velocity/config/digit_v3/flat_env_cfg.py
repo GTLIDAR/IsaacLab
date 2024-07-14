@@ -18,10 +18,9 @@ class DigitV3FlatEnvCfg(DigitV3RoughEnvCfg):
 
         # override rewards
         # self.rewards.flat_orientation_l2.weight = -5.0
-        
+
         # self.rewards.dof_torques_l2.weight = -2.5e-5
         # self.rewards.feet_air_time.weight = 0.5
-
 
         self.rewards.track_ang_vel_z_exp.weight = 1.0
         self.rewards.lin_vel_z_l2.weight = -0.2
@@ -34,11 +33,8 @@ class DigitV3FlatEnvCfg(DigitV3RoughEnvCfg):
             "robot", joint_names=[".*_hip_.*", ".*_knee"]
         )
 
-
         # self.rewards.feet_air_time.weight = 1.0
         # self.rewards.feet_air_time.params["threshold"] = 0.6
-
-
 
         # change terrain to flat
         self.scene.terrain.terrain_type = "plane"
