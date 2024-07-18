@@ -1,15 +1,3 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
-# All rights reserved.
-#
-# SPDX-License-Identifier: BSD-3-Clause
-
-"""Script to train RL agent with Stable Baselines3.
-
-Since Stable-Baselines3 does not support buffers living on GPU directly,
-we recommend using smaller number of environments. Otherwise,
-there will be significant overhead in GPU->CPU transfer.
-"""
-
 """Launch Isaac Sim Simulator first."""
 
 import argparse
@@ -69,22 +57,17 @@ simulation_app = app_launcher.app
 """Rest everything follows."""
 
 import gymnasium as gym
-import numpy as np
 import os
 from datetime import datetime
-
-from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import CheckpointCallback
-from stable_baselines3.common.logger import configure
-from stable_baselines3.common.vec_env import VecNormalize
-
 from omni.isaac.lab.utils.dict import print_dict
 from omni.isaac.lab.utils.io import dump_pickle, dump_yaml
 
 import omni.isaac.lab_tasks  # noqa: F401
 from omni.isaac.lab_tasks.utils import load_cfg_from_registry, parse_env_cfg
 from omni.isaac.lab_tasks.utils.wrappers.sb3 import Sb3VecEnvWrapper, process_sb3_cfg
-from buffers import RolloutBuffer
+
+
+from torchrl.envs import GymWrapper
 
 
 def main():
@@ -128,60 +111,9 @@ def main():
     env = gym.make(
         args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None
     )
-    # wrap for video recording
-    if args_cli.video:
-        video_kwargs = {
-            "video_folder": os.path.join(log_dir, "videos"),
-            "step_trigger": lambda step: step % args_cli.video_interval == 0,
-            "video_length": args_cli.video_length,
-            "disable_logger": True,
-        }
-        print("[INFO] Recording videos during training.")
-        print_dict(video_kwargs, nesting=4)
-        env = gym.wrappers.RecordVideo(env, **video_kwargs)
-    # wrap around environment for stable baselines
-    env = Sb3VecEnvWrapper(env)
-    # set the seed
-    env.seed(seed=agent_cfg["seed"])
-
-    if "normalize_input" in agent_cfg:
-        env = VecNormalize(
-            env,
-            training=True,
-            norm_obs="normalize_input" in agent_cfg
-            and agent_cfg.pop("normalize_input"),
-            norm_reward="normalize_value" in agent_cfg
-            and agent_cfg.pop("normalize_value"),
-            clip_obs="clip_obs" in agent_cfg and agent_cfg.pop("clip_obs"),
-            gamma=agent_cfg["gamma"],
-            clip_reward=np.inf,
-        )
-
-    # create agent from stable baselines
-    agent = PPO(
-        policy_arch, env, verbose=1, rollout_buffer_class=RolloutBuffer, **agent_cfg
-    )
-    # configure the logger
-    new_logger = configure(log_dir, ["stdout", "tensorboard"])
-    agent.set_logger(new_logger)
-
-    # callbacks for agent
-    checkpoint_callback = CheckpointCallback(
-        save_freq=1000, save_path=log_dir, name_prefix="model", verbose=2
-    )
-    # train the agent
-    agent.learn(
-        total_timesteps=n_timesteps, callback=checkpoint_callback, progress_bar=True
-    )
-    # save the final model
-    agent.save(os.path.join(log_dir, "model"))
-
-    # close the simulator
-    env.close()
+    env = GymWrapper(env, device="cuda:0")
+    print(env.reset())
 
 
 if __name__ == "__main__":
-    # run the main function
     main()
-    # close sim app
-    simulation_app.close()
