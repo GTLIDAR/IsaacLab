@@ -39,7 +39,7 @@ class DigitV3RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         desired_kl=0.01,
         max_grad_norm=1.0,
     )
-    logger = "wandb"
+    # logger = "wandb"
 
 
 @configclass
@@ -47,7 +47,7 @@ class DigitV3FlatPPORunnerCfg(DigitV3RoughPPORunnerCfg):
     def __post_init__(self):
         super().__post_init__()
 
-        self.max_iterations = 4500
+        self.max_iterations = 6000
         self.experiment_name = "digit_v3_flat"
         self.policy.actor_hidden_dims = [128, 128, 128]
         self.policy.critic_hidden_dims = [128, 128, 128]
