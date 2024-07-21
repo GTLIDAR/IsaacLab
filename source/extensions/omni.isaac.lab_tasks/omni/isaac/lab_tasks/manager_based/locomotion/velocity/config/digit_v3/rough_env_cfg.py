@@ -156,7 +156,7 @@ class ObservationsCfg:
         base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Gnoise(mean=0.0, std=0.15, operation="add"))
         base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Gnoise(mean=0.0, std=0.15, operation="add"))
         velocity_commands = ObsTerm(func=mdp.generated_commands, params={"command_name": "base_velocity"})
-        joint_pos = ObsTerm(func=mdp.joint_pos, # noise=Gnoise(mean=0.0, std=0.175, operation="add"),
+        joint_pos = ObsTerm(func=mdp.joint_pos, noise=Gnoise(mean=0.0, std=0.175, operation="add"),
                             params={
                                 "asset_cfg": SceneEntityCfg(
                                 "robot", joint_names=[
@@ -196,7 +196,7 @@ class ObservationsCfg:
         
         
         
-        joint_vel = ObsTerm(func=mdp.joint_vel, #noise=Gnoise(mean=0.0, std=0.15, operation="add"),
+        joint_vel = ObsTerm(func=mdp.joint_vel, noise=Gnoise(mean=0.0, std=0.15, operation="add"),
                             params={
                                 "asset_cfg": SceneEntityCfg(
                                 "robot", joint_names=[
@@ -230,7 +230,8 @@ class ObservationsCfg:
                                                 "right_toe_pitch",
                                                 "right_toe_roll",
                                                 "right_heel_spring",],
-                                            preserve_order = True)
+                                            preserve_order = True
+                                            )
                                     })
         actions = ObsTerm(func=mdp.last_action)
 
@@ -263,9 +264,9 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base"
 
         # Randomization
-        self.events.push_robot = None
-        # self.events.add_base_mass = None
-
+        self.events.push_robot.params["asset_cfg"].body_names = [
+            ".*base"
+        ]
         self.events.add_base_mass.params["asset_cfg"].body_names = [
             ".*base"
         ]
@@ -273,32 +274,17 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.events.base_external_force_torque.params["asset_cfg"].body_names = [
             ".*base"
         ]
-
-        # self.events.reset_base.params = {
-        #     "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
-        #     "velocity_range": {
-        #         "x": (-0.5, 0.5),
-        #         "y": (-0.5, 0.5),
-        #         "z": (-0.5, 0.5),
-        #         "roll": (-0.1, 0.1),
-        #         "pitch": (-0.1, 0.1),
-        #         "yaw": (-0.1, 0.1),
-        #     },
-        # }
-
-        self.events.reset_base = None
-
-        # self.events.reset_base.params = {
-        #     "pose_range": {"x": (-0.0, 0.0), "y": (-0.0, 0.0), "yaw": (-0, 0)},
-        #     "velocity_range": {
-        #         "x": (0.0, 0.0),
-        #         "y": (0.0, 0.0),
-        #         "z": (0.0,0.0),
-        #         "roll": (0.0, 0.0),
-        #         "pitch": (0.0, 0.0),
-        #         "yaw": (0.0, 0.0),
-        #     },
-        # }
+        self.events.reset_base.params = {
+            "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-0.5, 0.5)},
+            "velocity_range": {
+                "x": (-0.5, 0.5),
+                "y": (-0.5, 0.5),
+                "z": (-0.5, 0.5),
+                "roll": (-0.5, 0.5),
+                "pitch": (-0.5, 0.5),
+                "yaw": (-0.5, 0.5),
+            },
+        }
 
         # Terminations
         self.terminations.base_contact.params["sensor_cfg"].body_names = [".*base", ".*hip.*",
