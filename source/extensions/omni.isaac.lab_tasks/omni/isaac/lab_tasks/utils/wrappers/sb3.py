@@ -389,6 +389,10 @@ class Sb3VecEnvWrapper(VecEnv):
         return infos
 
 
+### This implements the Sb3VecEnvGPUWrapper class which is a subclass of VecEnv and deals with the customized environment for Stable Baselines3.###
+
+
+
 class Sb3VecEnvGPUWrapper(VecEnv):
     """Wraps around Isaac Lab environment for Stable Baselines3.
 
