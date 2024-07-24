@@ -175,7 +175,7 @@ def main():
     )
     # train the agent
     agent.learn(
-        total_timesteps=n_timesteps, callback=checkpoint_callback, progress_bar=True
+        total_timesteps=n_timesteps, callback=checkpoint_callback, progress_bar=False
     )
     # save the final model
     agent.save(os.path.join(log_dir, "model"))
