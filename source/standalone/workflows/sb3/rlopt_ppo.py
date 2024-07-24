@@ -292,7 +292,7 @@ class PPO(OnPolicyAlgorithm):
                 # see issue #417: https://github.com/DLR-RM/stable-baselines3/issues/417
                 # and discussion in PR #419: https://github.com/DLR-RM/stable-baselines3/pull/419
                 # and Schulman blog: http://joschu.net/blog/kl-approx.html
-                with th.no_grad():
+                with th.inference_mode():
                     log_ratio = log_prob - rollout_data.old_log_prob
                     approx_kl_div = (
                         th.mean((th.exp(log_ratio) - 1) - log_ratio).cpu().numpy()
@@ -401,7 +401,7 @@ class PPO(OnPolicyAlgorithm):
                 # Sample a new noise matrix
                 self.policy.reset_noise(env.num_envs)
 
-            with th.no_grad():
+            with th.inference_mode():
                 # Convert to pytorch tensor or to TensorDict
                 obs_tensor = obs_as_tensor(self._last_obs, self.device)
                 actions, values, log_probs = self.policy(obs_tensor)
@@ -470,7 +470,7 @@ class PPO(OnPolicyAlgorithm):
                             (-1, *self.observation_space.shape)  # type: ignore
                         )
 
-                    with th.no_grad():
+                    with th.inference_mode():
                         terminal_value = self.policy.predict_values(terminal_obs)[0]  # type: ignore[arg-type]
                     if not isinstance(self.rollout_buffer, RLOptRolloutBuffer):
                         rewards[idx] += self.gamma * terminal_value
@@ -488,7 +488,7 @@ class PPO(OnPolicyAlgorithm):
             self._last_obs = new_obs  # type: ignore[assignment]
             self._last_episode_starts = dones
 
-        with th.no_grad():
+        with th.inference_mode():
             # Compute value for the last timestep
             values = self.policy.predict_values(obs_as_tensor(new_obs, self.device))  # type: ignore[arg-type]
 

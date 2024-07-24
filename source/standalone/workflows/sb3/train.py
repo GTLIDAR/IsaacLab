@@ -89,6 +89,7 @@ from omni.isaac.lab_tasks.utils.wrappers.sb3 import (
     process_sb3_cfg,
     Sb3VecEnvGPUWrapper,
 )
+from torch.profiler import profile, record_function, ProfilerActivity
 
 
 def main():
@@ -184,10 +185,17 @@ def main():
     checkpoint_callback = CheckpointCallback(
         save_freq=1000, save_path=log_dir, name_prefix="model", verbose=2
     )
-    # train the agent
-    agent.learn(
-        total_timesteps=n_timesteps, callback=checkpoint_callback, progress_bar=True
-    )
+
+    with profile(activities=[ProfilerActivity.CUDA], record_shapes=True) as prof:
+        with record_function("model_training"):
+            # train the agent
+            agent.learn(
+                total_timesteps=n_timesteps,
+                callback=checkpoint_callback,
+                progress_bar=True,
+            )
+    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+
     # save the final model
     agent.save(os.path.join(log_dir, "model"))
 
