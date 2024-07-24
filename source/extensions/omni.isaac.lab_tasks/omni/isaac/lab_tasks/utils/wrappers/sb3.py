@@ -68,11 +68,6 @@ def process_sb3_cfg(cfg: dict) -> dict:
                     "replay_buffer_class",
                     "replay_buffer_kwargs",
                 ]:
-                if key in [
-                    "policy_kwargs",
-                    "replay_buffer_class",
-                    "replay_buffer_kwargs",
-                ]:
                     hyperparams[key] = eval(value)
                 elif key in [
                     "learning_rate",
@@ -83,10 +78,6 @@ def process_sb3_cfg(cfg: dict) -> dict:
                     if isinstance(value, str):
                         _, initial_value = value.split("_")
                         initial_value = float(initial_value)
-                        hyperparams[key] = (
-                            lambda progress_remaining: progress_remaining
-                            * initial_value
-                        )
                         hyperparams[key] = (
                             lambda progress_remaining: progress_remaining
                             * initial_value
@@ -168,9 +159,6 @@ class Sb3VecEnvWrapper(VecEnv):
         if not isinstance(env.unwrapped, ManagerBasedRLEnv) and not isinstance(
             env.unwrapped, DirectRLEnv
         ):
-        if not isinstance(env.unwrapped, ManagerBasedRLEnv) and not isinstance(
-            env.unwrapped, DirectRLEnv
-        ):
             raise ValueError(
                 "The environment must be inherited from ManagerBasedRLEnv or DirectRLEnv. Environment type:"
                 f" {type(env)}"
@@ -187,9 +175,6 @@ class Sb3VecEnvWrapper(VecEnv):
         #   we set it to some high value here. Maybe this is not general but something to think about.
         observation_space = self.unwrapped.single_observation_space["policy"]
         action_space = self.unwrapped.single_action_space
-        if isinstance(action_space, gym.spaces.Box) and not action_space.is_bounded(
-            "both"
-        ):
         if isinstance(action_space, gym.spaces.Box) and not action_space.is_bounded(
             "both"
         ):
@@ -257,9 +242,6 @@ class Sb3VecEnvWrapper(VecEnv):
             actions = torch.from_numpy(actions).to(
                 device=self.sim_device, dtype=torch.float32
             )
-            actions = torch.from_numpy(actions).to(
-                device=self.sim_device, dtype=torch.float32
-            )
         else:
             actions = actions.to(device=self.sim_device, dtype=torch.float32)
         # convert to tensor
@@ -267,9 +249,6 @@ class Sb3VecEnvWrapper(VecEnv):
 
     def step_wait(self) -> VecEnvStepReturn:  # noqa: D102
         # record step information
-        obs_dict, rew, terminated, truncated, extras = self.env.step(
-            self._async_actions
-        )
         obs_dict, rew, terminated, truncated, extras = self.env.step(
             self._async_actions
         )
@@ -320,9 +299,6 @@ class Sb3VecEnvWrapper(VecEnv):
     def env_method(
         self, method_name: str, *method_args, indices=None, **method_kwargs
     ):  # noqa: D102
-    def env_method(
-        self, method_name: str, *method_args, indices=None, **method_kwargs
-    ):  # noqa: D102
         if method_name == "render":
             # gymnasium does not support changing render mode at runtime
             return self.env.render()
@@ -344,9 +320,6 @@ class Sb3VecEnvWrapper(VecEnv):
     Helper functions.
     """
 
-    def _process_obs(
-        self, obs_dict: torch.Tensor | dict[str, torch.Tensor]
-    ) -> np.ndarray | dict[str, np.ndarray]:
     def _process_obs(
         self, obs_dict: torch.Tensor | dict[str, torch.Tensor]
     ) -> np.ndarray | dict[str, np.ndarray]:
@@ -416,7 +389,7 @@ class Sb3VecEnvWrapper(VecEnv):
         return infos
 
 
-class Sb3TorchVecEnvWrapper(VecEnv):
+class Sb3VecEnvGPUWrapper(VecEnv):
     """Wraps around Isaac Lab environment for Stable Baselines3.
 
     Isaac Sim internally implements a vectorized environment. However, since it is
@@ -543,12 +516,12 @@ class Sb3TorchVecEnvWrapper(VecEnv):
     """
 
     def seed(self, seed: int | None = None) -> list[int | None]:  # noqa: D102
-        return [self.unwrapped.seed(seed)] * self.unwrapped.num_envs  # type: ignore
+        return [self.unwrapped.seed(seed)] * self.unwrapped.num_envs
 
     def reset(self) -> VecEnvObs:  # noqa: D102
         obs_dict, _ = self.env.reset()
         # convert data types to numpy depending on backend
-        return self._process_obs(obs_dict)  # type: ignore
+        return self._process_obs(obs_dict)
 
     def step_async(self, actions):  # noqa: D102
         # convert input to numpy array
@@ -583,7 +556,6 @@ class Sb3TorchVecEnvWrapper(VecEnv):
         dones = dones.detach()
         # convert extra information to list of dicts
         infos = self._process_extras(obs, terminated, truncated, extras, reset_ids)
-
         # reset info for terminated environments
         self._ep_rew_buf[reset_ids] = 0
         self._ep_len_buf[reset_ids] = 0
@@ -640,13 +612,13 @@ class Sb3TorchVecEnvWrapper(VecEnv):
     ) -> torch.Tensor | dict[str, torch.Tensor]:
         """Convert observations into NumPy data type."""
         # Sb3 doesn't support asymmetric observation spaces, so we only use "policy"
-        obs = obs_dict["policy"]  # type: ignore
+        obs = obs_dict["policy"]
         # note: ManagerBasedRLEnv uses torch backend (by default).
         if isinstance(obs, dict):
             for key, value in obs.items():
-                obs[key] = value
+                obs[key] = value.detach()
         elif isinstance(obs, torch.Tensor):
-            obs = obs
+            obs = obs.detach()
         else:
             raise NotImplementedError(f"Unsupported data type: {type(obs)}")
         return obs
@@ -661,9 +633,6 @@ class Sb3TorchVecEnvWrapper(VecEnv):
     ) -> list[dict[str, Any]]:
         """Convert miscellaneous information into dictionary for each sub-environment."""
         # create empty list of dictionaries to fill
-        infos: list[dict[str, Any]] = [
-            dict.fromkeys(extras.keys()) for _ in range(self.num_envs)
-        ]
         infos: list[dict[str, Any]] = [
             dict.fromkeys(extras.keys()) for _ in range(self.num_envs)
         ]
