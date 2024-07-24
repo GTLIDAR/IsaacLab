@@ -18,14 +18,14 @@ from stable_baselines3.common.policies import (
     MultiInputActorCriticPolicy,
 )
 from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
-from stable_baselines3.common.utils import explained_variance, get_schedule_fn
+from stable_baselines3.common.utils import get_schedule_fn
 from stable_baselines3.common.vec_env import VecEnv
 from stable_baselines3.common import utils
 from stable_baselines3.common.callbacks import BaseCallback
 
 from rlopt_buffer import RolloutBuffer as RLOptRolloutBuffer
 from rlopt_buffer import DictRolloutBuffer as RLOptDictRolloutBuffer
-from rlopt_utils import obs_as_tensor
+from rlopt_utils import obs_as_tensor, explained_variance
 
 SelfPPO = TypeVar("SelfPPO", bound="PPO")
 
@@ -319,9 +319,9 @@ class PPO(OnPolicyAlgorithm):
             self._n_updates += 1
             if not continue_training:
                 break
-
         explained_var = explained_variance(
-            self.rollout_buffer.values.flatten(), self.rollout_buffer.returns.flatten()
+            self.rollout_buffer.values.flatten(),  # type: ignore[attr-defined]
+            self.rollout_buffer.returns.flatten(),  # type: ignore[attr-defined]
         )
 
         # Logs
@@ -405,7 +405,7 @@ class PPO(OnPolicyAlgorithm):
                 # Convert to pytorch tensor or to TensorDict
                 obs_tensor = obs_as_tensor(self._last_obs, self.device)
                 actions, values, log_probs = self.policy(obs_tensor)
-                values = values.reshape(1, -1)
+
             if isinstance(self.rollout_buffer, RolloutBuffer):
                 actions = actions.cpu().numpy()
 
@@ -434,7 +434,7 @@ class PPO(OnPolicyAlgorithm):
                             actions, self.action_space.low, self.action_space.high
                         )
 
-            new_obs, rewards, dones, infos = env.step(clipped_actions)
+            new_obs, rewards, dones, infos = env.step(clipped_actions)  # type : ignore
 
             self.num_timesteps += env.num_envs
 
@@ -458,12 +458,24 @@ class PPO(OnPolicyAlgorithm):
                     and infos[idx].get("terminal_observation") is not None
                     and infos[idx].get("TimeLimit.truncated", False)
                 ):
-                    terminal_obs = self.policy.obs_to_tensor(
-                        infos[idx]["terminal_observation"]
-                    )[0]
+
+                    if not isinstance(self.rollout_buffer, RLOptRolloutBuffer):
+                        terminal_obs = self.policy.obs_to_tensor(
+                            infos[idx]["terminal_observation"]
+                        )[0]
+                    else:
+                        terminal_obs = obs_as_tensor(
+                            infos[idx]["terminal_observation"], self.device
+                        ).reshape(  # type: ignore
+                            (-1, *self.observation_space.shape)  # type: ignore
+                        )
+
                     with th.no_grad():
                         terminal_value = self.policy.predict_values(terminal_obs)[0]  # type: ignore[arg-type]
-                    rewards[idx] += self.gamma * terminal_value
+                    if not isinstance(self.rollout_buffer, RLOptRolloutBuffer):
+                        rewards[idx] += self.gamma * terminal_value
+                    else:
+                        rewards[idx] += self.gamma * terminal_value.item()
 
             rollout_buffer.add(
                 self._last_obs,  # type: ignore[arg-type]

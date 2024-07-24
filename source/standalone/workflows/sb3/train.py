@@ -74,7 +74,7 @@ import os
 from datetime import datetime
 
 from rlopt_ppo import PPO
-from rlopt_buffer import RolloutBuffer
+from rlopt_buffer import RolloutBuffer as RLOptRolloutBuffer
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.vec_env import VecNormalize
@@ -163,10 +163,18 @@ def main():
 
     # create agent from stable baselines
     agent = PPO(
-        policy_arch, env, verbose=1, rollout_buffer_class=RolloutBuffer, **agent_cfg
+        policy_arch,
+        env,
+        verbose=1,
+        rollout_buffer_class=RLOptRolloutBuffer,
+        **agent_cfg
     )
     agent = PPO(
-        policy_arch, env, verbose=1, rollout_buffer_class=RolloutBuffer, **agent_cfg
+        policy_arch,
+        env,
+        verbose=1,
+        rollout_buffer_class=RLOptRolloutBuffer,
+        **agent_cfg
     )
     # configure the logger
     new_logger = configure(log_dir, ["stdout", "tensorboard"])
@@ -178,7 +186,7 @@ def main():
     )
     # train the agent
     agent.learn(
-        total_timesteps=n_timesteps, callback=checkpoint_callback, progress_bar=False
+        total_timesteps=n_timesteps, callback=checkpoint_callback, progress_bar=True
     )
     # save the final model
     agent.save(os.path.join(log_dir, "model"))

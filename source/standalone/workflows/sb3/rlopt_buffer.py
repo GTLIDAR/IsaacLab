@@ -529,12 +529,11 @@ class RolloutBuffer(BaseBuffer):
 
         # Reshape to handle multi-dim and discrete action spaces, see GH #970 #1392
         action = action.reshape((self.n_envs, self.action_dim))
-
         self.observations[self.pos] = obs
         self.actions[self.pos] = action
         self.rewards[self.pos] = reward
         self.episode_starts[self.pos] = episode_start
-        self.values[self.pos] = value
+        self.values[self.pos] = value.flatten()
         self.log_probs[self.pos] = log_prob
         self.pos += 1
         if self.pos == self.buffer_size:
@@ -555,6 +554,7 @@ class RolloutBuffer(BaseBuffer):
                 "log_probs",
                 "advantages",
                 "returns",
+                "rewards",
             ]
 
             for tensor in _tensor_names:
@@ -568,9 +568,6 @@ class RolloutBuffer(BaseBuffer):
         start_idx = 0
 
         while start_idx < self.buffer_size * self.n_envs:
-            print(
-                f"indices: {indices.shape}, batch_size: {batch_size}, start_idx: {start_idx}, self.buffer_size: {self.buffer_size}"
-            )
             yield self._get_samples(indices[start_idx : start_idx + batch_size])
             start_idx += batch_size
 
@@ -579,21 +576,6 @@ class RolloutBuffer(BaseBuffer):
         batch_inds: th.Tensor,
         env: Optional[VecNormalize] = None,
     ) -> RolloutBufferSamples:
-        print(f"self.observation: {self.observations[batch_inds].shape}")
-        print("yess1")
-        print(f"self.actions: {self.actions[batch_inds].shape}")
-        print("yess2")
-        print(f"self.rewards: {self.rewards.shape, self.rewards[batch_inds].shape}")
-        print("yess3")
-        print("self.values: ", {self.values.shape, batch_inds.shape})
-        print(f"self.values: {self.values[batch_inds].shape}")
-        print("yess4")
-        print(f"self.log_probs: {self.log_probs[batch_inds].shape}")
-        print("yess5")
-        print(f"self.advantages: {self.advantages[batch_inds].shape}")
-        print("yess6")
-        print(f"self.returns: {self.returns[batch_inds].shape}")
-        print("yess7")
 
         data = (
             self.observations[batch_inds],
