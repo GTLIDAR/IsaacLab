@@ -27,6 +27,11 @@ try:
     isaacsim_dir = os.environ.get("ISAAC_PATH", "")
 except ModuleNotFoundError or ImportError:
     isaacsim_dir = os.path.join(ISAACLAB_DIR, "_isaac_sim")
+except EOFError:
+    print("Unable to trigger EULA acceptance. This is likely due to the script being run in a non-interactive shell.")
+    print("Please run the script in an interactive shell to accept the EULA.")
+    print("Skipping the setup of the VSCode settings...")
+    sys.exit(0)
 
 # check if the isaac-sim directory exists
 if not os.path.exists(isaacsim_dir):
@@ -127,6 +132,14 @@ def overwrite_default_python_interpreter(isaaclab_settings: str) -> str:
     """
     # read executable name
     python_exe = sys.executable.replace("\\", "/")
+
+    # We make an exception for replacing the default interpreter if the
+    # path (/kit/python/bin/python3) indicates that we are using a local/container
+    # installation of IsaacSim. We will preserve the calling script as the default, python.sh.
+    # We want to use python.sh because it modifies LD_LIBRARY_PATH and PYTHONPATH
+    # (among other envars) that we need for all of our dependencies to be accessible.
+    if "kit/python/bin/python3" in python_exe:
+        return isaaclab_settings
     # replace the default python interpreter in the Isaac Lab settings file with the path to the
     # python interpreter in the Isaac Lab directory
     isaaclab_settings = re.sub(
