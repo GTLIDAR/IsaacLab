@@ -24,29 +24,16 @@ export ISAACLAB_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && p
 
 # extract isaac sim path
 extract_isaacsim_path() {
-    # Check if we have pip package installed inside conda environment
-    if ! [[ -z "${CONDA_PREFIX}" ]]; then
+    # Use the sym-link path to Isaac Sim directory
+    local isaac_path=${ISAACLAB_PATH}/_isaac_sim
+    # If above path is not available, try to find the path using python
+    if [ ! -d "${isaac_path}" ]; then
         # Use the python executable to get the path
-        local python_exe=${CONDA_PREFIX}/bin/python
+        local python_exe=$(extract_python_exe)
         # Retrieve the path importing isaac sim and getting the environment path
         if [ $(${python_exe} -m pip list | grep -c 'isaacsim-rl') ]; then
             local isaac_path=$(${python_exe} -c "import isaacsim; import os; print(os.environ['ISAAC_PATH'])")
-        else
-            # If package not installed, try with the default path
-            local isaac_path=${ISAACLAB_PATH}/_isaac_sim
         fi
-    elif command -v python &> /dev/null; then
-        # note: we need to deal with this case because of docker containers
-        # Retrieve the path importing isaac sim and getting the environment path
-        if [ $(python -m pip list | grep -c 'isaacsim-rl') ]; then
-            local isaac_path=$(python -c "import isaacsim; import os; print(os.environ['ISAAC_PATH'])")
-        else
-            # If package not installed, use an empty path for failure
-            local isaac_path=''
-        fi
-    else
-        # Use the sym-link path to Isaac Sim directory
-        local isaac_path=${ISAACLAB_PATH}/_isaac_sim
     fi
     # check if there is a path available
     if [ ! -d "${isaac_path}" ]; then
@@ -69,17 +56,18 @@ extract_python_exe() {
     if ! [[ -z "${CONDA_PREFIX}" ]]; then
         # use conda python
         local python_exe=${CONDA_PREFIX}/bin/python
-    elif command -v python &> /dev/null; then
-        # note: we need to deal with this case because of docker containers
-        if [ $(python -m pip list | grep -c 'isaacsim-rl') ]; then
-            local python_exe=$(which python)
-        else
-            # leave a blank path for failure
-            local python_exe=''
-        fi
     else
-        # use python from kit
+        # use kit python
         local python_exe=${ISAACLAB_PATH}/_isaac_sim/python.sh
+
+    if [ ! -f "${python_exe}" ]; then
+            # note: we need to check system python for cases such as docker
+            # inside docker, if user installed into system python, we need to use that
+            # otherwise, use the python from the kit
+            if [ $(python -m pip list | grep -c 'isaacsim-rl') ]; then
+                local python_exe=$(which python)
+            fi
+        fi
     fi
     # check if there is a python path available
     if [ ! -f "${python_exe}" ]; then
@@ -88,12 +76,6 @@ extract_python_exe() {
         echo -e "\t1. Conda environment is not activated." >&2
         echo -e "\t2. Isaac Sim pip package 'isaacsim-rl' is not installed." >&2
         echo -e "\t3. Python executable is not available at the default path: ${ISAACLAB_PATH}/_isaac_sim/python.sh" >&2
-        exit 1
-    fi
-    # kit dependencies are built with python 3.10 so any other version will not work
-    # this is needed in case users have multiple python versions installed and the wrong one is being used
-    if [ "$(${python_exe} --version | grep -c '3.10')" -eq 0 ]; then
-        echo "[ERROR] Found Python version: $(${python_exe} --version) while expecting 3.10. Please use the correct python version." >&2
         exit 1
     fi
     # return the result
@@ -171,9 +153,10 @@ setup_conda_env() {
     # check if we have _isaac_sim directory -> if so that means binaries were installed.
     # we need to setup conda variables to load the binaries
     local isaacsim_setup_conda_env_script=${ISAACLAB_PATH}/_isaac_sim/setup_conda_env.sh
+
     if [ -f "${isaacsim_setup_conda_env_script}" ]; then
         # add variables to environment during activation
-        printf '' \
+        printf '%s\n' \
             '# for Isaac Sim' \
             'source '${isaacsim_setup_conda_env_script}'' \
             '' >> ${CONDA_PREFIX}/etc/conda/activate.d/setenv.sh
@@ -200,7 +183,7 @@ setup_conda_env() {
     # check if we have _isaac_sim directory -> if so that means binaries were installed.
     if [ -f "${isaacsim_setup_conda_env_script}" ]; then
         # add variables to environment during activation
-        printf '' \
+        printf '%s\n' \
             '# for Isaac Sim' \
             'unset CARB_APP_PATH' \
             'unset EXP_PATH' \
@@ -300,8 +283,9 @@ while [[ $# -gt 0 ]]; do
             # install the rl-frameworks specified
             ${python_exe} -m pip install -e ${ISAACLAB_PATH}/source/extensions/omni.isaac.lab_tasks["${framework_name}"]
 
-            # check if we are inside a docker container (in that case don't setup VSCode)
-            if [ -f "/.dockerenv" ]; then
+            # check if we are inside a docker container or are building a docker image
+            # in that case don't setup VSCode since it asks for EULA agreement which triggers user interaction
+            if [ -f /.dockerenv ]; then
                 echo "[INFO] Running inside a docker container. Skipping VSCode settings setup."
                 echo "[INFO] To setup VSCode settings, run 'isaaclab -v'."
             else
