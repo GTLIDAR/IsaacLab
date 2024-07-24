@@ -73,7 +73,8 @@ import numpy as np
 import os
 from datetime import datetime
 
-from stable_baselines3 import PPO
+from rlopt_ppo import PPO
+from rlopt_buffer import RolloutBuffer
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.vec_env import VecNormalize
@@ -83,7 +84,11 @@ from omni.isaac.lab.utils.io import dump_pickle, dump_yaml
 
 import omni.isaac.lab_tasks  # noqa: F401
 from omni.isaac.lab_tasks.utils import load_cfg_from_registry, parse_env_cfg
-from omni.isaac.lab_tasks.utils.wrappers.sb3 import Sb3VecEnvWrapper, process_sb3_cfg
+from omni.isaac.lab_tasks.utils.wrappers.sb3 import (
+    Sb3VecEnvWrapper,
+    process_sb3_cfg,
+    Sb3VecEnvGPUWrapper,
+)
 
 
 def main():
@@ -139,7 +144,7 @@ def main():
         print_dict(video_kwargs, nesting=4)
         env = gym.wrappers.RecordVideo(env, **video_kwargs)
     # wrap around environment for stable baselines
-    env = Sb3VecEnvWrapper(env)
+    env = Sb3VecEnvGPUWrapper(env)
     # set the seed
     env.seed(seed=agent_cfg["seed"])
 
@@ -157,7 +162,9 @@ def main():
         )
 
     # create agent from stable baselines
-    agent = PPO(policy_arch, env, verbose=1, **agent_cfg)
+    agent = PPO(
+        policy_arch, env, verbose=1, rollout_buffer_class=RolloutBuffer, **agent_cfg
+    )
     # configure the logger
     new_logger = configure(log_dir, ["stdout", "tensorboard"])
     agent.set_logger(new_logger)
