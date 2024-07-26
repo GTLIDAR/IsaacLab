@@ -166,14 +166,7 @@ def main():
     agent = PPO(
         policy_arch,
         env,
-        verbose=1,
-        rollout_buffer_class=RLOptRolloutBuffer,
-        **agent_cfg
-    )
-    agent = PPO(
-        policy_arch,
-        env,
-        verbose=1,
+        verbose=0,
         rollout_buffer_class=RLOptRolloutBuffer,
         **agent_cfg
     )
@@ -186,15 +179,21 @@ def main():
         save_freq=1000, save_path=log_dir, name_prefix="model", verbose=2
     )
 
-    with profile(activities=[ProfilerActivity.CUDA], record_shapes=True) as prof:
-        with record_function("model_training"):
-            # train the agent
-            agent.learn(
-                total_timesteps=n_timesteps,
-                callback=checkpoint_callback,
-                progress_bar=True,
-            )
-    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+    # with profile(activities=[ProfilerActivity.CUDA], record_shapes=True) as prof:
+    #     with record_function("model_training"):
+    #         # train the agent
+    #         agent.learn(
+    #             total_timesteps=n_timesteps,
+    #             callback=checkpoint_callback,
+    #             progress_bar=True,
+    #         )
+    # print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=20))
+    # train the agent
+    agent.learn(
+        total_timesteps=n_timesteps,
+        callback=checkpoint_callback,
+        progress_bar=True,
+    )
 
     # save the final model
     agent.save(os.path.join(log_dir, "model"))

@@ -528,21 +528,36 @@ class Sb3VecEnvGPUWrapper(VecEnv):
 
     def step_async(self, actions):  # noqa: D102
         # convert input to numpy array
+        # import time
+
+        # time_now = time.time_ns()
         if not isinstance(actions, torch.Tensor):
             actions = np.asarray(actions)
             actions = torch.from_numpy(actions).to(
                 device=self.sim_device, dtype=torch.float32
             )
-        else:
-            actions = actions.to(device=self.sim_device, dtype=torch.float32)
+        # else:
+        # actions = actions.to(device=self.sim_device, dtype=torch.float32)
         # convert to tensor
         self._async_actions = actions
+        # print(
+        #     "Time taken to convert actions to tensor: ",
+        #     (time.time_ns() - time_now) / 1e9,
+        # )
 
     def step_wait(self) -> VecEnvStepReturn:  # noqa: D102
+        import time
+
+        # print(f" action before step: {self._async_actions}")
+
+        time_now = time.time_ns()
         # record step information
         obs_dict, rew, terminated, truncated, extras = self.env.step(
             self._async_actions
         )
+        print(f"Time taken to step: {(time.time_ns() - time_now) / 1e9}")
+
+        # time_now = time.time_ns()
         # update episode un-discounted return and length
         self._ep_rew_buf += rew
         self._ep_len_buf += 1
@@ -553,15 +568,18 @@ class Sb3VecEnvGPUWrapper(VecEnv):
         # convert data types to numpy depending on backend
         # note: ManagerBasedRLEnv uses torch backend (by default).
         obs = self._process_obs(obs_dict)
-        rew = rew.detach()
-        terminated = terminated.detach()
-        truncated = truncated.detach()
-        dones = dones.detach()
+        rew = rew  # .detach()
+        terminated = terminated  # .detach()
+        truncated = truncated  # .detach()
+        dones = dones  # .detach()
         # convert extra information to list of dicts
         infos = self._process_extras(obs, terminated, truncated, extras, reset_ids)
         # reset info for terminated environments
         self._ep_rew_buf[reset_ids] = 0
         self._ep_len_buf[reset_ids] = 0
+        # print(
+        #     f"Time taken to convert data types to numpy: {(time.time_ns() - time_now) / 1e9}"
+        # )
 
         return obs, rew, dones, infos
 

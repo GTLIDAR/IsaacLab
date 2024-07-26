@@ -349,14 +349,47 @@ class PPO(OnPolicyAlgorithm):
         reset_num_timesteps: bool = True,
         progress_bar: bool = False,
     ) -> SelfPPO:
-        return super().learn(
-            total_timesteps=total_timesteps,
-            callback=callback,
-            log_interval=log_interval,
-            tb_log_name=tb_log_name,
-            reset_num_timesteps=reset_num_timesteps,
-            progress_bar=progress_bar,
+        iteration = 0
+
+        total_timesteps, callback = self._setup_learn(
+            total_timesteps,
+            callback,
+            reset_num_timesteps,
+            tb_log_name,
+            progress_bar,
         )
+
+        callback.on_training_start(locals(), globals())
+
+        assert self.env is not None
+
+        while self.num_timesteps < total_timesteps:
+            import time
+
+            time_now = time.time_ns()
+            continue_training = self.collect_rollouts(
+                self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps
+            )
+            print("Time to collect rollouts: ", (time.time_ns() - time_now) / 1e9)
+
+            if not continue_training:
+                break
+
+            iteration += 1
+            self._update_current_progress_remaining(self.num_timesteps, total_timesteps)
+
+            # Display training infos
+            if log_interval is not None and iteration % log_interval == 0:
+                assert self.ep_info_buffer is not None
+                self._dump_logs(iteration)
+
+            time_now = time.time_ns()
+            self.train()
+            print("Time to train: ", (time.time_ns() - time_now) / 1e9)
+
+        callback.on_training_end()
+
+        return self
 
     # update rollout collection to support RLOptRolloutBuffer
     def collect_rollouts(
@@ -379,6 +412,7 @@ class PPO(OnPolicyAlgorithm):
         :return: True if function returned with at least `n_rollout_steps`
             collected, False if callback terminated rollout prematurely.
         """
+        time_now = time.time_ns()
         self._last_obs: th.Tensor | np.ndarray | None
         assert self._last_obs is not None, "No previous observation was provided"
         # Switch to eval mode (this affects batch norm / dropout)
@@ -391,8 +425,11 @@ class PPO(OnPolicyAlgorithm):
             self.policy.reset_noise(env.num_envs)
 
         callback.on_rollout_start()
+        # print("Time before main loop: ", (time.time_ns() - time_now) / 1e9)
 
         while n_steps < n_rollout_steps:
+
+            time_now = time.time_ns()
             if (
                 self.use_sde
                 and self.sde_sample_freq > 0
@@ -400,7 +437,9 @@ class PPO(OnPolicyAlgorithm):
             ):
                 # Sample a new noise matrix
                 self.policy.reset_noise(env.num_envs)
+            # print("Time to reset noise: ", (time.time_ns() - time_now) / 1e9)
 
+            time_now = time.time_ns()
             with th.inference_mode():
                 # Convert to pytorch tensor or to TensorDict
                 obs_tensor = obs_as_tensor(self._last_obs, self.device)
@@ -411,7 +450,9 @@ class PPO(OnPolicyAlgorithm):
 
             # Rescale and perform action
             clipped_actions = actions
+            # print("Time to get actions: ", (time.time_ns() - time_now) / 1e9)
 
+            time_now = time.time_ns()
             if isinstance(self.action_space, spaces.Box):
                 if self.policy.squash_output:
                     # Unscale the actions to match env bounds
@@ -434,8 +475,15 @@ class PPO(OnPolicyAlgorithm):
                             actions, self.action_space.low, self.action_space.high
                         )
 
+            # print("Time to clip actions: ", (time.time_ns() - time_now) / 1e9)
+
+            time_now = time.time_ns()
+
             new_obs, rewards, dones, infos = env.step(clipped_actions)  # type : ignore
 
+            # print("Time to step: ", (time.time_ns() - time_now) / 1e9)
+
+            time_now = time.time_ns()
             self.num_timesteps += env.num_envs
 
             # Give access to local variables
@@ -443,7 +491,7 @@ class PPO(OnPolicyAlgorithm):
             if not callback.on_step():
                 return False
 
-            self._update_info_buffer(infos, dones)
+            # self._update_info_buffer(infos, dones)
             n_steps += 1
 
             if isinstance(self.action_space, spaces.Discrete):
@@ -476,7 +524,9 @@ class PPO(OnPolicyAlgorithm):
                         rewards[idx] += self.gamma * terminal_value
                     else:
                         rewards[idx] += self.gamma * terminal_value.item()
+            # print("Time to handle timeout: ", (time.time_ns() - time_now) / 1e9)
 
+            time_now = time.time_ns()
             rollout_buffer.add(
                 self._last_obs,  # type: ignore[arg-type]
                 actions,
@@ -487,7 +537,9 @@ class PPO(OnPolicyAlgorithm):
             )
             self._last_obs = new_obs  # type: ignore[assignment]
             self._last_episode_starts = dones
+            # print("Time to add to buffer: ", (time.time_ns() - time_now) / 1e9)
 
+        time_now = time.time_ns()
         with th.inference_mode():
             # Compute value for the last timestep
             values = self.policy.predict_values(obs_as_tensor(new_obs, self.device))  # type: ignore[arg-type]
@@ -497,7 +549,9 @@ class PPO(OnPolicyAlgorithm):
         callback.update_locals(locals())
 
         callback.on_rollout_end()
-
+        # print(
+        #     "Time to compute returns and advantage: ", (time.time_ns() - time_now) / 1e9
+        # )
         return True
 
     def _setup_learn(
