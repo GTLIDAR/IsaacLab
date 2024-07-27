@@ -143,6 +143,34 @@ class ActionCfg:
         # use_default_offset=True,
     )
 
+    # joint_vel = mdp.JointVelocityActionCfg(
+    #     asset_name="robot",
+    #     joint_names=[
+    #         "left_hip_roll",
+    #         "left_hip_yaw",
+    #         "left_hip_pitch",
+    #         "left_knee",
+    #         "left_toe_A",
+    #         "left_toe_B",
+    #         "right_hip_roll",
+    #         "right_hip_yaw",
+    #         "right_hip_pitch",
+    #         "right_knee",
+    #         "right_toe_A",
+    #         "right_toe_B",
+    #         "left_shoulder_roll",
+    #         "left_shoulder_pitch",
+    #         "left_shoulder_yaw",
+    #         "left_elbow",
+    #         "right_shoulder_roll",
+    #         "right_shoulder_pitch",
+    #         "right_shoulder_yaw",
+    #         "right_elbow",
+    #     ],
+        # scale=0.5,
+        # use_default_offset=True,
+    # )
+
 
 @configclass
 class ObservationsCfg:
@@ -153,8 +181,8 @@ class ObservationsCfg:
         """Observations for policy group."""
 
         # observation terms (order preserved)
-        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Gnoise(mean=0.0, std=0.15, operation="add"))
-        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Gnoise(mean=0.0, std=0.15, operation="add"))
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Gnoise(mean=0.0, std=0.05, operation="add"))
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Gnoise(mean=0.0, std=0.05, operation="add"))
         velocity_commands = ObsTerm(func=mdp.generated_commands, params={"command_name": "base_velocity"})
         joint_pos = ObsTerm(func=mdp.joint_pos, noise=Gnoise(mean=0.0, std=0.175, operation="add"),
                             params={
@@ -195,8 +223,7 @@ class ObservationsCfg:
                                         })
         
         
-        
-        joint_vel = ObsTerm(func=mdp.joint_vel, noise=Gnoise(mean=0.0, std=0.15, operation="add"),
+        joint_vel = ObsTerm(func=mdp.joint_vel, noise=Gnoise(mean=0.0, std=0.05, operation="add"),
                             params={
                                 "asset_cfg": SceneEntityCfg(
                                 "robot", joint_names=[
@@ -257,32 +284,33 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
-        self.sim.dt = 0.001
+        self.sim.dt = 0.001 # 0.001
         self.decimation = 20
         # Scene
         self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base"
 
         # Randomization
-        self.events.push_robot.params["asset_cfg"].body_names = [
-            ".*base"
-        ]
+        self.events.push_robot = None
+        # self.events.push_robot.params["asset_cfg"].body_names = [
+        #     ".*base"
+        # ]
         self.events.add_base_mass.params["asset_cfg"].body_names = [
             ".*base"
         ]
-        self.events.reset_robot_joints.params["position_range"] = (1.0, 1.0)
+        self.events.reset_robot_joints.params["position_range"] = (0.9, 1.1)
         self.events.base_external_force_torque.params["asset_cfg"].body_names = [
             ".*base"
         ]
         self.events.reset_base.params = {
             "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-0.5, 0.5)},
             "velocity_range": {
-                "x": (-0.5, 0.5),
-                "y": (-0.5, 0.5),
-                "z": (-0.5, 0.5),
-                "roll": (-0.5, 0.5),
-                "pitch": (-0.5, 0.5),
-                "yaw": (-0.5, 0.5),
+                "x": (-0.1, 0.1),
+                "y": (-0.1, 0.1),
+                "z": (-0.1, 0.1),
+                "roll": (-0.0, 0.0),
+                "pitch": (-0.0, 0.0),
+                "yaw": (-0.0, 0.0),
             },
         }
 
