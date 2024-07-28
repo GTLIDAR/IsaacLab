@@ -223,9 +223,9 @@ class PPO(OnPolicyAlgorithm):
         # train for n_epochs epochs
         for epoch in range(self.n_epochs):
             approx_kl_divs = []
+
             # Do a complete pass on the rollout buffer
             for rollout_data in self.rollout_buffer.get(self.batch_size):
-
                 actions = rollout_data.actions
                 if isinstance(self.action_space, spaces.Discrete):
                     # Convert discrete action from float to long
@@ -370,7 +370,7 @@ class PPO(OnPolicyAlgorithm):
             continue_training = self.collect_rollouts(
                 self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps
             )
-            print("Time to collect rollouts: ", (time.time_ns() - time_now) / 1e9)
+            # print("Time to collect rollouts: ", (time.time_ns() - time_now) / 1e9)
 
             if not continue_training:
                 break
@@ -381,11 +381,11 @@ class PPO(OnPolicyAlgorithm):
             # Display training infos
             if log_interval is not None and iteration % log_interval == 0:
                 assert self.ep_info_buffer is not None
-                self._dump_logs(iteration)
+                # self._dump_logs(iteration)
 
             time_now = time.time_ns()
             self.train()
-            print("Time to train: ", (time.time_ns() - time_now) / 1e9)
+            # print("Time to train: ", (time.time_ns() - time_now) / 1e9)
 
         callback.on_training_end()
 
@@ -429,7 +429,6 @@ class PPO(OnPolicyAlgorithm):
 
         while n_steps < n_rollout_steps:
 
-            time_now = time.time_ns()
             if (
                 self.use_sde
                 and self.sde_sample_freq > 0
@@ -439,20 +438,19 @@ class PPO(OnPolicyAlgorithm):
                 self.policy.reset_noise(env.num_envs)
             # print("Time to reset noise: ", (time.time_ns() - time_now) / 1e9)
 
-            time_now = time.time_ns()
             with th.inference_mode():
                 # Convert to pytorch tensor or to TensorDict
-                obs_tensor = obs_as_tensor(self._last_obs, self.device)
+                # obs_tensor = obs_as_tensor(self._last_obs, self.device)
+                # obs_tensor = self._last_obs.clone().detach()  # type: ignore[arg-type]
+                obs_tensor = self._last_obs
                 actions, values, log_probs = self.policy(obs_tensor)
 
-            if isinstance(self.rollout_buffer, RolloutBuffer):
-                actions = actions.cpu().numpy()
+            # if isinstance(self.rollout_buffer, RolloutBuffer):
+            #     actions = actions.cpu().numpy()
 
             # Rescale and perform action
             clipped_actions = actions
-            # print("Time to get actions: ", (time.time_ns() - time_now) / 1e9)
 
-            time_now = time.time_ns()
             if isinstance(self.action_space, spaces.Box):
                 if self.policy.squash_output:
                     # Unscale the actions to match env bounds
@@ -462,28 +460,26 @@ class PPO(OnPolicyAlgorithm):
                     # Otherwise, clip the actions to avoid out of bound error
                     # as we are sampling from an unbounded Gaussian distribution
 
-                    if isinstance(
-                        self.rollout_buffer, RLOptRolloutBuffer
-                    ) or isinstance(self.rollout_buffer, RLOptDictRolloutBuffer):
-                        clipped_actions = th.clamp(
-                            actions,
-                            th.as_tensor(self.action_space.low, device=self.device),
-                            th.as_tensor(self.action_space.high, device=self.device),
-                        )
-                    else:
-                        clipped_actions = np.clip(
-                            actions, self.action_space.low, self.action_space.high
-                        )
-
-            # print("Time to clip actions: ", (time.time_ns() - time_now) / 1e9)
-
-            time_now = time.time_ns()
+                    # if isinstance(
+                    #     self.rollout_buffer, RLOptRolloutBuffer
+                    # ) or isinstance(self.rollout_buffer, RLOptDictRolloutBuffer):
+                    #     clipped_actions = th.clamp(
+                    #         actions,
+                    #         th.as_tensor(self.action_space.low, device=self.device),
+                    #         th.as_tensor(self.action_space.high, device=self.device),
+                    #     )
+                    # else:
+                    #     clipped_actions = np.clip(
+                    #         actions, self.action_space.low, self.action_space.high
+                    #     )
+                    clipped_actions = th.clamp(
+                        actions,
+                        th.as_tensor(self.action_space.low, device=self.device),
+                        th.as_tensor(self.action_space.high, device=self.device),
+                    )
 
             new_obs, rewards, dones, infos = env.step(clipped_actions)  # type : ignore
 
-            # print("Time to step: ", (time.time_ns() - time_now) / 1e9)
-
-            time_now = time.time_ns()
             self.num_timesteps += env.num_envs
 
             # Give access to local variables
@@ -498,35 +494,13 @@ class PPO(OnPolicyAlgorithm):
                 # Reshape in case of discrete action
                 actions = actions.reshape(-1, 1)
 
-            # Handle timeout by bootstraping with value function
-            # see GitHub issue #633
-            for idx, done in enumerate(dones):
-                if (
-                    done
-                    and infos[idx].get("terminal_observation") is not None
-                    and infos[idx].get("TimeLimit.truncated", False)
-                ):
+            # Bootstrapping on time outs
+            if "time_outs" in infos:
+                rewards += self.gamma * th.squeeze(
+                    values * infos["time_outs"].unsqueeze(1).to(self.device),
+                    1,
+                )
 
-                    if not isinstance(self.rollout_buffer, RLOptRolloutBuffer):
-                        terminal_obs = self.policy.obs_to_tensor(
-                            infos[idx]["terminal_observation"]
-                        )[0]
-                    else:
-                        terminal_obs = obs_as_tensor(
-                            infos[idx]["terminal_observation"], self.device
-                        ).reshape(  # type: ignore
-                            (-1, *self.observation_space.shape)  # type: ignore
-                        )
-
-                    with th.inference_mode():
-                        terminal_value = self.policy.predict_values(terminal_obs)[0]  # type: ignore[arg-type]
-                    if not isinstance(self.rollout_buffer, RLOptRolloutBuffer):
-                        rewards[idx] += self.gamma * terminal_value
-                    else:
-                        rewards[idx] += self.gamma * terminal_value.item()
-            # print("Time to handle timeout: ", (time.time_ns() - time_now) / 1e9)
-
-            time_now = time.time_ns()
             rollout_buffer.add(
                 self._last_obs,  # type: ignore[arg-type]
                 actions,
@@ -537,9 +511,7 @@ class PPO(OnPolicyAlgorithm):
             )
             self._last_obs = new_obs  # type: ignore[assignment]
             self._last_episode_starts = dones
-            # print("Time to add to buffer: ", (time.time_ns() - time_now) / 1e9)
 
-        time_now = time.time_ns()
         with th.inference_mode():
             # Compute value for the last timestep
             values = self.policy.predict_values(obs_as_tensor(new_obs, self.device))  # type: ignore[arg-type]
@@ -549,9 +521,7 @@ class PPO(OnPolicyAlgorithm):
         callback.update_locals(locals())
 
         callback.on_rollout_end()
-        # print(
-        #     "Time to compute returns and advantage: ", (time.time_ns() - time_now) / 1e9
-        # )
+
         return True
 
     def _setup_learn(

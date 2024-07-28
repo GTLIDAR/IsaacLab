@@ -69,8 +69,8 @@ class BaseBuffer(ABC):
         :return:
         """
         shape = arr.shape
-        if len(shape) < 3:
-            shape = (*shape, 1)
+        # if len(shape) < 3:
+        #     shape = (*shape, 1)
         return arr.transpose(0, 1).reshape(shape[0] * shape[1], *shape[2:])
 
     def size(self) -> int:
@@ -476,12 +476,12 @@ class RolloutBuffer(BaseBuffer):
         :param dones: if the last step was a terminal step (one bool for each env).
         """
         # Convert to numpy
-        last_values = last_values.clone().detach().flatten()  # type: ignore[assignment]
+        last_values = last_values.detach().flatten()  # type: ignore[assignment]
 
         last_gae_lam = 0
         for step in reversed(range(self.buffer_size)):
             if step == self.buffer_size - 1:
-                next_non_terminal = 1.0 - dones.type(th.float32)
+                next_non_terminal = 1.0 - dones  # .type(th.float32)
                 next_values = last_values
             else:
                 next_non_terminal = 1.0 - self.episode_starts[step + 1]
@@ -529,12 +529,12 @@ class RolloutBuffer(BaseBuffer):
 
         # Reshape to handle multi-dim and discrete action spaces, see GH #970 #1392
         action = action.reshape((self.n_envs, self.action_dim))
-        self.observations[self.pos] = obs
-        self.actions[self.pos] = action
-        self.rewards[self.pos] = reward
-        self.episode_starts[self.pos] = episode_start
-        self.values[self.pos] = value.flatten()
-        self.log_probs[self.pos] = log_prob
+        self.observations[self.pos] = obs.detach()
+        self.actions[self.pos] = action.detach()
+        self.rewards[self.pos] = reward.detach()
+        self.episode_starts[self.pos] = episode_start.detach()
+        self.values[self.pos] = value.flatten().detach()
+        self.log_probs[self.pos] = log_prob.detach()
         self.pos += 1
         if self.pos == self.buffer_size:
             self.full = True
@@ -586,7 +586,7 @@ class RolloutBuffer(BaseBuffer):
             self.advantages[batch_inds].flatten(),
             self.returns[batch_inds].flatten(),
         )
-        return RolloutBufferSamples(*tuple(map(self.to_torch, data)))
+        return RolloutBufferSamples(*data)
 
 
 class DictReplayBuffer(ReplayBuffer):

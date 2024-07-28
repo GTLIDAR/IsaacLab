@@ -528,60 +528,48 @@ class Sb3VecEnvGPUWrapper(VecEnv):
 
     def step_async(self, actions):  # noqa: D102
         # convert input to numpy array
-        # import time
 
-        # time_now = time.time_ns()
         if not isinstance(actions, torch.Tensor):
             actions = np.asarray(actions)
             actions = torch.from_numpy(actions).to(
                 device=self.sim_device, dtype=torch.float32
             )
-        # else:
-        # actions = actions.to(device=self.sim_device, dtype=torch.float32)
+        else:
+            actions = actions.to(device=self.sim_device, dtype=torch.float32)
         # convert to tensor
         self._async_actions = actions
-        # print(
-        #     "Time taken to convert actions to tensor: ",
-        #     (time.time_ns() - time_now) / 1e9,
-        # )
 
     def step_wait(self) -> VecEnvStepReturn:  # noqa: D102
-        import time
 
-        # print(f" action before step: {self._async_actions}")
-
-        time_now = time.time_ns()
         # record step information
         obs_dict, rew, terminated, truncated, extras = self.env.step(
             self._async_actions
         )
-        print(f"Time taken to step: {(time.time_ns() - time_now) / 1e9}")
 
-        # time_now = time.time_ns()
         # update episode un-discounted return and length
         self._ep_rew_buf += rew
         self._ep_len_buf += 1
         # compute reset ids
-        dones = terminated | truncated
+        dones = (terminated | truncated).to(dtype=torch.long)
         reset_ids = (dones > 0).nonzero(as_tuple=False)
 
         # convert data types to numpy depending on backend
         # note: ManagerBasedRLEnv uses torch backend (by default).
         obs = self._process_obs(obs_dict)
-        rew = rew  # .detach()
-        terminated = terminated  # .detach()
-        truncated = truncated  # .detach()
-        dones = dones  # .detach()
+        rew = rew
+        dones = dones
         # convert extra information to list of dicts
-        infos = self._process_extras(obs, terminated, truncated, extras, reset_ids)
+        extras["observations"] = obs_dict
+        # move time out information to the extras dict
+        # this is only needed for infinite horizon tasks
+        if not self.unwrapped.cfg.is_finite_horizon:
+            extras["time_outs"] = truncated
+
         # reset info for terminated environments
         self._ep_rew_buf[reset_ids] = 0
         self._ep_len_buf[reset_ids] = 0
-        # print(
-        #     f"Time taken to convert data types to numpy: {(time.time_ns() - time_now) / 1e9}"
-        # )
 
-        return obs, rew, dones, infos
+        return obs, rew, dones, extras
 
     def close(self):  # noqa: D102
         self.env.close()
@@ -637,61 +625,9 @@ class Sb3VecEnvGPUWrapper(VecEnv):
         # note: ManagerBasedRLEnv uses torch backend (by default).
         if isinstance(obs, dict):
             for key, value in obs.items():
-                obs[key] = value.detach()
+                obs[key] = value
         elif isinstance(obs, torch.Tensor):
-            obs = obs.detach()
+            obs = obs
         else:
             raise NotImplementedError(f"Unsupported data type: {type(obs)}")
         return obs
-
-    def _process_extras(
-        self,
-        obs: torch.Tensor,
-        terminated: torch.Tensor,
-        truncated: torch.Tensor,
-        extras: dict,
-        reset_ids: torch.Tensor,
-    ) -> list[dict[str, Any]]:
-        """Convert miscellaneous information into dictionary for each sub-environment."""
-        # create empty list of dictionaries to fill
-        infos: list[dict[str, Any]] = [
-            dict.fromkeys(extras.keys()) for _ in range(self.num_envs)
-        ]
-        # fill-in information for each sub-environment
-        # note: This loop becomes slow when number of environments is large.
-        for idx in range(self.num_envs):
-            # fill-in episode monitoring info
-            if idx in reset_ids:
-                infos[idx]["episode"] = dict()
-                infos[idx]["episode"]["r"] = float(self._ep_rew_buf[idx])
-                infos[idx]["episode"]["l"] = float(self._ep_len_buf[idx])
-            else:
-                infos[idx]["episode"] = None
-            # fill-in bootstrap information
-            infos[idx]["TimeLimit.truncated"] = truncated[idx] and not terminated[idx]
-            # fill-in information from extras
-            for key, value in extras.items():
-                # 1. remap extra episodes information safely
-                # 2. for others just store their values
-                if key == "log":
-                    # only log this data for episodes that are terminated
-                    if infos[idx]["episode"] is not None:
-                        for sub_key, sub_value in value.items():
-                            infos[idx]["episode"][sub_key] = sub_value
-                else:
-                    infos[idx][key] = value[idx]
-            # add information about terminal observation separately
-            if idx in reset_ids:
-                # extract terminal observations
-                if isinstance(obs, dict):
-                    terminal_obs = dict.fromkeys(obs.keys())
-                    for key, value in obs.items():
-                        terminal_obs[key] = value[idx]
-                else:
-                    terminal_obs = obs[idx]
-                # add info to dict
-                infos[idx]["terminal_observation"] = terminal_obs
-            else:
-                infos[idx]["terminal_observation"] = None
-        # return list of dictionaries
-        return infos
