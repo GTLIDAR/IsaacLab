@@ -73,6 +73,7 @@ import numpy as np
 import os
 from datetime import datetime
 
+import torch
 from rlopt_ppo import PPO
 from rlopt_buffer import RolloutBuffer as RLOptRolloutBuffer
 from stable_baselines3.common.callbacks import CheckpointCallback
@@ -90,6 +91,11 @@ from omni.isaac.lab_tasks.utils.wrappers.sb3 import (
     Sb3VecEnvGPUWrapper,
 )
 from torch.profiler import profile, record_function, ProfilerActivity
+
+torch.backends.cuda.matmul.allow_tf32 = True
+torch.backends.cudnn.allow_tf32 = True
+torch.backends.cudnn.deterministic = False
+torch.backends.cudnn.benchmark = False
 
 
 def main():
