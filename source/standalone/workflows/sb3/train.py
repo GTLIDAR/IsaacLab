@@ -90,7 +90,6 @@ from omni.isaac.lab_tasks.utils.wrappers.sb3 import (
     process_sb3_cfg,
     Sb3VecEnvGPUWrapper,
 )
-from torch.profiler import profile, record_function, ProfilerActivity
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
