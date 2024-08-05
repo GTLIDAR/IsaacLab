@@ -75,13 +75,20 @@ from datetime import datetime
 
 import torch
 from rlopt_ppo import PPO
+from rlopt_l2t import L2T
 from rlopt_buffer import RolloutBuffer as RLOptRolloutBuffer
-from stable_baselines3.common.callbacks import CheckpointCallback
+from rlopt_buffer import DictRolloutBuffer as RLOptDictRolloutBuffer
+from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.vec_env import VecNormalize
 
+import wandb
+from wandb.integration.sb3 import WandbCallback
+
+
 from omni.isaac.lab.utils.dict import print_dict
 from omni.isaac.lab.utils.io import dump_pickle, dump_yaml
+
 
 import omni.isaac.lab_tasks  # noqa: F401
 from omni.isaac.lab_tasks.utils import load_cfg_from_registry, parse_env_cfg
@@ -89,6 +96,7 @@ from omni.isaac.lab_tasks.utils.wrappers.sb3 import (
     Sb3VecEnvWrapper,
     process_sb3_cfg,
     Sb3VecEnvGPUWrapper,
+    L2tSb3VecEnvGPUWrapper,
 )
 
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -198,8 +206,127 @@ def main():
     env.close()
 
 
+def train_l2t():
+    """Train with stable-baselines agent."""
+    # parse configuration
+    env_cfg = parse_env_cfg(
+        args_cli.task,
+        use_gpu=not args_cli.cpu,
+        num_envs=args_cli.num_envs,
+        use_fabric=not args_cli.disable_fabric,
+    )
+    agent_cfg = load_cfg_from_registry(args_cli.task, "sb3_cfg_entry_point")
+
+    # override configuration with command line arguments
+    if args_cli.seed is not None:
+        agent_cfg["seed"] = args_cli.seed
+
+    # max iterations for training
+    if args_cli.max_iterations:
+        agent_cfg["n_timesteps"] = (
+            args_cli.max_iterations * agent_cfg["n_steps"] * env_cfg.scene.num_envs
+        )
+
+    # directory for logging into
+    log_dir = os.path.join(
+        "logs", "sb3", args_cli.task, datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    )
+    # dump the configuration into log-directory
+    dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
+    dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
+    dump_pickle(os.path.join(log_dir, "params", "env.pkl"), env_cfg)
+    dump_pickle(os.path.join(log_dir, "params", "agent.pkl"), agent_cfg)
+
+    # post-process agent configuration
+    agent_cfg = process_sb3_cfg(agent_cfg)
+    # read configurations about the agent-training
+    policy_arch = agent_cfg.pop("policy")
+    n_timesteps = agent_cfg.pop("n_timesteps")
+
+    # create isaac environment
+    env = gym.make(
+        args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None
+    )
+    # wrap for video recording
+    if args_cli.video:
+        video_kwargs = {
+            "video_folder": os.path.join(log_dir, "videos"),
+            "step_trigger": lambda step: step % args_cli.video_interval == 0,
+            "video_length": args_cli.video_length,
+            "disable_logger": True,
+        }
+        print("[INFO] Recording videos during training.")
+        print_dict(video_kwargs, nesting=4)
+        env = gym.wrappers.RecordVideo(env, **video_kwargs)
+    # wrap around environment for stable baselines
+    env = L2tSb3VecEnvGPUWrapper(env)
+    # set the seed
+    env.seed(seed=agent_cfg["seed"])
+
+    if "normalize_input" in agent_cfg:
+        env = VecNormalize(
+            env,
+            training=True,
+            norm_obs="normalize_input" in agent_cfg
+            and agent_cfg.pop("normalize_input"),
+            norm_reward="normalize_value" in agent_cfg
+            and agent_cfg.pop("normalize_value"),
+            clip_obs="clip_obs" in agent_cfg and agent_cfg.pop("clip_obs"),
+            gamma=agent_cfg["gamma"],
+            clip_reward=np.inf,
+        )
+
+    # initialize wandb and make callback
+    run = wandb.init(
+        project="l2t_digit",
+        entity="rl-digit",
+        config=agent_cfg,
+        sync_tensorboard=True,
+        monitor_gym=False,
+        save_code=False,
+    )
+    wandb_callback = WandbCallback()
+
+    # create agent from stable baselines
+    agent = L2T(
+        policy_arch,
+        env,
+        verbose=0,
+        rollout_buffer_class=RLOptDictRolloutBuffer,
+        **agent_cfg
+    )
+    # configure the logger
+    new_logger = configure(log_dir, ["stdout", "tensorboard"])
+    agent.set_logger(new_logger)
+
+    # callbacks for agent
+    checkpoint_callback = CheckpointCallback(
+        save_freq=1000, save_path=log_dir, name_prefix="model", verbose=0
+    )
+
+    # chain the callbacks
+    callback_list = CallbackList([checkpoint_callback, wandb_callback])
+
+    # train the agent
+    agent.learn(
+        total_timesteps=n_timesteps,
+        callback=callback_list,
+        progress_bar=True,
+    )
+
+    # save the final model
+    agent.save(os.path.join(log_dir, "model"))
+
+    # close the simulator
+    env.close()
+
+    # finish wandb
+    run.finish()  # type: ignore
+
+
 if __name__ == "__main__":
     # run the main function
-    main()
+    # main()
+    train_l2t()
     # close sim app
     simulation_app.close()
