@@ -141,6 +141,7 @@ class ActionCfg:
         ],
         # scale=0.5,
         use_default_offset=False,
+        preserve_order = True,
     )
 
     # joint_vel = mdp.JointVelocityActionCfg(
