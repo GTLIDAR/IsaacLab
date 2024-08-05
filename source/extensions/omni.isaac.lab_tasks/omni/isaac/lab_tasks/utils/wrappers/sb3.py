@@ -33,10 +33,14 @@ from stable_baselines3.common.vec_env.base_vec_env import (
 VecEnvObs = Union[
     np.ndarray,
     Dict[str, np.ndarray],
+    Dict[str, torch.Tensor | Dict[str, torch.Tensor]],
     Tuple[np.ndarray, ...],
     torch.Tensor,
     Tuple[torch.Tensor, ...],
 ]
+
+GPUVecEnvStepReturn = Tuple[VecEnvObs, torch.Tensor, torch.Tensor, Any]
+
 
 from omni.isaac.lab.envs import DirectRLEnv, ManagerBasedRLEnv
 
@@ -631,3 +635,36 @@ class Sb3VecEnvGPUWrapper(VecEnv):
         else:
             raise NotImplementedError(f"Unsupported data type: {type(obs)}")
         return obs
+
+
+class L2tSb3VecEnvGPUWrapper(Sb3VecEnvGPUWrapper):
+    """The wrapper for Learn to Teach algorithms. Observation is dict[str, torch.Tensor] and action is torch.Tensor."""
+
+    def __init__(self, env: ManagerBasedRLEnv):
+        super().__init__(env)
+
+        self.observation_space = {}
+        obs_space = self.unwrapped.single_observation_space
+        if "teacher" not in obs_space.keys():
+            raise ValueError("The environment must have observation space for teacher.")
+
+        self.observation_space["teacher"] = obs_space["teacher"]
+        self.observation_space["student"] = obs_space["student"]
+
+    def _process_obs(
+        self, obs_dict: torch.Tensor | dict[str, torch.Tensor]
+    ) -> (
+        torch.Tensor
+        | dict[str, torch.Tensor]
+        | dict[str, torch.Tensor | dict[str, torch.Tensor]]
+    ):
+        """Do nothing."""
+        # L2T expects a dictionary of tensor with observation and policy
+        obs = obs_dict
+        # # note: ManagerBasedRLEnv uses torch backend (by default).
+        if isinstance(obs, dict):
+            if "teacher" not in obs.keys():
+                obs["teacher"] = obs["policy"]
+            return obs
+        else:
+            raise NotImplementedError(f"Unsupported data type: {type(obs)}")
