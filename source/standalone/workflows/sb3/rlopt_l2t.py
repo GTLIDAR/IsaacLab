@@ -19,9 +19,26 @@ from stable_baselines3.common.policies import (
 )
 from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
 from stable_baselines3.common.utils import get_schedule_fn
-from stable_baselines3.common.vec_env import VecEnv
 from stable_baselines3.common import utils
+from stable_baselines3.common.noise import ActionNoise
 from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.utils import (
+    check_for_correct_spaces,
+    get_device,
+    get_schedule_fn,
+    get_system_info,
+    set_random_seed,
+    update_learning_rate,
+)
+from stable_baselines3.common.base_class import maybe_make_env
+from stable_baselines3.common.vec_env import (
+    DummyVecEnv,
+    VecEnv,
+    VecNormalize,
+    VecTransposeImage,
+    is_vecenv_wrapped,
+    unwrap_vec_normalize,
+)
 
 from rlopt_buffer import RolloutBuffer as RLOptRolloutBuffer
 from rlopt_buffer import DictRolloutBuffer as RLOptDictRolloutBuffer
@@ -118,37 +135,114 @@ class L2T(OnPolicyAlgorithm):
         device: Union[th.device, str] = "auto",
         _init_setup_model: bool = True,
     ):
-        super().__init__(
-            policy,
-            env,
-            learning_rate=learning_rate,
-            n_steps=n_steps,
-            gamma=gamma,
-            gae_lambda=gae_lambda,
-            ent_coef=ent_coef,
-            vf_coef=vf_coef,
-            max_grad_norm=max_grad_norm,
-            use_sde=use_sde,
-            sde_sample_freq=sde_sample_freq,
-            rollout_buffer_class=rollout_buffer_class,  # type: ignore
-            rollout_buffer_kwargs=rollout_buffer_kwargs,
-            stats_window_size=stats_window_size,
-            tensorboard_log=tensorboard_log,
-            policy_kwargs=policy_kwargs,
-            verbose=verbose,
-            device=device,
-            seed=seed,
-            _init_setup_model=False,
-            supported_action_spaces=(
-                spaces.Box,
-                spaces.Discrete,
-                spaces.MultiDiscrete,
-                spaces.MultiBinary,
-            ),
+        if isinstance(policy, str):
+            self.policy_class = self._get_policy_from_name(policy)
+        else:
+            self.policy_class = policy
+
+        self.device = get_device(device)
+        if verbose >= 1:
+            print(f"Using {self.device} device")
+
+        self.verbose = verbose
+        self.policy_kwargs = {} if policy_kwargs is None else policy_kwargs
+
+        self.num_timesteps = 0
+        # Used for updating schedules
+        self._total_timesteps = 0
+        # Used for computing fps, it is updated at each call of learn()
+        self._num_timesteps_at_start = 0
+        self.seed = seed
+        self.action_noise: Optional[ActionNoise] = None
+        self.start_time = 0.0
+        self.learning_rate = learning_rate
+        self.tensorboard_log = tensorboard_log
+        self._last_obs = (  # type: ignore
+            None
+        )  # type: Optional[Union[np.ndarray, Dict[str, np.ndarray]]]
+        self._last_episode_starts = None  # type: Optional[np.ndarray]
+        # When using VecNormalize:
+        self._last_original_obs = (
+            None
+        )  # type: Optional[Union[np.ndarray, Dict[str, np.ndarray]]]
+        self._episode_num = 0
+        # Used for gSDE only
+        self.use_sde = use_sde
+        self.sde_sample_freq = sde_sample_freq
+        # Track the training progress remaining (from 1 to 0)
+        # this is used to update the learning rate
+        self._current_progress_remaining = 1.0
+        # Buffers for logging
+        self._stats_window_size = stats_window_size
+        self.ep_info_buffer = None  # type: Optional[deque]
+        self.ep_success_buffer = None  # type: Optional[deque]
+        # For logging (and TD3 delayed updates)
+        self._n_updates = 0  # type: int
+        # Whether the user passed a custom logger or not
+        self._custom_logger = False
+        self.env: Optional[VecEnv] = None
+        self._vec_normalize_env: Optional[VecNormalize] = None
+        supported_action_spaces = (
+            spaces.Box,
+            spaces.Discrete,
+            spaces.MultiDiscrete,
+            spaces.MultiBinary,
         )
+        support_multi_env = True
+        # Create and wrap the env if needed
+        if env is not None:
+            env = maybe_make_env(env, self.verbose)
+            env = self._wrap_env(env, self.verbose, True)
 
-        # print(f"observation_space: {self.observation_space}")
+            self.observation_space = env.observation_space
+            self.action_space = env.action_space
+            self.n_envs = env.num_envs
+            self.env = env
 
+            # get VecNormalize object if needed
+            self._vec_normalize_env = unwrap_vec_normalize(env)
+
+            if supported_action_spaces is not None:
+                assert isinstance(self.action_space, supported_action_spaces), (
+                    f"The algorithm only supports {supported_action_spaces} as action spaces "
+                    f"but {self.action_space} was provided"
+                )
+
+            if not support_multi_env and self.n_envs > 1:
+                raise ValueError(
+                    "Error: the model does not support multiple envs; it requires "
+                    "a single vectorized environment."
+                )
+
+            # Catch common mistake: using MlpPolicy/CnnPolicy instead of MultiInputPolicy
+            # if policy in ["MlpPolicy", "CnnPolicy"] and isinstance(
+            #     self.observation_space["teacher"], spaces.Dict
+            # ):
+            #     raise ValueError(
+            #         f"You must use `MultiInputPolicy` when working with dict observation space, not {policy}"
+            #     )
+            print(f"observation_space: {self.observation_space}")
+
+            if self.use_sde and not isinstance(self.action_space, spaces.Box):
+                raise ValueError(
+                    "generalized State-Dependent Exploration (gSDE) can only be used with continuous actions."
+                )
+
+            if isinstance(self.action_space, spaces.Box):
+                assert np.all(
+                    np.isfinite(
+                        np.array([self.action_space.low, self.action_space.high])
+                    )
+                ), "Continuous action space must have a finite lower and upper bound"
+
+        self.n_steps = n_steps
+        self.gamma = gamma
+        self.gae_lambda = gae_lambda
+        self.ent_coef = ent_coef
+        self.vf_coef = vf_coef
+        self.max_grad_norm = max_grad_norm
+        self.rollout_buffer_class = rollout_buffer_class
+        self.rollout_buffer_kwargs = rollout_buffer_kwargs or {}
         # Sanity check, otherwise it will lead to noisy gradient and NaN
         # because of the advantage normalization
         if normalize_advantage:
@@ -210,7 +304,7 @@ class L2T(OnPolicyAlgorithm):
             **self.rollout_buffer_kwargs,
         )
         self.policy = self.policy_class(  # type: ignore[assignment]
-            self.observation_space["state"],  # type: ignore
+            self.observation_space["teacher"],  # type: ignore
             self.action_space,
             self.lr_schedule,
             use_sde=self.use_sde,
@@ -247,7 +341,7 @@ class L2T(OnPolicyAlgorithm):
 
         # from off_policy_algorithm super()._setup_model()
         # partial_obversevation_space is from Environment's partial_observation_space
-        self.partial_observation_space = self.observation_space["observation"]  # type: ignore
+        self.partial_observation_space = self.observation_space["student"]  # type: ignore
         self.student_policy = self.student_policy_class(  # pytype:disable=not-instantiable
             self.partial_observation_space,
             self.action_space,
@@ -286,6 +380,10 @@ class L2T(OnPolicyAlgorithm):
             # Do a complete pass on the rollout buffer
             for rollout_data in self.rollout_buffer.get(self.batch_size):
                 actions = rollout_data.actions
+                print(f"action device: {actions.device}")
+                print(
+                    f"observation device: {rollout_data.observations['teacher'].device}"
+                )
                 if isinstance(self.action_space, spaces.Discrete):
                     # Convert discrete action from float to long
                     actions = rollout_data.actions.long().flatten()
@@ -295,7 +393,7 @@ class L2T(OnPolicyAlgorithm):
                     self.policy.reset_noise(self.batch_size)
 
                 values, log_prob, entropy = self.policy.evaluate_actions(
-                    rollout_data.observations["state"], actions  # type: ignore
+                    rollout_data.observations["teacher"], actions  # type: ignore
                 )
                 values = values.flatten()
                 # Normalize advantage
@@ -351,7 +449,7 @@ class L2T(OnPolicyAlgorithm):
 
                 # Compute student agent loss
                 student_actions, student_values, student_log_prob = self.student_policy(
-                    rollout_data.observations["observation"]  # type: ignore
+                    rollout_data.observations["student"]  # type: ignore
                 )
 
                 student_loss = F.mse_loss(student_actions, actions.detach())
@@ -510,7 +608,7 @@ class L2T(OnPolicyAlgorithm):
             (used in recurrent policies)
         """
         return self.student_policy.predict(  # type: ignore
-            observation["observation"], state, episode_start, deterministic  # type: ignore
+            observation["student"], state, episode_start, deterministic  # type: ignore
         )
 
     def teacher_predict(
@@ -534,7 +632,7 @@ class L2T(OnPolicyAlgorithm):
             (used in recurrent policies)
         """
         return self.policy.predict(
-            observation["state"], state, episode_start, deterministic
+            observation["teacher"], state, episode_start, deterministic
         )
 
     def predict(
@@ -558,7 +656,7 @@ class L2T(OnPolicyAlgorithm):
             (used in recurrent policies)
         """
         return self.policy.predict(
-            observation["state"], state, episode_start, deterministic
+            observation["teacher"], state, episode_start, deterministic
         )
 
     def collect_rollouts(
@@ -612,13 +710,12 @@ class L2T(OnPolicyAlgorithm):
                     epsilon = self.mixture_coeff
                     if np.random.uniform() < epsilon and self.num_timesteps > 0:
                         actions, values, log_probs = self.student_policy(
-                            obs_tensor["observation"]
+                            obs_tensor["student"]
                         )
                     else:
-                        actions, values, log_probs = self.policy(obs_tensor["state"])
+                        actions, values, log_probs = self.policy(obs_tensor["teacher"])
                 else:
-                    actions, values, log_probs = self.policy(obs_tensor["state"])
-            actions = actions.cpu().numpy()
+                    actions, values, log_probs = self.policy(obs_tensor["teacher"])
 
             # Rescale and perform action
             clipped_actions = actions
@@ -688,7 +785,7 @@ class L2T(OnPolicyAlgorithm):
 
         with th.inference_mode():
             # Compute value for the last timestep
-            values = self.policy.predict_values(obs_as_tensor(new_obs["state"], self.device))  # type: ignore[arg-type]
+            values = self.policy.predict_values(obs_as_tensor(new_obs["teacher"], self.device))  # type: ignore[arg-type]
 
         rollout_buffer.compute_returns_and_advantage(last_values=values, dones=dones)
 

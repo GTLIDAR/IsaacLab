@@ -10,6 +10,7 @@ from gymnasium import spaces
 from stable_baselines3.common.preprocessing import get_action_dim, get_obs_shape
 from stable_baselines3.common.utils import get_device
 from stable_baselines3.common.vec_env import VecNormalize
+from tensordict import TensorDict
 
 try:
     # Check memory used by replay buffer when possible
@@ -846,7 +847,7 @@ class DictRolloutBuffer(RolloutBuffer):
 
     observation_space: spaces.Dict
     obs_shape: Dict[str, Tuple[int, ...]]  # type: ignore[assignment]
-    observations: Dict[str, np.ndarray]  # type: ignore[assignment]
+    observations: TensorDict  # type: ignore[assignment]
 
     def __init__(
         self,
@@ -873,22 +874,50 @@ class DictRolloutBuffer(RolloutBuffer):
         self.reset()
 
     def reset(self) -> None:
-        self.observations = {}
+        self.observations_ = dict()
         for key, obs_input_shape in self.obs_shape.items():
-            self.observations[key] = th.zeros(
+            self.observations_[key] = th.zeros(
                 (self.buffer_size, self.n_envs, *obs_input_shape), dtype=th.float32
             )
+        self.observations = TensorDict(
+            self.observations_, batch_size=[self.buffer_size]
+        )
+
         self.actions = th.zeros(
-            (self.buffer_size, self.n_envs, self.action_dim), dtype=th.float32
+            (self.buffer_size, self.n_envs, self.action_dim),
+            dtype=th.float32,
+            device=self.device,
         )
-        self.rewards = th.zeros((self.buffer_size, self.n_envs), dtype=th.float32)
-        self.returns = th.zeros((self.buffer_size, self.n_envs), dtype=th.float32)
+        self.rewards = th.zeros(
+            (self.buffer_size, self.n_envs),
+            dtype=th.float32,
+            device=self.device,
+        )
+        self.returns = th.zeros(
+            (self.buffer_size, self.n_envs),
+            dtype=th.float32,
+            device=self.device,
+        )
         self.episode_starts = th.zeros(
-            (self.buffer_size, self.n_envs), dtype=th.float32
+            (self.buffer_size, self.n_envs),
+            dtype=th.float32,
+            device=self.device,
         )
-        self.values = th.zeros((self.buffer_size, self.n_envs), dtype=th.float32)
-        self.log_probs = th.zeros((self.buffer_size, self.n_envs), dtype=th.float32)
-        self.advantages = th.zeros((self.buffer_size, self.n_envs), dtype=th.float32)
+        self.values = th.zeros(
+            (self.buffer_size, self.n_envs),
+            dtype=th.float32,
+            device=self.device,
+        )
+        self.log_probs = th.zeros(
+            (self.buffer_size, self.n_envs),
+            dtype=th.float32,
+            device=self.device,
+        )
+        self.advantages = th.zeros(
+            (self.buffer_size, self.n_envs),
+            dtype=th.float32,
+            device=self.device,
+        )
         self.generator_ready = False
         super(RolloutBuffer, self).reset()
 
@@ -916,7 +945,7 @@ class DictRolloutBuffer(RolloutBuffer):
             log_prob = log_prob.reshape(-1, 1)
 
         for key in self.observations.keys():
-            obs_ = obs[key].clone().detach()
+            obs_ = obs[key].detach()
             # Reshape needed when using multiple envs with discrete observations
             # as torch cannot broadcast (n_discrete,) to (n_discrete, 1)
             if isinstance(self.observation_space.spaces[key], spaces.Discrete):
@@ -926,11 +955,11 @@ class DictRolloutBuffer(RolloutBuffer):
         # Reshape to handle multi-dim and discrete action spaces, see GH #970 #1392
         action = action.reshape((self.n_envs, self.action_dim))
 
-        self.actions[self.pos] = action.clone()
-        self.rewards[self.pos] = reward.clone()
-        self.episode_starts[self.pos] = episode_start.clone()
-        self.values[self.pos] = value.clone().flatten()
-        self.log_probs[self.pos] = log_prob.clone()
+        self.actions[self.pos] = action.detach()
+        self.rewards[self.pos] = reward.detach()
+        self.episode_starts[self.pos] = episode_start.detach()
+        self.values[self.pos] = value.detach().flatten()
+        self.log_probs[self.pos] = log_prob.detach()
         self.pos += 1
         if self.pos == self.buffer_size:
             self.full = True
@@ -942,16 +971,28 @@ class DictRolloutBuffer(RolloutBuffer):
         assert self.full, ""
         indices = th.randperm(self.buffer_size * self.n_envs)
         # Prepare the data
+        print(
+            f'obs device before preprare the data {self.observations["teacher"].device}'
+        )
         if not self.generator_ready:
             for key, obs in self.observations.items():
                 self.observations[key] = self.swap_and_flatten(obs)
 
-            _tensor_names = ["actions", "values", "log_probs", "advantages", "returns"]
+            _tensor_names = [
+                "actions",
+                "values",
+                "log_probs",
+                "advantages",
+                "returns",
+                "rewards",
+            ]
 
             for tensor in _tensor_names:
                 self.__dict__[tensor] = self.swap_and_flatten(self.__dict__[tensor])
             self.generator_ready = True
-
+        print(
+            f'obs device after preprare the data {self.observations["teacher"].device}'
+        )
         # Return everything, don't create minibatches
         if batch_size is None:
             batch_size = self.buffer_size * self.n_envs
@@ -966,15 +1007,13 @@ class DictRolloutBuffer(RolloutBuffer):
         batch_inds: th.Tensor,
         env: Optional[VecNormalize] = None,
     ) -> DictRolloutBufferSamples:
-        return DictRolloutBufferSamples(
-            observations={
-                key: self.to_torch(obs[batch_inds])
-                for (key, obs) in self.observations.items()
-            },
-            actions=self.to_torch(self.actions[batch_inds]),
-            old_values=self.to_torch(self.values[batch_inds].flatten()),
-            old_log_prob=self.to_torch(self.log_probs[batch_inds].flatten()),
-            advantages=self.to_torch(self.advantages[batch_inds].flatten()),
-            returns=self.to_torch(self.returns[batch_inds].flatten()),
-            rewards=self.to_torch(self.rewards[batch_inds]),
+        data = (
+            self.observations[batch_inds],
+            self.actions[batch_inds],
+            self.rewards[batch_inds],
+            self.values[batch_inds].flatten(),
+            self.log_probs[batch_inds].flatten(),
+            self.advantages[batch_inds].flatten(),
+            self.returns[batch_inds].flatten(),
         )
+        return DictRolloutBufferSamples(*data)

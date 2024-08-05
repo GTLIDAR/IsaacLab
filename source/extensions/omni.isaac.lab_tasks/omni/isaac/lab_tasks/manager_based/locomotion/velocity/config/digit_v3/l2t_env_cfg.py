@@ -1,8 +1,3 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
-# All rights reserved.
-#
-# SPDX-License-Identifier: BSD-3-Clause
-
 import torch
 
 from omni.isaac.lab.managers import RewardTermCfg as RewTerm
@@ -21,6 +16,8 @@ from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg imp
     RewardsCfg,
 )
 
+from .rough_env_cfg import DigitV3Rewards, TerminationsCfg, ActionCfg, ObservationsCfg
+
 ##
 # Pre-defined configs
 ##
@@ -28,133 +25,117 @@ from omni.isaac.lab_assets.digit import DIGITV3_CFG  # isort: skip
 
 
 @configclass
-class DigitV3Rewards(RewardsCfg):
-    termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)  # type: ignore
-
-    # lin_vel_z_l2 = None
-    track_lin_vel_xy_exp = RewTerm(
-        func=mdp.track_lin_vel_xy_yaw_frame_exp,
-        weight=1.0,
-        params={"command_name": "base_velocity", "std": 0.5},
-    )
-    track_ang_vel_z_exp = RewTerm(
-        func=mdp.track_ang_vel_z_world_exp,
-        weight=1.0,
-        params={"command_name": "base_velocity", "std": 0.5},
-    )
-    feet_air_time = RewTerm(
-        func=mdp.feet_air_time_positive_biped,
-        weight=0.25,
-        params={
-            "command_name": "base_velocity",
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*toe_roll"),
-            "threshold": 0.4,
-        },
-    )
-    feet_slide = RewTerm(
-        func=mdp.feet_slide,
-        weight=-0.25,
-        params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*toe_roll"),
-            "asset_cfg": SceneEntityCfg("robot", body_names=".*toe_roll"),
-        },
-    )
-    # Penalize ankle joint limits
-    dof_pos_limits = RewTerm(
-        func=mdp.joint_pos_limits,  # type: ignore
-        weight=-0.1,  # -1.0
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot", joint_names=[".*toe_pitch", ".*toe_roll"]
-            )
-        },  # joint_names=".*toe_roll"v
-    )
-    # Penalize deviation from default of the joints that are not essential for locomotion
-    joint_deviation_hip = RewTerm(
-        func=mdp.joint_deviation_l1,  # type: ignore
-        weight=-0.1,  # -0.2
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot", joint_names=[".*_hip_yaw", ".*_hip_roll"]
-            )
-        },
-    )
-    joint_deviation_arms = RewTerm(
-        func=mdp.joint_deviation_l1,  # type: ignore
-        weight=-0.2,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                joint_names=[
-                    ".*_shoulder_pitch",
-                    ".*_shoulder_roll",
-                    ".*_shoulder_yaw",
-                    ".*_elbow",
-                ],  # [".*_shoulder_.*", ".*_elbow"]
-            )
-        },
-    )
-    joint_deviation_torso = RewTerm(
-        func=mdp.joint_deviation_l1,  # type: ignore
-        weight=-0.1,
-        params={"asset_cfg": SceneEntityCfg("robot", body_names="base")},
-    )
-
-
-@configclass
-class TerminationsCfg:
-    """Termination terms for the MDP."""
-
-    time_out = DoneTerm(func=mdp.time_out, time_out=True)  # type: ignore
-    base_contact = DoneTerm(
-        func=mdp.illegal_contact,  # type: ignore
-        params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*base"),
-            "threshold": 10.0,
-        },
-    )
-
-
-@configclass
-class ActionCfg:
-    """Action terms for the MDP."""
-
-    joint_pos = mdp.JointPositionActionCfg(  # type: ignore
-        asset_name="robot",
-        joint_names=[
-            "left_hip_roll",
-            "left_hip_yaw",
-            "left_hip_pitch",
-            "left_knee",
-            "left_toe_A",
-            "left_toe_B",
-            "right_hip_roll",
-            "right_hip_yaw",
-            "right_hip_pitch",
-            "right_knee",
-            "right_toe_A",
-            "right_toe_B",
-            "left_shoulder_roll",
-            "left_shoulder_pitch",
-            "left_shoulder_yaw",
-            "left_elbow",
-            "right_shoulder_roll",
-            "right_shoulder_pitch",
-            "right_shoulder_yaw",
-            "right_elbow",
-        ],
-        # scale=0.5,
-        # use_default_offset=True,
-    )
-
-
-@configclass
-class ObservationsCfg:
+class L2TObservationsCfg:
     """Observation specifications for the MDP."""
 
     @configclass
-    class PolicyCfg(ObsGroup):
-        """Observations for policy group."""
+    class TeacherObsCfg(ObsGroup):
+        """Observations for teacher group."""
+
+        # observation terms (order preserved)
+        base_lin_vel = ObsTerm(
+            func=mdp.base_lin_vel, noise=Gnoise(mean=0.0, std=0.05, operation="add")
+        )
+        base_ang_vel = ObsTerm(
+            func=mdp.base_ang_vel, noise=Gnoise(mean=0.0, std=0.05, operation="add")
+        )
+        velocity_commands = ObsTerm(
+            func=mdp.generated_commands, params={"command_name": "base_velocity"}
+        )
+        joint_pos = ObsTerm(
+            func=mdp.joint_pos,
+            noise=Gnoise(mean=0.0, std=0.175, operation="add"),
+            params={
+                "asset_cfg": SceneEntityCfg(
+                    "robot",
+                    joint_names=[
+                        "left_hip_roll",
+                        "left_hip_yaw",
+                        "left_hip_pitch",
+                        "left_knee",
+                        "left_toe_A",
+                        "left_toe_B",
+                        "right_hip_roll",
+                        "right_hip_yaw",
+                        "right_hip_pitch",
+                        "right_knee",
+                        "right_toe_A",
+                        "right_toe_B",
+                        "left_shoulder_roll",
+                        "left_shoulder_pitch",
+                        "left_shoulder_yaw",
+                        "left_elbow",
+                        "right_shoulder_roll",
+                        "right_shoulder_pitch",
+                        "right_shoulder_yaw",
+                        "right_elbow",
+                        "left_shin",
+                        "left_tarsus",
+                        "left_toe_pitch",
+                        "left_toe_roll",
+                        "left_heel_spring",
+                        "right_shin",
+                        "right_tarsus",
+                        "right_toe_pitch",
+                        "right_toe_roll",
+                        "right_heel_spring",
+                    ],
+                    preserve_order=True,
+                )
+            },
+        )
+
+        joint_vel = ObsTerm(
+            func=mdp.joint_vel,
+            noise=Gnoise(mean=0.0, std=0.05, operation="add"),
+            params={
+                "asset_cfg": SceneEntityCfg(
+                    "robot",
+                    joint_names=[
+                        "left_hip_roll",
+                        "left_hip_yaw",
+                        "left_hip_pitch",
+                        "left_knee",
+                        "left_toe_A",
+                        "left_toe_B",
+                        "right_hip_roll",
+                        "right_hip_yaw",
+                        "right_hip_pitch",
+                        "right_knee",
+                        "right_toe_A",
+                        "right_toe_B",
+                        "left_shoulder_roll",
+                        "left_shoulder_pitch",
+                        "left_shoulder_yaw",
+                        "left_elbow",
+                        "right_shoulder_roll",
+                        "right_shoulder_pitch",
+                        "right_shoulder_yaw",
+                        "right_elbow",
+                        "left_shin",
+                        "left_tarsus",
+                        "left_toe_pitch",
+                        "left_toe_roll",
+                        "left_heel_spring",
+                        "right_shin",
+                        "right_tarsus",
+                        "right_toe_pitch",
+                        "right_toe_roll",
+                        "right_heel_spring",
+                    ],
+                    preserve_order=True,
+                )
+            },
+        )
+        actions = ObsTerm(func=mdp.last_action)
+
+        def __post_init__(self):
+            self.enable_corruption = False
+            self.concatenate_terms = True
+
+    @configclass
+    class StudentObsCfg(ObsGroup):
+        """Observations for student group."""
 
         # observation terms (order preserved)
         base_lin_vel = ObsTerm(
@@ -258,15 +239,16 @@ class ObservationsCfg:
             self.concatenate_terms = True
 
     # observation groups
-    policy: PolicyCfg = PolicyCfg()
+    teacher: TeacherObsCfg = TeacherObsCfg()
+    student: StudentObsCfg = StudentObsCfg()
 
 
 @configclass
-class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
+class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     rewards: DigitV3Rewards = DigitV3Rewards()
     terminations: TerminationsCfg = TerminationsCfg()
     actions: ActionCfg = ActionCfg()
-    observations: ObservationsCfg = ObservationsCfg()
+    observations: L2TObservationsCfg = L2TObservationsCfg()
 
     def __post_init__(self):
         # post init of parent
@@ -274,11 +256,11 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.sim.dt = 0.001  # 0.001
         self.decimation = 20
         # Scene
-        self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base"
 
         # Randomization
-        self.events.push_robot = None
+        self.events.push_robot = None  # type: ignore
         # self.events.push_robot.params["asset_cfg"].body_names = [
         #     ".*base"
         # ]
@@ -308,7 +290,7 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         ]
 
         # # Rewards
-        self.rewards.undesired_contacts = None
+        self.rewards.undesired_contacts = None  # type: ignore
         self.rewards.flat_orientation_l2.weight = -1.0
         # self.rewards.dof_torques_l2.weight = 0.0
         self.rewards.action_rate_l2.weight = -0.005
@@ -331,7 +313,7 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
 
 
 @configclass
-class DigitV3RoughEnvCfg_PLAY(DigitV3RoughEnvCfg):
+class DigitV3L2TRoughEnvCfg_PLAY(DigitV3L2TRoughEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
@@ -353,7 +335,63 @@ class DigitV3RoughEnvCfg_PLAY(DigitV3RoughEnvCfg):
         self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
         self.commands.base_velocity.ranges.heading = (0.0, 0.0)
         # disable randomization for play
-        self.observations.policy.enable_corruption = False
+        self.observations.teacher.enable_corruption = False
+        self.observations.student.enable_corruption = False
         # remove random pushing
-        self.events.base_external_force_torque = None
-        self.events.push_robot = None
+        self.events.base_external_force_torque = None  # type: ignore
+        self.events.push_robot = None  # type: ignore
+
+
+@configclass
+class DigitV3L2TFlatEnvCfg(DigitV3L2TRoughEnvCfg):
+    def __post_init__(self):
+        # post init of parent
+        super().__post_init__()
+
+        # override rewards
+        # self.rewards.flat_orientation_l2.weight = -5.0
+
+        # self.rewards.dof_torques_l2.weight = -2.5e-5
+        # self.rewards.feet_air_time.weight = 0.5
+
+        self.rewards.track_ang_vel_z_exp.weight = 1.0
+        self.rewards.lin_vel_z_l2.weight = -0.2
+        self.rewards.action_rate_l2.weight = -0.005
+        self.rewards.dof_acc_l2.weight = -1.0e-7
+        self.rewards.feet_air_time.weight = 0.75
+        self.rewards.feet_air_time.params["threshold"] = 0.4
+        self.rewards.dof_torques_l2.weight = -2.0e-6
+        self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
+            "robot", joint_names=[".*_hip_.*", ".*_knee"]
+        )
+
+        # self.rewards.feet_air_time.weight = 1.0
+        # self.rewards.feet_air_time.params["threshold"] = 0.6
+
+        # change terrain to flat
+        self.scene.terrain.terrain_type = "plane"
+        self.scene.terrain.terrain_generator = None
+        # no height scan
+        self.scene.height_scanner = None  # type: ignore
+        self.observations.teacher.height_scan = None  # type: ignore
+        self.observations.student.height_scan = None  # type: ignore
+
+        # no terrain curriculum
+        self.curriculum.terrain_levels = None  # type: ignore
+
+
+class DigitV3L2TFlatEnvCfg_PLAY(DigitV3L2TFlatEnvCfg):
+    def __post_init__(self) -> None:
+        # post init of parent
+        super().__post_init__()
+
+        # make a smaller scene for play
+        self.scene.num_envs = 50
+        self.scene.env_spacing = 2.5
+        # disable randomization for play
+        self.observations.teacher.enable_corruption = False
+        self.observations.student.enable_corruption = (
+            False  # remove random pushing event
+        )
+        self.events.base_external_force_torque = None  # type: ignore
+        self.events.push_robot = None  # type: ignore
