@@ -140,7 +140,7 @@ class ActionCfg:
             "right_elbow",
         ],
         # scale=0.5,
-        # use_default_offset=True,
+        use_default_offset=False,
     )
 
     # joint_vel = mdp.JointVelocityActionCfg(
@@ -181,10 +181,10 @@ class ObservationsCfg:
         """Observations for policy group."""
 
         # observation terms (order preserved)
-        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Gnoise(mean=0.0, std=0.05, operation="add"))
-        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Gnoise(mean=0.0, std=0.05, operation="add"))
-        velocity_commands = ObsTerm(func=mdp.generated_commands, params={"command_name": "base_velocity"})
-        joint_pos = ObsTerm(func=mdp.joint_pos, noise=Gnoise(mean=0.0, std=0.175, operation="add"),
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, scale=1, noise=Gnoise(mean=0.0, std=0.1, operation="add"))
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, scale=1, noise=Gnoise(mean=0.0, std=0.1, operation="add"))
+        velocity_commands = ObsTerm(func=mdp.generated_commands, scale=1, params={"command_name": "base_velocity"})
+        joint_pos = ObsTerm(func=mdp.joint_pos, scale=1, noise=Gnoise(mean=0.0, std=0.1, operation="add"),
                             params={
                                 "asset_cfg": SceneEntityCfg(
                                 "robot", joint_names=[
@@ -223,7 +223,7 @@ class ObservationsCfg:
                                         })
         
         
-        joint_vel = ObsTerm(func=mdp.joint_vel, noise=Gnoise(mean=0.0, std=0.05, operation="add"),
+        joint_vel = ObsTerm(func=mdp.joint_vel, scale=1, noise=Gnoise(mean=0.0, std=0.1, operation="add"),
                             params={
                                 "asset_cfg": SceneEntityCfg(
                                 "robot", joint_names=[
@@ -285,32 +285,42 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # post init of parent
         super().__post_init__()
         self.sim.dt = 0.001 # 0.001
+        # self.sim.render_interval = 20
         self.decimation = 20
+        self.sim.gravity = (0.0, 0.0, -9.806)
         # Scene
         self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base"
 
         # Randomization
+        # self.events.push_robot = None
+        self.events.physics_material.params["static_friction_range"] = (0, 0.7)
+        self.events.physics_material.params["dynamic_friction_range"] = (0, 0.7)
+        # self.events.base_external_force_torque = None
         self.events.push_robot = None
-        # self.events.push_robot.params["asset_cfg"].body_names = [
-        #     ".*base"
-        # ]
         self.events.add_base_mass.params["asset_cfg"].body_names = [
             ".*base"
         ]
         self.events.reset_robot_joints.params["position_range"] = (0.9, 1.1)
-        self.events.base_external_force_torque.params["asset_cfg"].body_names = [
-            ".*base"
-        ]
+        self.events.reset_robot_joints.params["velocity_range"] = (0.0, 0.1)
+
+        # self.events.base_external_force_torque.params["asset_cfg"].body_names = [
+        #     ".*base", 
+        #     # "*_shoulder_roll",
+        #     # "*_hip_roll",
+        # ]
+        # self.events.base_external_force_torque.params["force_range"] = (-0.5, 1.0)
+        # self.events.base_external_force_torque.params["torque_range"] = (-0.5, 1.0)
+        self.events.base_external_force_torque = None
         self.events.reset_base.params = {
             "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-0.5, 0.5)},
             "velocity_range": {
                 "x": (-0.1, 0.1),
                 "y": (-0.1, 0.1),
                 "z": (-0.1, 0.1),
-                "roll": (-0.0, 0.0),
-                "pitch": (-0.0, 0.0),
-                "yaw": (-0.0, 0.0),
+                "roll": (-0.1, 0.1),
+                "pitch": (-0.1, 0.1),
+                "yaw": (-0.1, 0.1),
             },
         }
 
@@ -340,6 +350,9 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.commands.base_velocity.ranges.lin_vel_x = (0.0, 1.0)
         self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
         self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
+        # self.commands.base_velocity.ranges.lin_vel_x = (0.0, 0.0)
+        # self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
+        # self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
 
 
 @configclass
@@ -348,7 +361,6 @@ class DigitV3RoughEnvCfg_PLAY(DigitV3RoughEnvCfg):
         # post init of parent
         super().__post_init__()
         
-
         # make a smaller scene for play
         self.scene.num_envs = 50
         self.scene.env_spacing = 2.5
