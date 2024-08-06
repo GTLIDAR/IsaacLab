@@ -182,10 +182,10 @@ class ObservationsCfg:
         """Observations for policy group."""
 
         # observation terms (order preserved)
-        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, scale=1, noise=Gnoise(mean=0.0, std=0.1, operation="add"))
-        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, scale=1, noise=Gnoise(mean=0.0, std=0.1, operation="add"))
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, scale=1, noise=Gnoise(mean=0.0, std=0.05, operation="add"))
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, scale=1, noise=Gnoise(mean=0.0, std=0.05, operation="add"))
         velocity_commands = ObsTerm(func=mdp.generated_commands, scale=1, params={"command_name": "base_velocity"})
-        joint_pos = ObsTerm(func=mdp.joint_pos, scale=1, noise=Gnoise(mean=0.0, std=0.1, operation="add"),
+        joint_pos = ObsTerm(func=mdp.joint_pos, scale=1, noise=Gnoise(mean=0.0, std=0.05, operation="add"),
                             params={
                                 "asset_cfg": SceneEntityCfg(
                                 "robot", joint_names=[
@@ -224,7 +224,7 @@ class ObservationsCfg:
                                         })
         
         
-        joint_vel = ObsTerm(func=mdp.joint_vel, scale=1, noise=Gnoise(mean=0.0, std=0.1, operation="add"),
+        joint_vel = ObsTerm(func=mdp.joint_vel, scale=1, noise=Gnoise(mean=0.0, std=0.05, operation="add"),
                             params={
                                 "asset_cfg": SceneEntityCfg(
                                 "robot", joint_names=[
@@ -294,36 +294,35 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base"
 
         # Randomization
-        # self.events.push_robot = None
-        self.events.physics_material.params["static_friction_range"] = (0, 0.7)
-        self.events.physics_material.params["dynamic_friction_range"] = (0, 0.7)
-        # self.events.base_external_force_torque = None
-        self.events.push_robot = None
+        self.events.physics_material.params["static_friction_range"] = (0.2, 0.7)
+        self.events.physics_material.params["dynamic_friction_range"] = (0.2, 0.7)
+        self.events.physics_material.params["restitution_range"] = (0.0, 0.4)
+        
         self.events.add_base_mass.params["asset_cfg"].body_names = [
             ".*base"
         ]
-        self.events.reset_robot_joints.params["position_range"] = (0.9, 1.1)
-        self.events.reset_robot_joints.params["velocity_range"] = (0.0, 0.1)
+        
+        self.events.base_external_force_torque.params["force_range"] = (0.0, 1.0)
 
-        # self.events.base_external_force_torque.params["asset_cfg"].body_names = [
-        #     ".*base", 
-        #     # "*_shoulder_roll",
-        #     # "*_hip_roll",
-        # ]
-        # self.events.base_external_force_torque.params["force_range"] = (-0.5, 1.0)
-        # self.events.base_external_force_torque.params["torque_range"] = (-0.5, 1.0)
-        self.events.base_external_force_torque = None
         self.events.reset_base.params = {
             "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-0.5, 0.5)},
             "velocity_range": {
-                "x": (-0.1, 0.1),
-                "y": (-0.1, 0.1),
-                "z": (-0.1, 0.1),
-                "roll": (-0.1, 0.1),
-                "pitch": (-0.1, 0.1),
-                "yaw": (-0.1, 0.1),
+                "x": (-0.0, 0.0),
+                "y": (-0.0, 0.0),
+                "z": (-0.0, 0.0),
+                "roll": (-0.0, 0.0),
+                "pitch": (-0.0, 0.0),
+                "yaw": (-0.0, 0.0),
             },
         }
+
+        self.events.reset_robot_joints.params["position_range"] = (0.9, 1.1)
+        self.events.reset_robot_joints.params["velocity_range"] = (0.0, 0.0)
+        
+
+        # self.events.push_robot = None
+        self.events.push_robot.interval_range_s = (3.0, 10.0)
+
 
         # Terminations
         self.terminations.base_contact.params["sensor_cfg"].body_names = [".*base", ".*hip.*",
@@ -348,12 +347,12 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         )
 
         # Commands
-        self.commands.base_velocity.ranges.lin_vel_x = (0.0, 1.0)
+        # self.commands.base_velocity.ranges.lin_vel_x = (-0.3, 1.0)
+        # self.commands.base_velocity.ranges.lin_vel_y = (-0.3, 0.3)
+        # self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_x = (0.8, 0.8)
         self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
-        self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
-        # self.commands.base_velocity.ranges.lin_vel_x = (0.0, 0.0)
-        # self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
-        # self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
+        self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
 
 
 @configclass
@@ -374,10 +373,6 @@ class DigitV3RoughEnvCfg_PLAY(DigitV3RoughEnvCfg):
             self.scene.terrain.terrain_generator.num_cols = 5
             self.scene.terrain.terrain_generator.curriculum = False
 
-        self.commands.base_velocity.ranges.lin_vel_x = (1.0, 1.0)
-        self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
-        self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
-        self.commands.base_velocity.ranges.heading = (0.0, 0.0)
         # disable randomization for play
         self.observations.policy.enable_corruption = False
         # remove random pushing

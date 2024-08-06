@@ -38,7 +38,7 @@ simulation_app = app_launcher.app
 import gymnasium as gym
 import os
 import torch
-
+import json
 from rsl_rl.runners import OnPolicyRunner
 
 import omni.isaac.lab_tasks  # noqa: F401
@@ -49,6 +49,33 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
     export_policy_as_jit,
     export_policy_as_onnx,
 )
+
+from datetime import datetime
+
+ID = datetime.now().strftime("%Y-%m-%d_%H-%M")
+logs = {
+    "action": [],
+    "observation": [],
+}
+
+logs_actions = {
+    "LeftHipRoll": [],
+    "LeftHipYaw": [],
+    "LeftHipPitch": [],
+    "LeftKnee": [],
+    "LeftToeA": [],
+    "LeftToeB": [],
+}
+
+logs_obs = {
+    "LeftHipRoll": [],
+    "LeftHipYaw": [],
+    "LeftHipPitch": [],
+    "LeftKnee": [],
+    "LeftToeA": [],
+    "LeftToeB": [],
+}
+
 
 
 def main():
@@ -90,14 +117,38 @@ def main():
 
     # reset environment
     obs, _ = env.get_observations()
+
     # simulate environment
     while simulation_app.is_running():
+        logs_obs["LeftHipRoll"].append(obs[0,0].cpu().tolist())
+        logs_obs["LeftHipYaw"].append(obs[0,10].cpu().tolist())
+        logs_obs["LeftHipPitch"].append(obs[0,11].cpu().tolist())
+        logs_obs["LeftKnee"].append(obs[0,12].cpu().tolist())
+        logs_obs["LeftToeA"].append(obs[0,13].cpu().tolist())
+        logs_obs["LeftToeB"].append(obs[0,14].cpu().tolist())
+        # logs["observation"].append(logs_obs)
+        
+
         # run everything in inference mode
         with torch.inference_mode():
             # agent stepping
             actions = policy(obs)
             # env stepping
             obs, _, _, _ = env.step(actions)
+        # print('action', actions)
+        logs_actions["LeftHipRoll"].append(actions[0,0].cpu().tolist())
+        logs_actions["LeftHipYaw"].append(actions[0,1].cpu().tolist())
+        logs_actions["LeftHipPitch"].append(actions[0,2].cpu().tolist())
+        logs_actions["LeftKnee"].append(actions[0,3].cpu().tolist())
+        logs_actions["LeftToeA"].append(actions[0,4].cpu().tolist())
+        logs_actions["LeftToeB"].append(actions[0,5].cpu().tolist())
+        # logs["action"].append(logs_actions)
+
+        with open(f'logs_obs_{ID}.json', 'w') as f:
+            json.dump(logs_obs, f)
+
+        with open(f'logs_action_{ID}.json', 'w') as f:
+            json.dump(logs_actions, f)
 
     # close the simulator
     env.close()
