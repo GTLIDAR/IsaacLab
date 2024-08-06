@@ -732,8 +732,9 @@ class L2T(OnPolicyAlgorithm):
                         th.as_tensor(self.action_space.low, device=self.device),
                         th.as_tensor(self.action_space.high, device=self.device),
                     )
-
+            time_now = time.time_ns()
             new_obs, rewards, dones, infos = env.step(clipped_actions)
+            self.logger.record("time/step", (time.time_ns() - time_now) / 1e9)
 
             self.num_timesteps += env.num_envs
 
