@@ -45,8 +45,8 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
-        self.sim.dt = 0.001  # 0.001
-        self.decimation = 20
+        self.sim.dt = 0.005
+        self.decimation = 4
         self.sim.render_interval = self.decimation
         # Scene
         self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore
