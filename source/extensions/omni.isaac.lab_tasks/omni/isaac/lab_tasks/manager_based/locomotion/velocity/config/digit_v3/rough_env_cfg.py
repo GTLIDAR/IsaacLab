@@ -273,6 +273,7 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         super().__post_init__()
         self.sim.dt = 0.001  # 0.001
         self.decimation = 20
+        self.sim.render_interval = self.decimation
         # Scene
         self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base"

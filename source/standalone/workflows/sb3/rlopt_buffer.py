@@ -61,7 +61,7 @@ class BaseBuffer(ABC):
         self.n_envs = n_envs
 
     @staticmethod
-    def swap_and_flatten(arr: th.Tensor) -> th.Tensor:
+    def swap_and_flatten(arr: th.Tensor | TensorDict) -> th.Tensor | TensorDict:
         """
         Swap and then flatten axes 0 (buffer_size) and 1 (n_envs)
         to convert shape from [n_steps, n_envs, ...] (when ... is the shape of the features)
@@ -70,8 +70,8 @@ class BaseBuffer(ABC):
         :return:
         """
         shape = arr.shape
-        # if len(shape) < 3:
-        #     shape = (*shape, 1)
+        if len(shape) < 3:
+            shape = (*shape, 1)
         return arr.transpose(0, 1).reshape(shape[0] * shape[1], *shape[2:])
 
     def size(self) -> int:
@@ -874,13 +874,22 @@ class DictRolloutBuffer(RolloutBuffer):
         self.reset()
 
     def reset(self) -> None:
-        self.observations_ = dict()
-        for key, obs_input_shape in self.obs_shape.items():
-            self.observations_[key] = th.zeros(
-                (self.buffer_size, self.n_envs, *obs_input_shape), dtype=th.float32
-            )
+        # self.observations_ = dict()
+        # for key, obs_input_shape in self.obs_shape.items():
+        #     self.observations_[key] = th.zeros(
+        #         (self.buffer_size, self.n_envs, *obs_input_shape), dtype=th.float32
+        #     )
+
         self.observations = TensorDict(
-            self.observations_, batch_size=[self.buffer_size]
+            {
+                key: th.zeros(
+                    (self.buffer_size, self.n_envs, *obs_input_shape),
+                    dtype=th.float32,
+                    device=self.device,
+                )
+                for key, obs_input_shape in self.obs_shape.items()
+            },
+            batch_size=[self.buffer_size, self.n_envs],
         )
 
         self.actions = th.zeros(
@@ -888,6 +897,7 @@ class DictRolloutBuffer(RolloutBuffer):
             dtype=th.float32,
             device=self.device,
         )
+
         self.rewards = th.zeros(
             (self.buffer_size, self.n_envs),
             dtype=th.float32,
@@ -971,12 +981,11 @@ class DictRolloutBuffer(RolloutBuffer):
         assert self.full, ""
         indices = th.randperm(self.buffer_size * self.n_envs)
         # Prepare the data
-        print(
-            f'obs device before preprare the data {self.observations["teacher"].device}'
-        )
         if not self.generator_ready:
-            for key, obs in self.observations.items():
-                self.observations[key] = self.swap_and_flatten(obs)
+            # tensor dict handles transpose and reshape
+            self.observations = self.swap_and_flatten(
+                self.observations
+            )  # type : ignore
 
             _tensor_names = [
                 "actions",
@@ -990,9 +999,7 @@ class DictRolloutBuffer(RolloutBuffer):
             for tensor in _tensor_names:
                 self.__dict__[tensor] = self.swap_and_flatten(self.__dict__[tensor])
             self.generator_ready = True
-        print(
-            f'obs device after preprare the data {self.observations["teacher"].device}'
-        )
+
         # Return everything, don't create minibatches
         if batch_size is None:
             batch_size = self.buffer_size * self.n_envs

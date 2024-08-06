@@ -127,7 +127,7 @@ class L2T(OnPolicyAlgorithm):
         target_kl: Optional[float] = None,
         stats_window_size: int = 100,
         tensorboard_log: Optional[str] = None,
-        mixture_coeff: float = 0.2,
+        mixture_coeff: float = 0.0,
         policy_kwargs: Optional[Dict[str, Any]] = None,
         student_policy_kwargs: Optional[Dict[str, Any]] = None,
         verbose: int = 0,
@@ -221,7 +221,6 @@ class L2T(OnPolicyAlgorithm):
             #     raise ValueError(
             #         f"You must use `MultiInputPolicy` when working with dict observation space, not {policy}"
             #     )
-            print(f"observation_space: {self.observation_space}")
 
             if self.use_sde and not isinstance(self.action_space, spaces.Box):
                 raise ValueError(
@@ -380,10 +379,6 @@ class L2T(OnPolicyAlgorithm):
             # Do a complete pass on the rollout buffer
             for rollout_data in self.rollout_buffer.get(self.batch_size):
                 actions = rollout_data.actions
-                print(f"action device: {actions.device}")
-                print(
-                    f"observation device: {rollout_data.observations['teacher'].device}"
-                )
                 if isinstance(self.action_space, spaces.Discrete):
                     # Convert discrete action from float to long
                     actions = rollout_data.actions.long().flatten()
