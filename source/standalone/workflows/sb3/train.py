@@ -276,6 +276,7 @@ def train_l2t():
             clip_reward=np.inf,
         )
 
+    wandb.tensorboard.patch(root_logdir=log_dir)
     # initialize wandb and make callback
     run = wandb.init(
         project="l2t_digit",
@@ -291,12 +292,12 @@ def train_l2t():
     agent = L2T(
         policy_arch,
         env,
-        verbose=0,
+        verbose=1,
         rollout_buffer_class=RLOptDictRolloutBuffer,
         **agent_cfg
     )
     # configure the logger
-    new_logger = configure(log_dir, ["stdout", "tensorboard"])
+    new_logger = configure(log_dir, ["tensorboard"])
     agent.set_logger(new_logger)
 
     # callbacks for agent

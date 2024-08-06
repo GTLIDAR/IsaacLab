@@ -541,25 +541,27 @@ class L2T(OnPolicyAlgorithm):
         assert self.env is not None
 
         while self.num_timesteps < total_timesteps:
-            import time
-
+            collection_start = time.time_ns()
             continue_training = self.collect_rollouts(
                 self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps
             )
+            collection_end = time.time_ns()
+            collection_time = (collection_end - collection_start) / 1e9
 
             if not continue_training:
                 break
 
             iteration += 1
             self._update_current_progress_remaining(self.num_timesteps, total_timesteps)
+            training_start = time.time_ns()
+            self.train()
+            training_end = time.time_ns()
+            training_time = (training_end - training_start) / 1e9
 
             # Display training infos
             if log_interval is not None and iteration % log_interval == 0:
                 assert self.ep_info_buffer is not None
-                # self._dump_logs(iteration)
-
-            time_now = time.time_ns()
-            self.train()
+                self._dump_logs(iteration, locals())
 
         callback.on_training_end()
 
@@ -689,6 +691,8 @@ class L2T(OnPolicyAlgorithm):
 
         callback.on_rollout_start()
 
+        self.ep_infos = []
+
         while n_steps < n_rollout_steps:
             if (
                 self.use_sde
@@ -733,6 +737,13 @@ class L2T(OnPolicyAlgorithm):
 
             self.num_timesteps += env.num_envs
 
+            infos: dict
+            # Record infos
+            if "episode" in infos:
+                self.ep_infos.append(infos["episode"])
+            elif "log" in infos:
+                self.ep_infos.append(infos["log"])
+
             # Give access to local variables
             callback.update_locals(locals())
             if not callback.on_step():
@@ -744,21 +755,6 @@ class L2T(OnPolicyAlgorithm):
             if isinstance(self.action_space, spaces.Discrete):
                 # Reshape in case of discrete action
                 actions = actions.reshape(-1, 1)
-
-            # # Handle timeout by bootstraping with value function
-            # # see GitHub issue #633
-            # for idx, done in enumerate(dones):
-            #     if (
-            #         done
-            #         and infos[idx].get("terminal_observation") is not None
-            #         and infos[idx].get("TimeLimit.truncated", False)
-            #     ):
-            #         terminal_obs = self.policy.obs_to_tensor(
-            #             infos[idx]["terminal_observation"]["state"]
-            #         )[0]
-            #         with th.no_grad():
-            #             terminal_value = self.policy.predict_values(terminal_obs)[0]  # type: ignore[arg-type]
-            #         rewards[idx] += self.gamma * terminal_value
 
             # Bootstrapping on time outs
             if "time_outs" in infos:
@@ -846,3 +842,43 @@ class L2T(OnPolicyAlgorithm):
         callback = self._init_callback(callback, progress_bar)
 
         return total_timesteps, callback
+
+    def _dump_logs(self, iteration: int, locs: dict) -> None:
+        """
+        Write log.
+
+        :param iteration: Current logging iteration
+        :param locs: Local variables
+        """
+        iteration_time = locs["training_end"] - locs["collection_start"]
+
+        if self.ep_infos:
+            for key in self.ep_infos[0]:
+                infotensor = th.tensor([], device=self.device)
+                for ep_info in self.ep_infos:
+                    # handle scalar and zero dimensional tensor infos
+                    if key not in ep_info:
+                        continue
+                    if not isinstance(ep_info[key], th.Tensor):
+                        ep_info[key] = th.Tensor([ep_info[key]])
+                    if len(ep_info[key].shape) == 0:
+                        ep_info[key] = ep_info[key].unsqueeze(0)
+                    infotensor = th.cat((infotensor, ep_info[key].to(self.device)))
+                value = th.mean(infotensor).item()
+                # log to logger and terminal
+                if "/" in key:
+                    self.logger.record(key, value)
+                else:
+                    self.logger.record("Episode/" + key, value)
+        fps = int(
+            self.n_steps
+            * self.env.num_envs
+            / (locs["collection_time"] + locs["training_time"])
+        )
+        self.logger.record("time/fps", fps)
+        self.logger.record("time/iteration_time (s)", iteration_time / 1e9)
+        self.logger.record(
+            "time/collection time per step (s)", locs["collection_time"] / self.n_steps
+        )
+        self.logger.record("time/training_time (s)", locs["training_time"])
+        self.logger.dump(step=self.num_timesteps)
