@@ -74,10 +74,10 @@ import os
 from datetime import datetime
 
 import torch
-from rlopt_ppo import PPO
-from rlopt_l2t import L2T
-from rlopt_buffer import RolloutBuffer as RLOptRolloutBuffer
-from rlopt_buffer import DictRolloutBuffer as RLOptDictRolloutBuffer
+from rlopt.agent.torch.ppo.ppo import PPO
+from rlopt.agent.torch.l2t.l2t import L2T
+from rlopt.common.torch.buffer import RolloutBuffer as RLOptRolloutBuffer
+from rlopt.common.torch.buffer import DictRolloutBuffer as RLOptDictRolloutBuffer
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.vec_env import VecNormalize
@@ -93,7 +93,6 @@ from omni.isaac.lab.utils.io import dump_pickle, dump_yaml
 import omni.isaac.lab_tasks  # noqa: F401
 from omni.isaac.lab_tasks.utils import load_cfg_from_registry, parse_env_cfg
 from omni.isaac.lab_tasks.utils.wrappers.sb3 import (
-    Sb3VecEnvWrapper,
     process_sb3_cfg,
     Sb3VecEnvGPUWrapper,
     L2tSb3VecEnvGPUWrapper,
@@ -118,12 +117,12 @@ def main():
 
     # override configuration with command line arguments
     if args_cli.seed is not None:
-        agent_cfg["seed"] = args_cli.seed
+        agent_cfg["seed"] = args_cli.seed  # type: ignore
 
     # max iterations for training
     if args_cli.max_iterations:
-        agent_cfg["n_timesteps"] = (
-            args_cli.max_iterations * agent_cfg["n_steps"] * env_cfg.scene.num_envs
+        agent_cfg["n_timesteps"] = (  # type: ignore
+            args_cli.max_iterations * agent_cfg["n_steps"] * env_cfg.scene.num_envs  # type: ignore
         )
 
     # directory for logging into
@@ -137,7 +136,7 @@ def main():
     dump_pickle(os.path.join(log_dir, "params", "agent.pkl"), agent_cfg)
 
     # post-process agent configuration
-    agent_cfg = process_sb3_cfg(agent_cfg)
+    agent_cfg = process_sb3_cfg(agent_cfg)  # type: ignore
     # read configurations about the agent-training
     policy_arch = agent_cfg.pop("policy")
     n_timesteps = agent_cfg.pop("n_timesteps")
@@ -156,9 +155,9 @@ def main():
         }
         print("[INFO] Recording videos during training.")
         print_dict(video_kwargs, nesting=4)
-        env = gym.wrappers.RecordVideo(env, **video_kwargs)
+        env = gym.wrappers.RecordVideo(env, **video_kwargs)  # type: ignore
     # wrap around environment for stable baselines
-    env = Sb3VecEnvGPUWrapper(env)
+    env = Sb3VecEnvGPUWrapper(env)  # type: ignore
     # set the seed
     env.seed(seed=agent_cfg["seed"])
 
@@ -219,12 +218,12 @@ def train_l2t():
 
     # override configuration with command line arguments
     if args_cli.seed is not None:
-        agent_cfg["seed"] = args_cli.seed
+        agent_cfg["seed"] = args_cli.seed  # type: ignore
 
     # max iterations for training
     if args_cli.max_iterations:
-        agent_cfg["n_timesteps"] = (
-            args_cli.max_iterations * agent_cfg["n_steps"] * env_cfg.scene.num_envs
+        agent_cfg["n_timesteps"] = (  # type: ignore
+            args_cli.max_iterations * agent_cfg["n_steps"] * env_cfg.scene.num_envs  # type: ignore
         )
 
     # directory for logging into
@@ -238,7 +237,7 @@ def train_l2t():
     dump_pickle(os.path.join(log_dir, "params", "agent.pkl"), agent_cfg)
 
     # post-process agent configuration
-    agent_cfg = process_sb3_cfg(agent_cfg)
+    agent_cfg = process_sb3_cfg(agent_cfg)  # type: ignore
     # read configurations about the agent-training
     policy_arch = agent_cfg.pop("policy")
     n_timesteps = agent_cfg.pop("n_timesteps")
@@ -257,9 +256,9 @@ def train_l2t():
         }
         print("[INFO] Recording videos during training.")
         print_dict(video_kwargs, nesting=4)
-        env = gym.wrappers.RecordVideo(env, **video_kwargs)
+        env = gym.wrappers.RecordVideo(env, **video_kwargs)  # type: ignore
     # wrap around environment for stable baselines
-    env = L2tSb3VecEnvGPUWrapper(env)
+    env = L2tSb3VecEnvGPUWrapper(env)  # type: ignore
     # set the seed
     env.seed(seed=agent_cfg["seed"])
 

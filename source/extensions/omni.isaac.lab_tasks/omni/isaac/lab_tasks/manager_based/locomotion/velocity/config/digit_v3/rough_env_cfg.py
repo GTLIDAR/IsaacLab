@@ -21,6 +21,7 @@ from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg imp
     RewardsCfg,
 )
 
+
 ##
 # Pre-defined configs
 ##
