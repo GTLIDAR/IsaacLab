@@ -296,7 +296,6 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # Randomization
         self.events.physics_material.params["static_friction_range"] = (0.2, 0.7)
         self.events.physics_material.params["dynamic_friction_range"] = (0.2, 0.7)
-        self.events.physics_material.params["restitution_range"] = (0.0, 0.4)
         
         self.events.add_base_mass.params["asset_cfg"].body_names = [
             ".*base"
