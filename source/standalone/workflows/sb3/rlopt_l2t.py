@@ -18,25 +18,14 @@ from stable_baselines3.common.policies import (
     MultiInputActorCriticPolicy,
 )
 from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
-from stable_baselines3.common.utils import get_schedule_fn
+from stable_baselines3.common.utils import get_schedule_fn, get_device
 from stable_baselines3.common import utils
 from stable_baselines3.common.noise import ActionNoise
 from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.utils import (
-    check_for_correct_spaces,
-    get_device,
-    get_schedule_fn,
-    get_system_info,
-    set_random_seed,
-    update_learning_rate,
-)
 from stable_baselines3.common.base_class import maybe_make_env
 from stable_baselines3.common.vec_env import (
-    DummyVecEnv,
     VecEnv,
     VecNormalize,
-    VecTransposeImage,
-    is_vecenv_wrapped,
     unwrap_vec_normalize,
 )
 
@@ -733,7 +722,7 @@ class L2T(OnPolicyAlgorithm):
                         th.as_tensor(self.action_space.high, device=self.device),
                     )
             time_now = time.time_ns()
-            new_obs, rewards, dones, infos = env.step(clipped_actions)
+            new_obs, rewards, dones, infos = env.step(clipped_actions)  # type: ignore
             self.logger.record("time/step", (time.time_ns() - time_now) / 1e9)
 
             self.num_timesteps += env.num_envs
@@ -828,7 +817,7 @@ class L2T(OnPolicyAlgorithm):
         if reset_num_timesteps or self._last_obs is None:
             assert self.env is not None
             self._last_obs = self.env.reset()  # type: ignore[assignment]
-            self._last_episode_starts = th.ones((self.env.num_envs,), dtype=th.bool)
+            self._last_episode_starts = th.ones((self.env.num_envs,), dtype=th.bool)  # type: ignore
             # Retrieve unnormalized observation for saving into the buffer
             if self._vec_normalize_env is not None:
                 self._last_original_obs = self._vec_normalize_env.get_original_obs()
@@ -873,7 +862,7 @@ class L2T(OnPolicyAlgorithm):
                     self.logger.record("Episode/" + key, value)
         fps = int(
             self.n_steps
-            * self.env.num_envs
+            * self.env.num_envs  # type: ignore
             / (locs["collection_time"] + locs["training_time"])
         )
         self.logger.record("time/fps", fps)
