@@ -1,27 +1,10 @@
-import torch
-
-from omni.isaac.lab.managers import RewardTermCfg as RewTerm
 from omni.isaac.lab.managers import SceneEntityCfg
-from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
 from omni.isaac.lab.managers import ObservationGroupCfg as ObsGroup
 from omni.isaac.lab.managers import ObservationTermCfg as ObsTerm
-from omni.isaac.lab.envs import ManagerBasedEnv
-from omni.isaac.lab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 from omni.isaac.lab.utils.noise import AdditiveGaussianNoiseCfg as Gnoise
 from omni.isaac.lab.utils import configclass
 
 import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
-from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
-    LocomotionVelocityRoughEnvCfg,
-    RewardsCfg,
-)
-
-from .rough_env_cfg import DigitV3Rewards, TerminationsCfg, ActionCfg, ObservationsCfg
-
-##
-# Pre-defined configs
-##
-from omni.isaac.lab_assets.digit import DIGITV3_CFG  # isort: skip
 
 
 @configclass
