@@ -313,14 +313,20 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base"
 
         # Randomization
-        self.events.physics_material.params["static_friction_range"] = (0.2, 0.7)
-        self.events.physics_material.params["dynamic_friction_range"] = (0.2, 0.7)
+
+
+        # self.events.reset_gravity
+
+        self.events.physics_material.params["static_friction_range"] = (0.7, 1.3)
+        self.events.physics_material.params["dynamic_friction_range"] = (0.5, 1.0)
+        # self.events.physics_material.params["restitution_range"] = (1.0, 1.0)
         
+
         self.events.add_base_mass.params["asset_cfg"].body_names = [
             ".*base"
         ]
         
-        self.events.base_external_force_torque.params["force_range"] = (0.0, 1.0)
+        self.events.base_external_force_torque.params["force_range"] = (0.0, 5.0)
 
 
         self.events.reset_base.params = {
@@ -338,10 +344,8 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.events.reset_robot_joints.params["position_range"] = (0.9, 1.1)
         self.events.reset_robot_joints.params["velocity_range"] = (0.0, 0.0)
         
-
         # self.events.push_robot = None
         self.events.push_robot.interval_range_s = (3.0, 10.0)
-
 
         # Terminations
         self.terminations.base_contact.params["sensor_cfg"].body_names = [
@@ -369,12 +373,12 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         )
 
         # Commands
-        # self.commands.base_velocity.ranges.lin_vel_x = (-0.3, 1.0)
-        # self.commands.base_velocity.ranges.lin_vel_y = (-0.3, 0.3)
-        # self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
-        self.commands.base_velocity.ranges.lin_vel_x = (0.8, 0.8)
-        self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
-        self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
+        self.commands.base_velocity.ranges.lin_vel_x = (-0.3, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_y = (-0.3, 0.3)
+        self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
+        # self.commands.base_velocity.ranges.lin_vel_x = (0.8, 0.8)
+        # self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
+        # self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
 
 
 @configclass
