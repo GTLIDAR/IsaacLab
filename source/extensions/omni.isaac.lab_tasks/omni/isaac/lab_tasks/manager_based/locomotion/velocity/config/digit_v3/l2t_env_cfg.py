@@ -42,9 +42,6 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
 
         # Randomization
         self.events.push_robot = None  # type: ignore
-        # self.events.push_robot.params["asset_cfg"].body_names = [
-        #     ".*base"
-        # ]
         self.events.add_base_mass.params["asset_cfg"].body_names = [".*base"]
         self.events.reset_robot_joints.params["position_range"] = (0.9, 1.1)
         self.events.base_external_force_torque.params["asset_cfg"].body_names = [
