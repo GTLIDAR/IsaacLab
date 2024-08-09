@@ -47,6 +47,7 @@ parser.add_argument(
 parser.add_argument(
     "--num_envs", type=int, default=None, help="Number of environments to simulate."
 )
+
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument(
     "--seed", type=int, default=None, help="Seed used for the environment"
@@ -148,7 +149,7 @@ def main():
     # wrap for video recording
     if args_cli.video:
         video_kwargs = {
-            "video_folder": os.path.join(log_dir, "videos"),
+            "video_folder": os.path.join(log_dir, "videos", "train"),
             "step_trigger": lambda step: step % args_cli.video_interval == 0,
             "video_length": args_cli.video_length,
             "disable_logger": True,
