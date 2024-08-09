@@ -56,7 +56,9 @@ class RslRlVecEnvWrapper(VecEnv):
             ValueError: When the environment is not an instance of :class:`ManagerBasedRLEnv`.
         """
         # check that input is valid
-        if not isinstance(env.unwrapped, ManagerBasedRLEnv) and not isinstance(env.unwrapped, DirectRLEnv):
+        if not isinstance(env.unwrapped, ManagerBasedRLEnv) and not isinstance(
+            env.unwrapped, DirectRLEnv
+        ):
             raise ValueError(
                 "The environment must be inherited from ManagerBasedRLEnv or DirectRLEnv. Environment type:"
                 f" {type(env)}"
@@ -80,7 +82,9 @@ class RslRlVecEnvWrapper(VecEnv):
             hasattr(self.unwrapped, "observation_manager")
             and "critic" in self.unwrapped.observation_manager.group_obs_dim
         ):
-            self.num_privileged_obs = self.unwrapped.observation_manager.group_obs_dim["critic"][0]
+            self.num_privileged_obs = self.unwrapped.observation_manager.group_obs_dim[
+                "critic"
+            ][0]
         elif hasattr(self.unwrapped, "num_states"):
             self.num_privileged_obs = self.unwrapped.num_states
         else:
@@ -172,9 +176,16 @@ class RslRlVecEnvWrapper(VecEnv):
         # return observations
         return obs_dict["policy"], {"observations": obs_dict}
 
-    def step(self, actions: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]:
+    def step(
+        self, actions: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict]:
+        import time
+
+        # print(f" action before step: {actions.shape}")
+        time_now = time.time_ns()
         # record step information
         obs_dict, rew, terminated, truncated, extras = self.env.step(actions)
+        print(f"[INFO] Time taken for step: {(time.time_ns() - time_now)/1e9} ns")
         # compute dones for compatibility with RSL-RL
         dones = (terminated | truncated).to(dtype=torch.long)
         # move extra observations to the extras dict

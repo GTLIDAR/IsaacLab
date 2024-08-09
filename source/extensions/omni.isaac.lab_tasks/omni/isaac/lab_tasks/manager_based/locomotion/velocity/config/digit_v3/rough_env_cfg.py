@@ -5,7 +5,6 @@
 
 import torch
 
-import omni.isaac.lab.envs.mdp as mdp
 from omni.isaac.lab.managers import RewardTermCfg as RewTerm
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
@@ -22,6 +21,7 @@ from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg imp
     RewardsCfg,
 )
 
+
 ##
 # Pre-defined configs
 ##
@@ -30,7 +30,7 @@ from omni.isaac.lab_assets.digit import DIGITV3_CFG  # isort: skip
 
 @configclass
 class DigitV3Rewards(RewardsCfg):
-    termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)
+    termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)  # type: ignore
 
     # lin_vel_z_l2 = None
     track_lin_vel_xy_exp = RewTerm(
@@ -62,36 +62,41 @@ class DigitV3Rewards(RewardsCfg):
     )
     # Penalize ankle joint limits
     dof_pos_limits = RewTerm(
-        func=mdp.joint_pos_limits,
-        weight=-0.1, # -1.0
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*toe_pitch", ".*toe_roll"])}, # joint_names=".*toe_roll"v
+        func=mdp.joint_pos_limits,  # type: ignore
+        weight=-0.1,  # -1.0
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot", joint_names=[".*toe_pitch", ".*toe_roll"]
+            )
+        },  # joint_names=".*toe_roll"v
     )
     # Penalize deviation from default of the joints that are not essential for locomotion
     joint_deviation_hip = RewTerm(
-        func=mdp.joint_deviation_l1,
-        weight=-0.1, #-0.2
+        func=mdp.joint_deviation_l1,  # type: ignore
+        weight=-0.1,  # -0.2
         params={
             "asset_cfg": SceneEntityCfg(
-                "robot", joint_names=[".*_hip_yaw", ".*_hip_roll"] 
+                "robot", joint_names=[".*_hip_yaw", ".*_hip_roll"]
             )
         },
     )
     joint_deviation_arms = RewTerm(
-        func=mdp.joint_deviation_l1,
+        func=mdp.joint_deviation_l1,  # type: ignore
         weight=-0.2,
         params={
             "asset_cfg": SceneEntityCfg(
-                "robot", joint_names=[
+                "robot",
+                joint_names=[
                     ".*_shoulder_pitch",
                     ".*_shoulder_roll",
                     ".*_shoulder_yaw",
                     ".*_elbow",
-                ] #[".*_shoulder_.*", ".*_elbow"]
+                ],  # [".*_shoulder_.*", ".*_elbow"]
             )
         },
     )
     joint_deviation_torso = RewTerm(
-        func=mdp.joint_deviation_l1,
+        func=mdp.joint_deviation_l1,  # type: ignore
         weight=-0.1,
         params={"asset_cfg": SceneEntityCfg("robot", body_names="base")},
     )
@@ -101,9 +106,9 @@ class DigitV3Rewards(RewardsCfg):
 class TerminationsCfg:
     """Termination terms for the MDP."""
 
-    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)  # type: ignore
     base_contact = DoneTerm(
-        func=mdp.illegal_contact,
+        func=mdp.illegal_contact,  # type: ignore
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*base"),
             "threshold": 10.0,
@@ -115,7 +120,7 @@ class TerminationsCfg:
 class ActionCfg:
     """Action terms for the MDP."""
 
-    joint_pos = mdp.JointPositionActionCfg(
+    joint_pos = mdp.JointPositionActionCfg(  # type: ignore
         asset_name="robot",
         joint_names=[
             "left_hip_roll",
@@ -143,34 +148,6 @@ class ActionCfg:
         use_default_offset=False,
         preserve_order = True,
     )
-
-    # joint_vel = mdp.JointVelocityActionCfg(
-    #     asset_name="robot",
-    #     joint_names=[
-    #         "left_hip_roll",
-    #         "left_hip_yaw",
-    #         "left_hip_pitch",
-    #         "left_knee",
-    #         "left_toe_A",
-    #         "left_toe_B",
-    #         "right_hip_roll",
-    #         "right_hip_yaw",
-    #         "right_hip_pitch",
-    #         "right_knee",
-    #         "right_toe_A",
-    #         "right_toe_B",
-    #         "left_shoulder_roll",
-    #         "left_shoulder_pitch",
-    #         "left_shoulder_yaw",
-    #         "left_elbow",
-    #         "right_shoulder_roll",
-    #         "right_shoulder_pitch",
-    #         "right_shoulder_yaw",
-    #         "right_elbow",
-    #     ],
-        # scale=0.5,
-        # use_default_offset=True,
-    # )
 
 
 @configclass
@@ -263,7 +240,49 @@ class ObservationsCfg:
                                     })
         actions = ObsTerm(func=mdp.last_action)
 
-
+        joint_vel = ObsTerm(
+            func=mdp.joint_vel,
+            noise=Gnoise(mean=0.0, std=0.05, operation="add"),
+            params={
+                "asset_cfg": SceneEntityCfg(
+                    "robot",
+                    joint_names=[
+                        "left_hip_roll",
+                        "left_hip_yaw",
+                        "left_hip_pitch",
+                        "left_knee",
+                        "left_toe_A",
+                        "left_toe_B",
+                        "right_hip_roll",
+                        "right_hip_yaw",
+                        "right_hip_pitch",
+                        "right_knee",
+                        "right_toe_A",
+                        "right_toe_B",
+                        "left_shoulder_roll",
+                        "left_shoulder_pitch",
+                        "left_shoulder_yaw",
+                        "left_elbow",
+                        "right_shoulder_roll",
+                        "right_shoulder_pitch",
+                        "right_shoulder_yaw",
+                        "right_elbow",
+                        "left_shin",
+                        "left_tarsus",
+                        "left_toe_pitch",
+                        "left_toe_roll",
+                        "left_heel_spring",
+                        "right_shin",
+                        "right_tarsus",
+                        "right_toe_pitch",
+                        "right_toe_roll",
+                        "right_heel_spring",
+                    ],
+                    preserve_order=True,
+                )
+            },
+        )
+        actions = ObsTerm(func=mdp.last_action)
 
         def __post_init__(self):
             self.enable_corruption = True
@@ -273,14 +292,12 @@ class ObservationsCfg:
     policy: PolicyCfg = PolicyCfg()
 
 
-
 @configclass
 class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     rewards: DigitV3Rewards = DigitV3Rewards()
     terminations: TerminationsCfg = TerminationsCfg()
     actions: ActionCfg = ActionCfg()
     observations: ObservationsCfg = ObservationsCfg()
-
 
     def __post_init__(self):
         # post init of parent
@@ -289,6 +306,8 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # self.sim.render_interval = 20
         self.decimation = 20
         self.sim.gravity = (0.0, 0.0, -9.806)
+        self.sim.render_interval = self.decimation
+
         # Scene
         self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base"
@@ -302,6 +321,7 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         ]
         
         self.events.base_external_force_torque.params["force_range"] = (0.0, 1.0)
+
 
         self.events.reset_base.params = {
             "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-0.5, 0.5)},
@@ -324,8 +344,12 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
 
 
         # Terminations
-        self.terminations.base_contact.params["sensor_cfg"].body_names = [".*base", ".*hip.*",
-                                                                           ".*knee", ".*elbow"]
+        self.terminations.base_contact.params["sensor_cfg"].body_names = [
+            ".*base",
+            ".*hip.*",
+            ".*knee",
+            ".*elbow",
+        ]
 
         # # Rewards
         self.rewards.undesired_contacts = None
@@ -335,7 +359,6 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.dof_acc_l2.weight = -1.25e-7
         # Rewards
         self.rewards.lin_vel_z_l2.weight = 0.0
-
 
         self.rewards.dof_acc_l2.params["asset_cfg"] = SceneEntityCfg(
             "robot", joint_names=[".*_hip.*", ".*_knee"]
@@ -359,7 +382,6 @@ class DigitV3RoughEnvCfg_PLAY(DigitV3RoughEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
-        
         # make a smaller scene for play
         self.scene.num_envs = 50
         self.scene.env_spacing = 2.5

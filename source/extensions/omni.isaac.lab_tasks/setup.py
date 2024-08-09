@@ -15,13 +15,15 @@ from setuptools import setup
 # Obtain the extension data from the extension.toml file
 EXTENSION_PATH = os.path.dirname(os.path.realpath(__file__))
 # Read the extension.toml file
-EXTENSION_TOML_DATA = toml.load(os.path.join(EXTENSION_PATH, "config", "extension.toml"))
+EXTENSION_TOML_DATA = toml.load(
+    os.path.join(EXTENSION_PATH, "config", "extension.toml")
+)
 
 # Minimum dependencies required prior to installation
 INSTALL_REQUIRES = [
     # generic
     "numpy",
-    "torch==2.2.2",
+    "torch>=2.2.2",
     "torchvision>=0.14.1",  # ensure compatibility with torch 1.13.1
     # 5.26.0 introduced a breaking change, so we restricted it for now.
     # See issue https://github.com/tensorflow/tensorboard/issues/6808 for details.
@@ -50,7 +52,9 @@ EXTRAS_REQUIRE["rsl_rl"] = EXTRAS_REQUIRE["rsl-rl"]
 
 # Check if the platform is Linux and add the dependency
 if platform.system() == "Linux":
-    EXTRAS_REQUIRE["robomimic"].append("robomimic@git+https://github.com/ARISE-Initiative/robomimic.git")
+    EXTRAS_REQUIRE["robomimic"].append(
+        "robomimic@git+https://github.com/ARISE-Initiative/robomimic.git"
+    )
 
 # Cumulation of all extra-requires
 EXTRAS_REQUIRE["all"] = list(itertools.chain.from_iterable(EXTRAS_REQUIRE.values()))
@@ -76,8 +80,8 @@ setup(
     classifiers=[
         "Natural Language :: English",
         "Programming Language :: Python :: 3.10",
+        "Isaac Sim :: 4.1.0",
         "Isaac Sim :: 4.0.0",
-        "Isaac Sim :: 2023.1.1",
     ],
     zip_safe=False,
 )
