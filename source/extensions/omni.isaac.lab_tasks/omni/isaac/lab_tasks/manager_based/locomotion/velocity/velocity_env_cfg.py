@@ -173,6 +173,18 @@ class EventCfg:
         },
     )
 
+    reset_gravity = EventTerm(
+        func=mdp.randomize_physics_scene_gravity,
+        mode="interval",
+        # is_global_time=True,
+        interval_range_s=(36.0, 36.0),  # time_s = num_steps * (decimation * dt)
+        params={
+            "gravity_distribution_params": ([0.0, 0.0, 0.0], [0.0, 0.0, 0.4]),
+            "operation": "add",
+            "distribution": "gaussian",
+        },
+    )
+
     # reset
     base_external_force_torque = EventTerm(
         func=mdp.apply_external_force_torque,
