@@ -72,6 +72,7 @@ def process_sb3_cfg(cfg: dict) -> dict:
                     "policy_kwargs",
                     "replay_buffer_class",
                     "replay_buffer_kwargs",
+                    "student_policy_kwargs",
                 ]:
                     hyperparams[key] = eval(value)
                 elif key in [

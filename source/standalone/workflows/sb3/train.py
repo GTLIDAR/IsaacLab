@@ -74,9 +74,15 @@ from datetime import datetime
 import torch
 from rlopt.agent.torch.ppo.ppo import PPO
 from rlopt.agent.torch.l2t.l2t import L2T
-from rlopt.agent.torch.recurrentl2t.recurrentl2t import RecurrentL2T
+from rlopt.agent.torch.l2t.recurrent_l2t import RecurrentL2T
 from rlopt.common.torch.buffer import RolloutBuffer as RLOptRolloutBuffer
 from rlopt.common.torch.buffer import DictRolloutBuffer as RLOptDictRolloutBuffer
+from rlopt.common.torch.buffer import (
+    RecurrentRolloutBuffer as RLOptRecurrentRolloutBuffer,
+)
+from rlopt.common.torch.buffer import (
+    RecurrentDictRolloutBuffer as RLOptRecurrentDictRolloutBuffer,
+)
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.vec_env import VecNormalize
@@ -108,7 +114,7 @@ def main():
     # parse configuration
     env_cfg = parse_env_cfg(
         args_cli.task,
-        use_gpu=not args_cli.cpu,
+        device=args_cli.device,
         num_envs=args_cli.num_envs,
         use_fabric=not args_cli.disable_fabric,
     )
@@ -209,7 +215,7 @@ def train_l2t():
     # parse configuration
     env_cfg = parse_env_cfg(
         args_cli.task,
-        use_gpu=not args_cli.cpu,
+        device=args_cli.device,
         num_envs=args_cli.num_envs,
         use_fabric=not args_cli.disable_fabric,
     )
@@ -328,7 +334,7 @@ def train_recurrentl2t():
     # parse configuration
     env_cfg = parse_env_cfg(
         args_cli.task,
-        use_gpu=not args_cli.cpu,
+        device=args_cli.device,
         num_envs=args_cli.num_envs,
         use_fabric=not args_cli.disable_fabric,
     )
@@ -398,6 +404,7 @@ def train_recurrentl2t():
     run = wandb.init(
         project="l2t_digit",
         entity="rl-digit",
+        name=datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
         config=agent_cfg,
         sync_tensorboard=True,
         monitor_gym=False,
@@ -410,7 +417,7 @@ def train_recurrentl2t():
         policy_arch,
         env,
         verbose=1,
-        rollout_buffer_class=RLOptDictRolloutBuffer,
+        rollout_buffer_class=RLOptRecurrentDictRolloutBuffer,
         **agent_cfg
     )
     # configure the logger
