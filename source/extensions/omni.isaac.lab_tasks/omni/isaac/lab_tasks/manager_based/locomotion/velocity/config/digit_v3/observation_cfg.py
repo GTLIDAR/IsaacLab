@@ -14,22 +14,22 @@ class TeacherObsCfg(ObsGroup):
 
     # observation terms (order preserved)
     base_lin_vel = ObsTerm(
-        func=mdp.base_lin_vel,
+        func=mdp.base_lin_vel,  # type: ignore
         scale=1,
         noise=Gnoise(mean=0.0, std=0.05, operation="add"),
     )
     base_ang_vel = ObsTerm(
-        func=mdp.base_ang_vel,
+        func=mdp.base_ang_vel,  # type: ignore
         scale=1,
         noise=Gnoise(mean=0.0, std=0.05, operation="add"),
     )
     velocity_commands = ObsTerm(
-        func=mdp.generated_commands,
+        func=mdp.generated_commands,  # type: ignore
         scale=1,
         params={"command_name": "base_velocity"},
     )
     joint_pos = ObsTerm(
-        func=mdp.joint_pos,
+        func=mdp.joint_pos,  # type: ignore
         scale=1,
         noise=Gnoise(mean=0.0, std=0.05, operation="add"),
         params={
@@ -73,7 +73,7 @@ class TeacherObsCfg(ObsGroup):
     )
 
     joint_vel = ObsTerm(
-        func=mdp.joint_vel,
+        func=mdp.joint_vel,  # type: ignore
         scale=1,
         noise=Gnoise(mean=0.0, std=0.05, operation="add"),
         params={
@@ -115,7 +115,7 @@ class TeacherObsCfg(ObsGroup):
             )
         },
     )
-    actions = ObsTerm(func=mdp.last_action)
+    actions = ObsTerm(func=mdp.last_action)  # type: ignore
 
     # # kp and kd. randomization scheme should be assigned from the event manager
     # pd_gain = ObsTerm(
@@ -172,16 +172,16 @@ class StudentObsCfg(ObsGroup):
 
     # observation terms (order preserved)
     base_lin_vel = ObsTerm(
-        func=mdp.base_lin_vel, noise=Gnoise(mean=0.0, std=0.05, operation="add")
+        func=mdp.base_lin_vel, noise=Gnoise(mean=0.0, std=0.05, operation="add")  # type: ignore
     )
     base_ang_vel = ObsTerm(
-        func=mdp.base_ang_vel, noise=Gnoise(mean=0.0, std=0.05, operation="add")
+        func=mdp.base_ang_vel, noise=Gnoise(mean=0.0, std=0.05, operation="add")  # type: ignore
     )
     velocity_commands = ObsTerm(
-        func=mdp.generated_commands, params={"command_name": "base_velocity"}
+        func=mdp.generated_commands, params={"command_name": "base_velocity"}  # type: ignore
     )
     joint_pos = ObsTerm(
-        func=mdp.joint_pos,
+        func=mdp.joint_pos,  # type: ignore
         noise=Gnoise(mean=0.0, std=0.175, operation="add"),
         params={
             "asset_cfg": SceneEntityCfg(
@@ -224,7 +224,7 @@ class StudentObsCfg(ObsGroup):
     )
 
     joint_vel = ObsTerm(
-        func=mdp.joint_vel,
+        func=mdp.joint_vel,  # type: ignore
         noise=Gnoise(mean=0.0, std=0.05, operation="add"),
         params={
             "asset_cfg": SceneEntityCfg(
@@ -265,7 +265,7 @@ class StudentObsCfg(ObsGroup):
             )
         },
     )
-    actions = ObsTerm(func=mdp.last_action)
+    actions = ObsTerm(func=mdp.last_action)  # type: ignore
 
     def __post_init__(self):
         self.enable_corruption = True
