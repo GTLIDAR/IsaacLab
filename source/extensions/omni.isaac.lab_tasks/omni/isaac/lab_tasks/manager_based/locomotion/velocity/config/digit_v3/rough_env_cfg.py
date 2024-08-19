@@ -159,10 +159,10 @@ class ObservationsCfg:
         """Observations for policy group."""
 
         # observation terms (order preserved)
-        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, scale=1, noise=Gnoise(mean=0.0, std=0.05, operation="add"))
-        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, scale=1, noise=Gnoise(mean=0.0, std=0.05, operation="add"))
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, scale=1, noise=Gnoise(mean=0.0, std=0.15, operation="add"))
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, scale=1, noise=Gnoise(mean=0.0, std=0.15, operation="add"))
         velocity_commands = ObsTerm(func=mdp.generated_commands, scale=1, params={"command_name": "base_velocity"})
-        joint_pos = ObsTerm(func=mdp.joint_pos, scale=1, noise=Gnoise(mean=0.0, std=0.05, operation="add"),
+        joint_pos = ObsTerm(func=mdp.joint_pos, scale=1, noise=Gnoise(mean=0.0, std=0.15, operation="add"),
                             params={
                                 "asset_cfg": SceneEntityCfg(
                                 "robot", joint_names=[
@@ -201,7 +201,7 @@ class ObservationsCfg:
                                         })
         
         
-        joint_vel = ObsTerm(func=mdp.joint_vel, scale=1, noise=Gnoise(mean=0.0, std=0.05, operation="add"),
+        joint_vel = ObsTerm(func=mdp.joint_vel, scale=1, noise=Gnoise(mean=0.0, std=0.15, operation="add"),
                             params={
                                 "asset_cfg": SceneEntityCfg(
                                 "robot", joint_names=[
@@ -283,6 +283,7 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         ]
         
         self.events.base_external_force_torque.params["force_range"] = (0.0, 5.0)
+        self.events.base_external_force_torque.params["torque_range"] = (-0.25, 0.25)
 
 
         self.events.reset_base.params = {
