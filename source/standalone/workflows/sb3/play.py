@@ -341,7 +341,7 @@ def main_recurrentl2t_student():
                 _last_episode_starts.clone().to(agent.device).type(torch.float32)
             )
             print(f"actions: {actions}")
-            if done:
+            if done.any():
                 _last_episode_starts = None
                 _last_lstm_states = None
                 episode_starts = None
