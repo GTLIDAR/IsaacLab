@@ -246,6 +246,7 @@ def main_l2t_student():
 
 def main_recurrentl2t_student():
     from sb3_contrib.common.recurrent.type_aliases import RNNStates  # type: ignore
+    from stable_baselines3.common.buffers import BaseBuffer
 
     """Play with stable-baselines agent."""
     # parse configuration
@@ -327,7 +328,9 @@ def main_recurrentl2t_student():
             # agent stepping
             # actions, _ = agent.student_predict(obs, deterministic=True)  # type: ignore
             actions, lstm_states = agent.student_policy.predict(
-                obs["student"], _last_lstm_states, episode_starts
+                obs["student"],
+                _last_lstm_states,
+                episode_starts,
             )
             # env stepping
             obs, reward, done, info = env.step(actions)
@@ -338,6 +341,10 @@ def main_recurrentl2t_student():
                 _last_episode_starts.clone().to(agent.device).type(torch.float32)
             )
             print(f"actions: {actions}")
+            if done:
+                _last_episode_starts = None
+                _last_lstm_states = None
+                episode_starts = None
 
         if args_cli.video:
             timestep += 1
