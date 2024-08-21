@@ -333,23 +333,18 @@ def main_recurrentl2t_student():
                 episode_starts,
             )
             # env stepping
-            obs, reward, done, info = env.step(actions)
+            obs, reward, dones, info = env.step(actions)
 
             _last_lstm_states = lstm_states
-            _last_episode_starts = done
+            _last_episode_starts = dones
             episode_starts = (
                 _last_episode_starts.clone().to(agent.device).type(torch.float32)
             )
-            print(f"actions: {actions}")
-            if done.any():
-                _last_episode_starts = None
-                _last_lstm_states = None
-                episode_starts = None
-
+        print("step:", timestep)
         if args_cli.video:
             timestep += 1
             # Exit the play loop after recording one video
-            if timestep == args_cli.video_length:
+            if timestep == args_cli.video_length + 2:
                 break
 
     # close the simulator
