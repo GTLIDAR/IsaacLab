@@ -185,7 +185,7 @@ class RslRlVecEnvWrapper(VecEnv):
         time_now = time.time_ns()
         # record step information
         obs_dict, rew, terminated, truncated, extras = self.env.step(actions)
-        print(f"[INFO] Time taken for step: {(time.time_ns() - time_now)/1e9} ns")
+        # print(f"[INFO] Time taken for step: {(time.time_ns() - time_now)/1e9} ns")
         # compute dones for compatibility with RSL-RL
         dones = (terminated | truncated).to(dtype=torch.long)
         # move extra observations to the extras dict
