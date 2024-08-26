@@ -15,7 +15,7 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
 @configclass
 class DigitV3RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    max_iterations = 3000
+    max_iterations = 10000
     save_interval = 50
     experiment_name = "digit_v3_rough"
     empirical_normalization = False
@@ -40,6 +40,8 @@ class DigitV3RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         max_grad_norm=1.0,
     )
     logger = "wandb"
+
+    # load_run = "2024-08-21_21-11-05-ok-2-rnn"
 
 
 @configclass
