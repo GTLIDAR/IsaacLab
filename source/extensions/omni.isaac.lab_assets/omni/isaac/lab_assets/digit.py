@@ -121,7 +121,7 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_knee": 5.0,
             },
             min_delay=0,  # physics time steps (min: 1.0*0=0.0ms)
-            max_delay=4,  # physics time steps (max: 1.0*8=8.0ms)
+            max_delay=6,  # physics time steps (max: 1.0*8=8.0ms)
         ),
         "arms": DelayedPDActuatorCfg(
             joint_names_expr=[
@@ -157,7 +157,7 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_elbow": 5.0,
             },
             min_delay=0,  # physics time steps (min: 1.0*0=0.0ms)
-            max_delay=4,  # physics time steps (max: 1.0*8=8.0ms)
+            max_delay=6,  # physics time steps (max: 1.0*8=8.0ms)
         ),
         "toes": ImplicitActuatorCfg(
             joint_names_expr=[

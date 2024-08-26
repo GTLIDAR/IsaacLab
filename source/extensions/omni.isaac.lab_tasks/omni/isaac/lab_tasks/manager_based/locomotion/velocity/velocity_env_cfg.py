@@ -156,28 +156,40 @@ class EventCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "static_friction_range": (0.8, 0.8),
-            "dynamic_friction_range": (0.6, 0.6),
+            "static_friction_range": (0.7, 1.3),
+            "dynamic_friction_range": (0.5, 1.0),
             "restitution_range": (0.0, 0.0),
             "num_buckets": 64,
         },
     )
 
+    # add_base_mass = EventTerm(
+    #     func=mdp.randomize_rigid_body_mass,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+    #         "mass_distribution_params": (-5.0, 5.0),
+    #         "operation": "add",
+    #     },
+    # )
+
     add_base_mass = EventTerm(
         func=mdp.randomize_rigid_body_mass,
-        mode="startup",
+        mode="reset",
         params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "mass_distribution_params": (-5.0, 5.0),
-            "operation": "add",
+            "asset_cfg":SceneEntityCfg("robot", body_names=".*"),
+            "mass_distribution_params": (0.5, 1.5),
+            "operation": "scale",
+            "distribution": "uniform",
         },
     )
 
+
     reset_gravity = EventTerm(
         func=mdp.randomize_physics_scene_gravity,
-        mode="interval",
+        mode="reset",
         # is_global_time=True,
-        interval_range_s=(36.0, 36.0),  # time_s = num_steps * (decimation * dt)
+        # interval_range_s=(0.0, 36.0),  # time_s = num_steps * (decimation * dt)
         params={
             "gravity_distribution_params": ([0.0, 0.0, 0.0], [0.0, 0.0, 0.4]),
             "operation": "add",
@@ -188,7 +200,8 @@ class EventCfg:
     # reset
     base_external_force_torque = EventTerm(
         func=mdp.apply_external_force_torque,
-        mode="reset",
+        mode="interval",
+        interval_range_s=(0.0, 20.0),
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base"),
             "force_range": (0.0, 0.0),
@@ -222,12 +235,31 @@ class EventCfg:
     )
 
     # interval
+    # push_robot = EventTerm(
+    #     func=mdp.push_by_setting_velocity,
+    #     mode="interval",
+    #     interval_range_s=(10.0, 15.0),
+    #     params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)}},
+    # )
+
     push_robot = EventTerm(
         func=mdp.push_by_setting_velocity,
         mode="interval",
-        interval_range_s=(10.0, 15.0),
-        params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)}},
+        interval_range_s=(0.0, 15.0),
+        params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5),"z": (-0.1, 0.5),}},
     )
+
+    # reset_robot_gain = EventTerm(
+    #     func=mdp.randomize_actuator_gains,
+    #     mode="reset",
+    #     params={
+    #          "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
+    #          "stiffness_distribution_params": (0.6, 1.4),
+    #          "damping_distribution_params": (0.6, 1.4),
+    #          "operation": "scale",
+    #          "distribution": "uniform",
+    #     }
+    # )
 
 
 @configclass
@@ -241,6 +273,7 @@ class RewardsCfg:
     track_ang_vel_z_exp = RewTerm(
         func=mdp.track_ang_vel_z_exp, weight=0.5, params={"command_name": "base_velocity", "std": math.sqrt(0.25)}
     )
+    alive = RewTerm(func=mdp.is_alive, weight=0.05)
     # -- penalties
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
     ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)

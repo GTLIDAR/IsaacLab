@@ -164,10 +164,10 @@ class ObservationsCfg:
         """Observations for policy group."""
 
         # observation terms (order preserved)
-        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, scale=1, noise=Gnoise(mean=0.0, std=0.05, operation="add"))
-        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, scale=1, noise=Gnoise(mean=0.0, std=0.05, operation="add"))
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, scale=1, noise=Gnoise(mean=0.0, std=0.10, operation="add"))
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, scale=1, noise=Gnoise(mean=0.0, std=0.10, operation="add"))
         velocity_commands = ObsTerm(func=mdp.generated_commands, scale=1, params={"command_name": "base_velocity"})
-        joint_pos = ObsTerm(func=mdp.joint_pos, scale=1, noise=Gnoise(mean=0.0, std=0.05, operation="add"),
+        joint_pos = ObsTerm(func=mdp.joint_pos, scale=1, noise=Gnoise(mean=0.0, std=0.10, operation="add"),
                             params={
                                 "asset_cfg": SceneEntityCfg(
                                 "robot", joint_names=[
@@ -206,7 +206,7 @@ class ObservationsCfg:
                                         })
         
         
-        joint_vel = ObsTerm(func=mdp.joint_vel, scale=1, noise=Gnoise(mean=0.0, std=0.05, operation="add"),
+        joint_vel = ObsTerm(func=mdp.joint_vel, scale=1, noise=Gnoise(mean=0.0, std=0.1, operation="add"),
                             params={
                                 "asset_cfg": SceneEntityCfg(
                                 "robot", joint_names=[
@@ -274,20 +274,15 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base"
 
         # Randomization
-
-
-        # self.events.reset_gravity
-
-        self.events.physics_material.params["static_friction_range"] = (0.7, 1.3)
-        self.events.physics_material.params["dynamic_friction_range"] = (0.5, 1.0)
-        # self.events.physics_material.params["restitution_range"] = (1.0, 1.0)
-        
+      
 
         self.events.add_base_mass.params["asset_cfg"].body_names = [
             ".*base"
+            ".*"
         ]
         
         self.events.base_external_force_torque.params["force_range"] = (0.0, 5.0)
+        self.events.base_external_force_torque.params["torque_range"] = (-5.0, 5.0)
 
 
         self.events.reset_base.params = {
@@ -306,7 +301,6 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.events.reset_robot_joints.params["velocity_range"] = (0.0, 0.0)
         
         # self.events.push_robot = None
-        self.events.push_robot.interval_range_s = (3.0, 10.0)
 
         # Terminations
         self.terminations.base_contact.params["sensor_cfg"].body_names = [
@@ -316,30 +310,42 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
             ".*elbow",
         ]
 
-        # # Rewards
-        self.rewards.undesired_contacts = None
-        self.rewards.flat_orientation_l2.weight = -1.0
-        # self.rewards.dof_torques_l2.weight = 0.0
-        self.rewards.action_rate_l2.weight = -0.005
-        self.rewards.dof_acc_l2.weight = -1.25e-7
         # Rewards
-        self.rewards.lin_vel_z_l2.weight = 0.0
-
         self.rewards.dof_acc_l2.params["asset_cfg"] = SceneEntityCfg(
             "robot", joint_names=[".*_hip.*", ".*_knee"]
         )
-        self.rewards.dof_torques_l2.weight = -1.5e-7
+        
         self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
-            "robot", joint_names=[".*_hip_.*", ".*_knee", ".*toe_roll", ".*toe_pitch"]
+            "robot", joint_names=[".*_hip_.*", ".*_knee"] # ".*toe_roll", ".*toe_pitch"
         )
 
+        self.rewards.undesired_contacts = None
+
+        self.rewards.track_lin_vel_xy_exp.weight = 1.0
+        self.rewards.track_ang_vel_z_exp.weight = 1.0
+        self.rewards.alive.weight = 0.01
+        self.rewards.lin_vel_z_l2.weight = -0.2
+        self.rewards.ang_vel_xy_l2.weight = -0.05
+        self.rewards.dof_torques_l2.weight = -1.5e-7
+        self.rewards.dof_acc_l2.weight = -1.25e-7
+        self.rewards.action_rate_l2.weight = -0.005
+
+        self.rewards.feet_air_time.weight = 0.75
+        self.rewards.flat_orientation_l2.weight = -1.0
+
+        self.rewards.dof_pos_limits.weight = -0.1
+        self.rewards.termination_penalty.weight = -200.0
+        self.rewards.feet_slide.weight = -0.25
+        self.rewards.joint_deviation_hip.weight = -0.1
+        self.rewards.joint_deviation_arms.weight = -0.2
+        self.rewards.joint_deviation_torso.weight = -0.1
+
+
         # Commands
-        self.commands.base_velocity.ranges.lin_vel_x = (-0.3, 1.0)
-        self.commands.base_velocity.ranges.lin_vel_y = (-0.3, 0.3)
+        self.commands.base_velocity.ranges.lin_vel_x = (-0.1, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)
         self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
-        # self.commands.base_velocity.ranges.lin_vel_x = (0.8, 0.8)
-        # self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
-        # self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
+
 
 
 @configclass
