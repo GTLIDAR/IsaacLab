@@ -32,6 +32,11 @@ from omni.isaac.lab_assets.digit import DIGITV3_CFG  # isort: skip
 class DigitV3Rewards(RewardsCfg):
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)  # type: ignore
 
+    alive = RewTerm(
+        func=mdp.is_alive,
+        weight=0.01,
+    )
+
     # lin_vel_z_l2 = None
     track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_yaw_frame_exp,
