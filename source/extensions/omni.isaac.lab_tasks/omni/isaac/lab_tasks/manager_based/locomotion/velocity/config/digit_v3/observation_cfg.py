@@ -16,12 +16,12 @@ class TeacherObsCfg(ObsGroup):
     base_lin_vel = ObsTerm(
         func=mdp.base_lin_vel,  # type: ignore
         scale=1,
-        noise=Gnoise(mean=0.0, std=0.05, operation="add"),
+        # noise=Gnoise(mean=0.0, std=0.05, operation="add"),
     )
     base_ang_vel = ObsTerm(
         func=mdp.base_ang_vel,  # type: ignore
         scale=1,
-        noise=Gnoise(mean=0.0, std=0.05, operation="add"),
+        # noise=Gnoise(mean=0.0, std=0.05, operation="add"),
     )
     velocity_commands = ObsTerm(
         func=mdp.generated_commands,  # type: ignore
@@ -31,7 +31,7 @@ class TeacherObsCfg(ObsGroup):
     joint_pos = ObsTerm(
         func=mdp.joint_pos,  # type: ignore
         scale=1,
-        noise=Gnoise(mean=0.0, std=0.05, operation="add"),
+        # noise=Gnoise(mean=0.0, std=0.05, operation="add"),
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
@@ -75,7 +75,7 @@ class TeacherObsCfg(ObsGroup):
     joint_vel = ObsTerm(
         func=mdp.joint_vel,  # type: ignore
         scale=1,
-        noise=Gnoise(mean=0.0, std=0.05, operation="add"),
+        # noise=Gnoise(mean=0.0, std=0.05, operation="add"),
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
@@ -154,12 +154,12 @@ class TeacherObsCfg(ObsGroup):
     projected_gravity = ObsTerm(func=mdp.projected_gravity)
 
     # height map
-    height_scan = ObsTerm(
-        func=mdp.height_scan,
-        params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-        noise=Unoise(n_min=-0.1, n_max=0.1),
-        clip=(-1.0, 1.0),
-    )
+    # height_scan = ObsTerm(
+    #     func=mdp.height_scan,
+    #     params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+    #     noise=Unoise(n_min=-0.1, n_max=0.1),
+    #     clip=(-1.0, 1.0),
+    # )
 
     def __post_init__(self):
         self.enable_corruption = False

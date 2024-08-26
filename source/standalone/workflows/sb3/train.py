@@ -77,12 +77,7 @@ from rlopt.agent.torch.l2t.l2t import L2T
 from rlopt.agent.torch.l2t.recurrent_l2t import RecurrentL2T
 from rlopt.common.torch.buffer import RolloutBuffer as RLOptRolloutBuffer
 from rlopt.common.torch.buffer import DictRolloutBuffer as RLOptDictRolloutBuffer
-from rlopt.common.torch.buffer import (
-    RecurrentRolloutBuffer as RLOptRecurrentRolloutBuffer,
-)
-from rlopt.common.torch.buffer import (
-    RecurrentDictRolloutBuffer as RLOptRecurrentDictRolloutBuffer,
-)
+from rlopt.common.torch.buffer import RLOptDictRecurrentReplayBuffer
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.vec_env import VecNormalize
@@ -417,7 +412,7 @@ def train_recurrentl2t():
         policy_arch,
         env,
         verbose=1,
-        rollout_buffer_class=RLOptRecurrentDictRolloutBuffer,
+        rollout_buffer_class=RLOptDictRecurrentReplayBuffer,
         **agent_cfg
     )
     # configure the logger
