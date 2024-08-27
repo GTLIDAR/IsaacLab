@@ -162,9 +162,9 @@ class TeacherObsCfg(ObsGroup):
     # )
 
     # grf forces
-    grf = ObsTerm(
-        func=mdp.grf,
-    )
+    # grf = ObsTerm(
+    #     func=mdp.grf,
+    # )
     def __post_init__(self):
         self.enable_corruption = True
         self.concatenate_terms = True
