@@ -16,12 +16,12 @@ class TeacherObsCfg(ObsGroup):
     base_lin_vel = ObsTerm(
         func=mdp.base_lin_vel,  # type: ignore
         scale=1,
-        # noise=Gnoise(mean=0.0, std=0.05, operation="add"),
+        noise=Gnoise(mean=0.0, std=0.05, operation="add"),
     )
     base_ang_vel = ObsTerm(
         func=mdp.base_ang_vel,  # type: ignore
         scale=1,
-        # noise=Gnoise(mean=0.0, std=0.05, operation="add"),
+        noise=Gnoise(mean=0.0, std=0.05, operation="add"),
     )
     velocity_commands = ObsTerm(
         func=mdp.generated_commands,  # type: ignore
@@ -31,7 +31,7 @@ class TeacherObsCfg(ObsGroup):
     joint_pos = ObsTerm(
         func=mdp.joint_pos,  # type: ignore
         scale=1,
-        # noise=Gnoise(mean=0.0, std=0.05, operation="add"),
+        noise=Gnoise(mean=0.0, std=0.05, operation="add"),
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
@@ -75,7 +75,7 @@ class TeacherObsCfg(ObsGroup):
     joint_vel = ObsTerm(
         func=mdp.joint_vel,  # type: ignore
         scale=1,
-        # noise=Gnoise(mean=0.0, std=0.05, operation="add"),
+        noise=Gnoise(mean=0.0, std=0.05, operation="add"),
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
@@ -161,8 +161,12 @@ class TeacherObsCfg(ObsGroup):
     #     clip=(-1.0, 1.0),
     # )
 
+    # grf forces
+    grf = ObsTerm(
+        func=mdp.grf,
+    )
     def __post_init__(self):
-        self.enable_corruption = False
+        self.enable_corruption = True
         self.concatenate_terms = True
 
 
