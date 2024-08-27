@@ -4,7 +4,7 @@ from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg imp
     LocomotionVelocityRoughEnvCfg,
 )
 
-from .rough_env_cfg import DigitV3Rewards, TerminationsCfg, ActionCfg
+from .rough_env_cfg import DigitV3RewardsCfg, DigitV3TerminationsCfg, DigitV3ActionCfg
 from .observation_cfg import TeacherObsCfg, StudentObsCfg
 
 
@@ -25,9 +25,9 @@ class L2TObservationsCfg:
 
 @configclass
 class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
-    rewards: DigitV3Rewards = DigitV3Rewards()
-    terminations: TerminationsCfg = TerminationsCfg()
-    actions: ActionCfg = ActionCfg()
+    rewards: DigitV3RewardsCfg = DigitV3RewardsCfg()
+    terminations: DigitV3TerminationsCfg = DigitV3TerminationsCfg()
+    actions: DigitV3ActionCfg = DigitV3ActionCfg()
     observations: L2TObservationsCfg = L2TObservationsCfg()
 
     def __post_init__(self):
