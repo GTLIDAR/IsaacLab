@@ -60,10 +60,8 @@ class DigitV3EventCfg(EventCfg):
     reset_gravity = EventTerm(
         func=mdp.randomize_physics_scene_gravity,
         mode="reset",
-        # is_global_time=True,
-        # interval_range_s=(0.0, 36.0),  # time_s = num_steps * (decimation * dt)
         params={
-            "gravity_distribution_params": ([0.0, 0.0, 0.0], [0.0, 0.0, 0.4]),
+            "gravity_distribution_params": ([0.0, 0.0, 0.0], [0.0, 0.0, 0.67]),
             "operation": "add",
             "distribution": "gaussian",
         },
@@ -413,6 +411,9 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.commands.base_velocity.ranges.lin_vel_x = (-0.1, 1.0)
         self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)
         self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
+        # self.commands.base_velocity.ranges.lin_vel_x = (0.5, 0.5)
+        # self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)
+        # self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
 
 
 
