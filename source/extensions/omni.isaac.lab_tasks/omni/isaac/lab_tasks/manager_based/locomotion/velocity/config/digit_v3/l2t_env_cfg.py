@@ -5,7 +5,14 @@ from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg imp
 )
 
 from .rough_env_cfg import DigitV3RewardsCfg, DigitV3TerminationsCfg, DigitV3ActionCfg
-from .observation_cfg import TeacherObsCfg, StudentObsCfg
+# from .observation_cfg import TeacherObsCfg, StudentObsCfg
+
+from .env_cfg import(
+    DigitV3RewardsCfg,
+    TeacherObsCfg,
+    StudentObsCfg,
+)
+
 
 
 ##

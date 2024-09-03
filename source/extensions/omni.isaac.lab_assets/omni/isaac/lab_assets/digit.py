@@ -87,7 +87,7 @@ DIGITV3_CFG = ArticulationCfg(
     ),
     soft_joint_pos_limit_factor=0.9,
     actuators={
-        "feet": DelayedPDActuatorCfg(
+        "feet": ImplicitActuatorCfg(
             joint_names_expr=[
                 "left_hip_roll",
                 "left_hip_yaw",
@@ -120,10 +120,10 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_hip_pitch": 5.0,
                 "right_knee": 5.0,
             },
-            min_delay=0,  # physics time steps (min: 1.0*0=0.0ms)
-            max_delay=6,  # physics time steps (max: 1.0*8=8.0ms)
+            # min_delay=0,  # physics time steps (min: 1.0*0=0.0ms)
+            # max_delay=8,  # physics time steps (max: 1.0*8=8.0ms)
         ),
-        "arms": DelayedPDActuatorCfg(
+        "arms": ImplicitActuatorCfg(
             joint_names_expr=[
                 "left_shoulder_roll",
                 "left_shoulder_pitch",
@@ -156,8 +156,8 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_shoulder_yaw": 5.0,
                 "right_elbow": 5.0,
             },
-            min_delay=0,  # physics time steps (min: 1.0*0=0.0ms)
-            max_delay=6,  # physics time steps (max: 1.0*8=8.0ms)
+            # min_delay=0,  # physics time steps (min: 1.0*0=0.0ms)
+            # max_delay=8,  # physics time steps (max: 1.0*8=8.0ms)
         ),
         "toes": ImplicitActuatorCfg(
             joint_names_expr=[
