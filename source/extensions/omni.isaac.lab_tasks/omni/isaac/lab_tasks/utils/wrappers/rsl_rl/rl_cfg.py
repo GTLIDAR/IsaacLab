@@ -13,7 +13,7 @@ from omni.isaac.lab.utils import configclass
 class RslRlPpoActorCriticCfg:
     """Configuration for the PPO actor-critic networks."""
 
-    class_name: str = "ActorCritic"
+    class_name: str = "ActorCriticRecurrent"
     """The policy class name. Default is ActorCritic."""
 
     init_noise_std: float = MISSING
@@ -27,6 +27,8 @@ class RslRlPpoActorCriticCfg:
 
     activation: str = MISSING
     """The activation function for the actor and critic networks."""
+
+    rnn_num_layers: int = 1
 
 
 @configclass
