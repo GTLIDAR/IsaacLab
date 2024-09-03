@@ -400,7 +400,7 @@ def train_recurrentl2t():
         project="l2t_digit",
         entity="rl-digit",
         name=datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        + "no_height_scan_w_corruption",
+        + "has_height_scan_w_corruption",
         config=agent_cfg,
         sync_tensorboard=True,
         monitor_gym=False,
