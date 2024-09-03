@@ -10,7 +10,7 @@ from .rough_env_cfg import (
     DigitV3ActionCfg,
     DigitV3EventCfg,
 )
-from .observation_cfg import TeacherObsCfg, StudentObsCfg
+from .env_cfg.observation_cfg import TeacherObsCfg, StudentObsCfg
 
 
 ##
