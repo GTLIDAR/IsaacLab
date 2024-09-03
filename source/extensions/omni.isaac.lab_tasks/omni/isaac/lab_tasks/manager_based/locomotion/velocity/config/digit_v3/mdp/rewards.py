@@ -55,24 +55,35 @@ def reward_feet_contact_number(env, sensor_cfg: SceneEntityCfg, asset_cfg: Scene
     return torch.mean(reward, dim=1)
 
 
-def reward_feet_clearance(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, target_height: float, std: float, tanh_mult: float)-> torch.Tensor:
-    """
-    Calculates reward based on the clearance of the swing leg from the ground during movement.
-    Encourages appropriate lift of the feet during the swing phase of the gait.
-    """
+# def reward_feet_clearance(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, target_height: float, std: float, tanh_mult: float)-> torch.Tensor:
+#     """
+#     Calculates reward based on the clearance of the swing leg from the ground during movement.
+#     Encourages appropriate lift of the feet during the swing phase of the gait.
+#     """
+#     asset: RigidObject = env.scene[asset_cfg.name]
+
+#     # Compute swing mask
+#     phase = env.get_phase()
+#     sin_pos = torch.sin(2 * torch.pi * phase)
+#     stance_mask = torch.zeros((env.num_envs, 2), device=env.device)
+#     stance_mask[:, 0] = sin_pos >= 0
+#     stance_mask[:, 1] = sin_pos < 0
+#     stance_mask[torch.abs(sin_pos) < 0.1] = 1
+#     swing_mask = 1 - stance_mask
+
+
+#     foot_z_target_error = torch.square(asset.data.body_pos_w[:, asset_cfg.body_ids, 2] - target_height)
+#     foot_velocity_tanh = torch.tanh(tanh_mult * torch.norm(asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :2], dim=2))
+#     reward = foot_z_target_error * foot_velocity_tanh 
+#     return torch.exp(-torch.sum(reward, dim=1) / std)
+
+
+def foot_clearance_reward(
+    env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, target_height: float, std: float, tanh_mult: float
+) -> torch.Tensor:
+    """Reward the swinging feet for clearing a specified height off the ground"""
     asset: RigidObject = env.scene[asset_cfg.name]
-
-    # Compute swing mask
-    phase = env.get_phase()
-    sin_pos = torch.sin(2 * torch.pi * phase)
-    stance_mask = torch.zeros((env.num_envs, 2), device=env.device)
-    stance_mask[:, 0] = sin_pos >= 0
-    stance_mask[:, 1] = sin_pos < 0
-    stance_mask[torch.abs(sin_pos) < 0.1] = 1
-    swing_mask = 1 - stance_mask
-
-
     foot_z_target_error = torch.square(asset.data.body_pos_w[:, asset_cfg.body_ids, 2] - target_height)
     foot_velocity_tanh = torch.tanh(tanh_mult * torch.norm(asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :2], dim=2))
-    reward = foot_z_target_error * foot_velocity_tanh * stance_mask
+    reward = foot_z_target_error * foot_velocity_tanh
     return torch.exp(-torch.sum(reward, dim=1) / std)

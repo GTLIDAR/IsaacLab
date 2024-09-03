@@ -89,7 +89,7 @@ class DigitV3RewardsCfg(RewardsCfg):
     )
 
     foot_clearance = RewTerm(
-        func=digit_v3_mdp.reward_feet_clearance,
+        func=digit_v3_mdp.foot_clearance_reward,
         weight=0.5,
         params={
             "std": 0.05,

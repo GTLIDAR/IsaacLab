@@ -23,18 +23,13 @@ if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedEnv, ManagerBasedRLEnv
 
 
-"""
-Root state.
-"""
-
 def clock(
     env: ManagerBasedRLEnv)-> torch.Tensor:
-    """Root height in the simulation world frame."""
-    # extract the used quantities (to enable type-hinting)
+    """Clock time using sin and cos from the phase of the simulation."""
     phase = env.get_phase()
-
     return torch.cat([torch.sin(2 * torch.pi * phase).unsqueeze(1), 
-                                      torch.cos(2 * torch.pi * phase).unsqueeze(1)], dim=1).to(env.device)
+                   torch.cos(2 * torch.pi * phase).unsqueeze(1)], dim=1).to(env.device)
+
     
 
 
