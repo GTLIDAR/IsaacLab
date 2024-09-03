@@ -100,8 +100,7 @@ class DigitV3ObservationsCfg():
         """Observations for policy group."""
 
         # observation terms (order preserved)
-        clock = ObsTerm(func=digit_v3_mdp.clock, scale=1,
-                              params={"cycle_time": 0.64})
+        clock = ObsTerm(func=digit_v3_mdp.clock, scale=1)
         base_lin_vel = ObsTerm(func=mdp.base_lin_vel, scale=1, noise=Gnoise(mean=0.0, std=0.1, operation="add"))
         base_ang_vel = ObsTerm(func=mdp.base_ang_vel, scale=1, noise=Gnoise(mean=0.0, std=0.1, operation="add"))
         projected_gravity = ObsTerm(

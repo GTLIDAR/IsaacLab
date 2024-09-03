@@ -28,7 +28,7 @@ Root state.
 """
 
 def clock(
-    env: ManagerBasedRLEnv,  cycle_time: float)-> torch.Tensor:
+    env: ManagerBasedRLEnv)-> torch.Tensor:
     """Root height in the simulation world frame."""
     # extract the used quantities (to enable type-hinting)
     phase = env.get_phase()
