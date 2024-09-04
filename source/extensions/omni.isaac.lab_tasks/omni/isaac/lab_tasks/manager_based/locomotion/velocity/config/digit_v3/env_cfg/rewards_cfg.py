@@ -95,16 +95,28 @@ class DigitV3RewardsCfg(RewardsCfg):
             "std": 0.05,
             "tanh_mult": 2.0,
             "target_height": 0.11,
-            "asset_cfg": SceneEntityCfg("robot", body_names=["left_toe_roll","right_toe_roll"],preserve_order=True),
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                body_names=["left_toe_roll", "right_toe_roll"],
+                preserve_order=True,
+            ),
         },
     )
 
-    foot_contact= RewTerm(
+    foot_contact = RewTerm(
         func=digit_v3_mdp.reward_feet_contact_number,
         weight=0.5,
         params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=["left_toe_roll","right_toe_roll"],preserve_order=True),
-            "asset_cfg": SceneEntityCfg("robot", body_names=["left_toe_roll","right_toe_roll"],preserve_order=True),
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces",
+                body_names=["left_toe_roll", "right_toe_roll"],
+                preserve_order=True,
+            ),
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                body_names=["left_toe_roll", "right_toe_roll"],
+                preserve_order=True,
+            ),
         },
     )
 
@@ -115,6 +127,10 @@ class DigitV3RewardsCfg(RewardsCfg):
             "std": 0.05,
             "tanh_mult": 2.0,
             "target_height": 0.11,
-            "asset_cfg": SceneEntityCfg("robot", body_names=["left_toe_roll","right_toe_roll"],preserve_order=True),
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                body_names=["left_toe_roll", "right_toe_roll"],
+                preserve_order=True,
+            ),
         },
     )
