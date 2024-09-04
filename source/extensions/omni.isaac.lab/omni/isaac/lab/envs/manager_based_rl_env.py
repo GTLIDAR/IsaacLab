@@ -134,20 +134,11 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
     """
     def get_phase(self)-> torch.Tensor:
         """Get the phase of the environment."""
+        
         if not hasattr(self, 'episode_length_buf') or self.episode_length_buf is None:
-            return torch.zeros(self.num_envs, 2).to(self.device)
-
-        # print("# self.max_episode_length_s",self.max_episode_length_s)
-        # print("# self.step_dt", self.step_dt)
-        # print("# max_episode_length",self.max_episode_length)
-        # print("# self.cfg.sim.dt",self.cfg.sim.dt)
-        # print("# self.episode_length_buf",self.episode_length_buf)
+            return torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
         
         phase = self.episode_length_buf * self.step_dt / 0.64
-        # print("# phase",phase)
-        # s = torch.sin(2 * torch.pi * phase)
-        # print("# sinus",s)
-        # print("\n")
         return phase
 
     def step(self, action: torch.Tensor) -> VecEnvStepReturn:

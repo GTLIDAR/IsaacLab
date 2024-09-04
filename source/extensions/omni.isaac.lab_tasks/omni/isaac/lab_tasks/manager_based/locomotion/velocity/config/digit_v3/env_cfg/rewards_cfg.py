@@ -89,7 +89,7 @@ class DigitV3RewardsCfg(RewardsCfg):
     )
 
     foot_clearance = RewTerm(
-        func=digit_v3_mdp.reward_feet_clearance,
+        func=digit_v3_mdp.foot_clearance_reward,
         weight=0.5,
         params={
             "std": 0.05,
@@ -104,6 +104,17 @@ class DigitV3RewardsCfg(RewardsCfg):
         weight=0.5,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=["left_toe_roll","right_toe_roll"],preserve_order=True),
+            "asset_cfg": SceneEntityCfg("robot", body_names=["left_toe_roll","right_toe_roll"],preserve_order=True),
+        },
+    )
+
+    track_foot_height = RewTerm(
+        func=digit_v3_mdp.track_foot_height_l1,
+        weight=0.5,
+        params={
+            "std": 0.05,
+            "tanh_mult": 2.0,
+            "target_height": 0.11,
             "asset_cfg": SceneEntityCfg("robot", body_names=["left_toe_roll","right_toe_roll"],preserve_order=True),
         },
     )
