@@ -46,7 +46,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.sim.render_interval = self.decimation
 
         # Scene
-        self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base"
 
         # Rewards
@@ -58,7 +58,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
             "robot", joint_names=[".*_hip_.*", ".*_knee"]  # ".*toe_roll", ".*toe_pitch"
         )
 
-        self.rewards.undesired_contacts = None
+        self.rewards.undesired_contacts = None  # type: ignore
 
         self.rewards.track_lin_vel_xy_exp.weight = 2.0
         self.rewards.track_ang_vel_z_exp.weight = 2.0

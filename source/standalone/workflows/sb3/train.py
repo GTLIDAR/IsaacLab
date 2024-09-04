@@ -52,6 +52,9 @@ parser.add_argument(
 parser.add_argument(
     "--max_iterations", type=int, default=None, help="RL Policy training iterations."
 )
+parser.add_argument(
+    "--note", type=str, default=None, help="Note to be added to the wandb run."
+)
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
 # parse the arguments
@@ -395,12 +398,12 @@ def train_recurrentl2t():
         )
 
     wandb.tensorboard.patch(root_logdir=log_dir)
+    note = args_cli.note if args_cli.note else ""
     # initialize wandb and make callback
     run = wandb.init(
         project="l2t_digit",
         entity="rl-digit",
-        name=datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        + "has_height_scan_w_corruption",
+        name=datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + note,
         config=agent_cfg,
         sync_tensorboard=True,
         monitor_gym=False,
