@@ -21,7 +21,7 @@ import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
     LocomotionVelocityRoughEnvCfg,
     RewardsCfg,
-    EventCfg
+    EventCfg,
 )
 
 from .env_cfg import(
@@ -47,11 +47,15 @@ class DigitV3TerminationsCfg:
     base_contact = DoneTerm(
         func=mdp.illegal_contact,  # type: ignore
         params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=[
-                        ".*base",
-                        ".*hip.*",
-                        ".*knee",
-                        ".*elbow",]),
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces",
+                body_names=[
+                    ".*base",
+                    ".*hip.*",
+                    ".*knee",
+                    ".*elbow",
+                ],
+            ),
             "threshold": 10.0,
         },
     )
@@ -87,7 +91,7 @@ class DigitV3ActionCfg:
         ],
         # scale=0.5,
         use_default_offset=False,
-        preserve_order = True,
+        preserve_order=True,
     )
 
 
@@ -199,7 +203,7 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     observations: DigitV3ObservationsCfg = DigitV3ObservationsCfg()
     actions: DigitV3ActionCfg = DigitV3ActionCfg()
 
-    #MDP settings
+    # MDP settings
     rewards: DigitV3RewardsCfg = DigitV3RewardsCfg()
     terminations: DigitV3TerminationsCfg = DigitV3TerminationsCfg()
     events: DigitV3EventCfg = DigitV3EventCfg()
@@ -207,7 +211,7 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
-        self.sim.dt = 0.001 # 0.001
+        self.sim.dt = 0.001  # 0.001
         # self.sim.render_interval = 20
         self.decimation = 20
         self.sim.gravity = (0.0, 0.0, -9.806)
@@ -226,9 +230,9 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.dof_acc_l2.params["asset_cfg"] = SceneEntityCfg(
             "robot", joint_names=[".*_hip.*", ".*_knee"]
         )
-        
+
         self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
-            "robot", joint_names=[".*_hip_.*", ".*_knee"] # ".*toe_roll", ".*toe_pitch"
+            "robot", joint_names=[".*_hip_.*", ".*_knee"]  # ".*toe_roll", ".*toe_pitch"
         )
 
         self.rewards.undesired_contacts = None
@@ -252,7 +256,6 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.joint_deviation_arms.weight = -0.2
         self.rewards.joint_deviation_torso.weight = -0.1
 
-
         # Commands
         self.commands.base_velocity.ranges.lin_vel_x = (-0.1, 1.0)
         self.commands.base_velocity.ranges.lin_vel_y = (-0.3, 0.3)
@@ -260,7 +263,6 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # self.commands.base_velocity.ranges.lin_vel_x = (0.5, 0.5)
         # self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)
         # self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
-
 
 
 @configclass
