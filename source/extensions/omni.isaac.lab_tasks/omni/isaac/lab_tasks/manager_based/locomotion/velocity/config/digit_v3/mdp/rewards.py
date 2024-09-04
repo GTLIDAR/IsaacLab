@@ -101,7 +101,7 @@ def track_foot_height_l1(
     feet_z_value = torch.sum(filt_foot, dim=1)
 
 
-    reward = torch.exp(-torch.sum(torch.square(feet_z_value - feet_z_target)))
+    reward = torch.exp(-torch.square(feet_z_value - feet_z_target))
     # print(reward)
     return reward
 
