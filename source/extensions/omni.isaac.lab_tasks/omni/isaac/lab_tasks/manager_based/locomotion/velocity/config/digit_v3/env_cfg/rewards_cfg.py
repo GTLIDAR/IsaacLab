@@ -118,3 +118,14 @@ class DigitV3RewardsCfg(RewardsCfg):
             "asset_cfg": SceneEntityCfg("robot", body_names=["left_toe_roll","right_toe_roll"],preserve_order=True),
         },
     )
+
+    feet_distance = RewTerm(
+        func=digit_v3_mdp.feet_distance,
+        weight=0.5,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=["left_toe_roll","right_toe_roll"],preserve_order=True),
+            "asset_cfg": SceneEntityCfg("robot", body_names=["left_toe_roll","right_toe_roll"],preserve_order=True),
+            "min_dist": 0.2,
+            "max_dist": 0.5,
+        },
+    )
