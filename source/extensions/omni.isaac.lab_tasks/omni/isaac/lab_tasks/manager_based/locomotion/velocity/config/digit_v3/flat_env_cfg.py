@@ -25,8 +25,8 @@ class DigitV3FlatEnvCfg(DigitV3RoughEnvCfg):
         )
 
         self.rewards.alive.weight = 0.01
-        self.rewards.track_lin_vel_xy_exp.weight = 1.0
-        self.rewards.track_ang_vel_z_exp.weight = 1.0
+        self.rewards.track_lin_vel_xy_exp.weight = 2.0
+        self.rewards.track_ang_vel_z_exp.weight = 2.0
         self.rewards.lin_vel_z_l2.weight = -0.3
         self.rewards.ang_vel_xy_l2.weight = -0.05
 
@@ -38,6 +38,8 @@ class DigitV3FlatEnvCfg(DigitV3RoughEnvCfg):
         self.rewards.feet_air_time.weight = 1.25
         self.rewards.foot_clearance.weight = 0.5
         self.rewards.flat_orientation_l2.weight = -5.0
+        self.rewards.foot_contact.weight = 0.5
+        self.rewards.track_foot_height.weight = 0.5
 
         self.rewards.dof_pos_limits.weight = -0.1
         self.rewards.termination_penalty.weight = -200
@@ -70,3 +72,7 @@ class DigitV3FlatEnvCfg_PLAY(DigitV3FlatEnvCfg):
         # remove random pushing event
         self.events.base_external_force_torque = None
         self.events.push_robot = None
+
+        self.commands.base_velocity.ranges.lin_vel_x = (0.5, 0.5)
+        self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)
+        self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
