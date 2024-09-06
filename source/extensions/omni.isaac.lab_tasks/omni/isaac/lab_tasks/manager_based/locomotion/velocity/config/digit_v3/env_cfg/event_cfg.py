@@ -122,7 +122,7 @@ class DigitV3EventCfg(EventCfg):
         func=mdp.randomize_physics_scene_gravity,
         mode="reset",
         params={
-            "gravity_distribution_params": ([0.0, 0.0, 0.0], [0.0, 0.0, 0.67]),
+            "gravity_distribution_params": ([0.0, 0.0, -0.67], [0.0, 0.0, 0.67]),
             "operation": "add",
             "distribution": "gaussian",
         },

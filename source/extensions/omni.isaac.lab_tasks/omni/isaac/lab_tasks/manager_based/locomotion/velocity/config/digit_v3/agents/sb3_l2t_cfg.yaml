@@ -4,7 +4,7 @@ seed: 42
 n_timesteps: !!float 5e8
 policy: 'MlpPolicy'
 batch_size: 12288
-n_steps: 24
+n_steps: 12
 gamma: 0.99
 gae_lambda: 0.95
 n_epochs: 5
@@ -12,7 +12,7 @@ ent_coef: 0.01
 sde_sample_freq: 4
 max_grad_norm: 0.5
 vf_coef: 1.0
-learning_rate: !!float 3e-4
+learning_rate: lin_3e-4
 use_sde: False
 clip_range: 0.2
 device: "cuda:0"
@@ -21,12 +21,18 @@ policy_kwargs: "dict(
                   log_std_init=0,
                   ortho_init=True,
                   activation_fn=nn.ELU,
-                  net_arch=[256, 128]
+                  net_arch=dict(
+                  vf=[512,256,128],
+                  pi=[512,256,128]
+                  ),
                 )"
 student_policy_kwargs: "dict(
                   log_std_init=0,
                   ortho_init=True,
                   activation_fn=nn.ELU,
-                  net_arch=[256, 128],
+                  net_arch=dict(
+                  vf=[512,256,128],
+                  pi=[512,256,128]
+                  ),
                   lstm_hidden_size=128
                 )"
