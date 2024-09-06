@@ -1,4 +1,3 @@
-from re import U
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.managers import ObservationGroupCfg as ObsGroup
 from omni.isaac.lab.managers import ObservationTermCfg as ObsTerm
