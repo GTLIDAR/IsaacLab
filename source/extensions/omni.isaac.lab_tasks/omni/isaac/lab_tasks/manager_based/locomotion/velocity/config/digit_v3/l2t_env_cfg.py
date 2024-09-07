@@ -112,13 +112,14 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.joint_deviation_hip.weight = -0.1
         self.rewards.joint_deviation_arms.weight = -0.2
         self.rewards.joint_deviation_torso.weight = -0.1
-        self.rewards.track_foot_height.weight = 0.0
-        self.rewards.foot_clearance.weight = 0.0
+        self.rewards.track_foot_height.weight = 0.5
+        self.rewards.foot_clearance.weight = 0.5
+        self.rewards.action_rate_l2.weight = -0.1
         # Commands
         self.commands.base_velocity.ranges.lin_vel_x = (-0.1, 1.0)
-        self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)
-        self.commands.base_velocity.ranges.ang_vel_z = (-0.0, 0.0)
-        self.commands.base_velocity.heading_command = False
+        self.commands.base_velocity.ranges.lin_vel_y = (-0.5, 0.5)
+        self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
+        # self.commands.base_velocity.heading_command = False
 
 
 @configclass
