@@ -347,11 +347,11 @@ def train_recurrentl2t():
         agent_cfg["n_timesteps"] = (  # type: ignore
             args_cli.max_iterations * agent_cfg["n_steps"] * env_cfg.scene.num_envs  # type: ignore
         )
-
+    log_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    note = args_cli.note if args_cli.note else ""
+    log_time_note = log_time + note
     # directory for logging into
-    log_dir = os.path.join(
-        "logs", "sb3", args_cli.task, datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    )
+    log_dir = os.path.join("logs", "sb3", args_cli.task, log_time_note)
     # dump the configuration into log-directory
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
@@ -398,12 +398,12 @@ def train_recurrentl2t():
         )
 
     wandb.tensorboard.patch(root_logdir=log_dir)
-    note = args_cli.note if args_cli.note else ""
+
     # initialize wandb and make callback
     run = wandb.init(
         project="l2t_digit",
         entity="rl-digit",
-        name=datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + note,
+        name=log_time_note,
         config=agent_cfg,
         sync_tensorboard=True,
         monitor_gym=False,

@@ -127,7 +127,14 @@ class TeacherObsCfg(ObsGroup):
 
     # applied_torque = ObsTerm(func=applied_torque)
 
-    # root_state_w = ObsTerm(func=digit_mdp.root_state_w)
+    # root_state_w = ObsTerm(
+    #     func=digit_mdp.root_state_w,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #         )
+    #     },
+    # )
 
     # body_state_w = ObsTerm(
     #     func=digit_mdp.body_state_w,
@@ -136,39 +143,6 @@ class TeacherObsCfg(ObsGroup):
     #     params={
     #         "asset_cfg": SceneEntityCfg(
     #             "robot",
-    #             joint_names=[
-    #                 "left_hip_roll",
-    #                 "left_hip_yaw",
-    #                 "left_hip_pitch",
-    #                 "left_knee",
-    #                 "left_toe_A",
-    #                 "left_toe_B",
-    #                 "right_hip_roll",
-    #                 "right_hip_yaw",
-    #                 "right_hip_pitch",
-    #                 "right_knee",
-    #                 "right_toe_A",
-    #                 "right_toe_B",
-    #                 "left_shoulder_roll",
-    #                 "left_shoulder_pitch",
-    #                 "left_shoulder_yaw",
-    #                 "left_elbow",
-    #                 "right_shoulder_roll",
-    #                 "right_shoulder_pitch",
-    #                 "right_shoulder_yaw",
-    #                 "right_elbow",
-    #                 "left_shin",
-    #                 "left_tarsus",
-    #                 "left_toe_pitch",
-    #                 "left_toe_roll",
-    #                 "left_heel_spring",
-    #                 "right_shin",
-    #                 "right_tarsus",
-    #                 "right_toe_pitch",
-    #                 "right_toe_roll",
-    #                 "right_heel_spring",
-    #             ],
-    #             preserve_order=True,
     #         )
     #     },
     # )

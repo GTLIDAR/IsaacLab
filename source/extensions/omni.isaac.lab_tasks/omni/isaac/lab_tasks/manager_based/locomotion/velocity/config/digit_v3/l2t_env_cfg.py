@@ -78,7 +78,8 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.joint_deviation_hip.weight = -0.1
         self.rewards.joint_deviation_arms.weight = -0.2
         self.rewards.joint_deviation_torso.weight = -0.1
-
+        self.rewards.track_foot_height.weight = 0.0
+        self.rewards.foot_clearance.weight = 0.0
         # Commands
         self.commands.base_velocity.ranges.lin_vel_x = (-0.1, 1.0)
         self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)
@@ -137,6 +138,8 @@ class DigitV3L2TFlatEnvCfg(DigitV3L2TRoughEnvCfg):
         self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
             "robot", joint_names=[".*_hip_.*", ".*_knee"]
         )
+        self.rewards.track_foot_height.weight = 0.5
+        self.rewards.foot_clearance.weight = 0.5
 
         # self.rewards.feet_air_time.weight = 1.0
         # self.rewards.feet_air_time.params["threshold"] = 0.6

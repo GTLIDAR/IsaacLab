@@ -119,13 +119,13 @@ def track_foot_height_l1(
     feet_z_target = height_target(phase_mod)
     feet_z_value = torch.sum(filt_foot, dim=1)
 
-
     reward = torch.exp(-torch.square(feet_z_value - feet_z_target))
     # print(reward)
     return reward
 
 
-def feet_distance( env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, min_dist: float, max_dist: float
+def feet_distance(
+    env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, min_dist: float, max_dist: float
 ) -> torch.Tensor:
     """
     Calculates the reward based on the distance between the feet. Penalize feet get close to each other or too far away.
@@ -134,9 +134,7 @@ def feet_distance( env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, min_dist: 
     foot_pos = asset.data.body_pos_w[:, asset_cfg.body_ids, :3]
     foot_dist = torch.norm(foot_pos[:, 0, :] - foot_pos[:, 1, :], dim=1)
 
-    d_min = torch.clamp(foot_dist - min_dist, -0.5, 0.)
+    d_min = torch.clamp(foot_dist - min_dist, -0.5, 0.0)
     d_max = torch.clamp(foot_dist - max_dist, 0, 0.5)
 
     return (torch.exp(-torch.abs(d_min) * 100) + torch.exp(-torch.abs(d_max) * 100)) / 2
-
-

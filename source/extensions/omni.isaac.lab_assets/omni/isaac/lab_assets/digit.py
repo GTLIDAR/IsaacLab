@@ -159,27 +159,27 @@ DIGITV3_CFG = ArticulationCfg(
             # min_delay=0,  # physics time steps (min: 1.0*0=0.0ms)
             # max_delay=8,  # physics time steps (max: 1.0*8=8.0ms)
         ),
-        "toes": ImplicitActuatorCfg(
-            joint_names_expr=[
-                "left_toe_A",
-                "left_toe_B",
-                "right_toe_A",
-                "right_toe_B",
-            ],
-            effort_limit=200.0,
-            velocity_limit=10.0,
-            stiffness={
-                "left_toe_A": 20,
-                "left_toe_B": 20,
-                "right_toe_A": 20,
-                "right_toe_B": 20,
-            },
-            damping={
-                "left_toe_A": 1.0,
-                "left_toe_B": 1.0,
-                "right_toe_A": 1.0,
-                "right_toe_B": 1.0,
-            },
-        ),
+        # "toes": ImplicitActuatorCfg(
+        #     joint_names_expr=[
+        #         "left_toe_A",
+        #         "left_toe_B",
+        #         "right_toe_A",
+        #         "right_toe_B",
+        #     ],
+        #     effort_limit=200.0,
+        #     velocity_limit=10.0,
+        #     stiffness={
+        #         "left_toe_A": 20,
+        #         "left_toe_B": 20,
+        #         "right_toe_A": 20,
+        #         "right_toe_B": 20,
+        #     },
+        #     damping={
+        #         "left_toe_A": 1.0,
+        #         "left_toe_B": 1.0,
+        #         "right_toe_A": 1.0,
+        #         "right_toe_B": 1.0,
+        #     },
+        # ),
     },
 )
