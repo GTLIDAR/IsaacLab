@@ -21,18 +21,12 @@ policy_kwargs: "dict(
                   log_std_init=0,
                   ortho_init=True,
                   activation_fn=nn.ELU,
-                  net_arch=dict(
-                  vf=[512,256,128],
-                  pi=[512,256,128]
-                  ),
+                  net_arch=[512,256,128],
                 )"
 student_policy_kwargs: "dict(
                   log_std_init=0,
                   ortho_init=True,
                   activation_fn=nn.ELU,
-                  net_arch=dict(
-                  vf=[512,256,128],
-                  pi=[512,256,128]
-                  ),
+                  net_arch=[512,256,128],
                   lstm_hidden_size=128
                 )"
