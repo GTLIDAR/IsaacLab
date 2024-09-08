@@ -73,9 +73,9 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
-        self.sim.dt = 0.005  # 0.001
+        self.sim.dt = 0.001  # 0.001
         # self.sim.render_interval = 20
-        self.decimation = 4
+        self.decimation = 20
         self.sim.gravity = (0.0, 0.0, -9.806)
         self.sim.render_interval = self.decimation
 
@@ -97,24 +97,24 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.track_lin_vel_xy_exp.weight = 2.0
         self.rewards.track_ang_vel_z_exp.weight = 2.0
         self.rewards.alive.weight = 0.01
-        self.rewards.lin_vel_z_l2.weight = -0.2
-        self.rewards.ang_vel_xy_l2.weight = -0.05
-        self.rewards.dof_torques_l2.weight = -1.5e-7
-        self.rewards.dof_acc_l2.weight = -1.25e-7
+        self.rewards.lin_vel_z_l2.weight = -0.4
+        self.rewards.ang_vel_xy_l2.weight = -0.1
+        self.rewards.dof_torques_l2.weight = -3e-7
+        self.rewards.dof_acc_l2.weight = -2.5e-7
         self.rewards.action_rate_l2.weight = -0.005
 
         self.rewards.feet_air_time.weight = 1.0
-        self.rewards.flat_orientation_l2.weight = -2.0
+        self.rewards.flat_orientation_l2.weight = -3.0
 
         self.rewards.dof_pos_limits.weight = -0.1
         self.rewards.termination_penalty.weight = -200.0
-        self.rewards.feet_slide.weight = -0.25
-        self.rewards.joint_deviation_hip.weight = -0.1
-        self.rewards.joint_deviation_arms.weight = -0.2
+        self.rewards.feet_slide.weight = -0.5
+        self.rewards.joint_deviation_hip.weight = -1.0
+        self.rewards.joint_deviation_arms.weight = -1.0
         self.rewards.joint_deviation_torso.weight = -0.1
         self.rewards.track_foot_height.weight = 0.5
         self.rewards.foot_clearance.weight = 0.5
-        self.rewards.action_rate_l2.weight = -0.1
+        self.rewards.action_rate_l2.weight = -0.5
         # Commands
         self.commands.base_velocity.ranges.lin_vel_x = (-0.1, 1.0)
         self.commands.base_velocity.ranges.lin_vel_y = (-0.5, 0.5)

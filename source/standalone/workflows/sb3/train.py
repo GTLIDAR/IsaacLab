@@ -348,7 +348,7 @@ def train_recurrentl2t():
             args_cli.max_iterations * agent_cfg["n_steps"] * env_cfg.scene.num_envs  # type: ignore
         )
     log_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    note = args_cli.note if args_cli.note else ""
+    note = "_" + args_cli.note if args_cli.note else ""
     log_time_note = log_time + note
     # directory for logging into
     log_dir = os.path.join("logs", "sb3", args_cli.task, log_time_note)
@@ -418,6 +418,9 @@ def train_recurrentl2t():
         verbose=1,
         rollout_buffer_class=RLOptDictRecurrentReplayBuffer,
         **agent_cfg
+    )
+    agent.set_parameters(
+        "/home/feiyang-wu/Documents/Research/RobotLearning/Repositories/IsaacLab/logs/sb3/Isaac-Velocity-Flat-Digit-V3-L2T-v0/2024-09-07_22-12-01_passive_toe_flat/model_999424000_steps.zip"
     )
     # configure the logger
     new_logger = configure(log_dir, ["tensorboard"])
