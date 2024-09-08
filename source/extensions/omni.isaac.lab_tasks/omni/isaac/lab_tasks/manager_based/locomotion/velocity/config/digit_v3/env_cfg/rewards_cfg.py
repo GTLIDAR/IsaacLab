@@ -18,6 +18,9 @@ class DigitV3RewardsCfg(RewardsCfg):
         func=mdp.is_alive,
         weight=0.01,
     )
+    action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.015)
+    # dof_vel_l2 = RewTerm(func=mdp.joint_vel_l2, weight=-5e-4)
+
     # lin_vel_z_l2 = None
     track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_yaw_frame_exp,
@@ -114,16 +117,15 @@ class DigitV3RewardsCfg(RewardsCfg):
         params={
             "std": 0.05,
             "tanh_mult": 2.0,
-            "target_height": 0.11,
+            "target_height": 0.12,
             "asset_cfg": SceneEntityCfg("robot", body_names=["left_toe_roll","right_toe_roll"],preserve_order=True),
         },
     )
 
     feet_distance = RewTerm(
         func=digit_v3_mdp.feet_distance,
-        weight=0.5,
+        weight=0.001,
         params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=["left_toe_roll","right_toe_roll"],preserve_order=True),
             "asset_cfg": SceneEntityCfg("robot", body_names=["left_toe_roll","right_toe_roll"],preserve_order=True),
             "min_dist": 0.2,
             "max_dist": 0.5,
