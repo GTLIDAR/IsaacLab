@@ -105,11 +105,11 @@ class DigitV3ObservationsCfg():
 
         # observation terms (order preserved)
         clock = ObsTerm(func=digit_v3_mdp.clock, scale=1)
-        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, scale=1, noise=Gnoise(mean=0.0, std=0.1, operation="add"))
-        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, scale=1, noise=Gnoise(mean=0.0, std=0.1, operation="add"))
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, scale=1, noise=Gnoise(mean=0.0, std=0.15, operation="add"))
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, scale=1, noise=Gnoise(mean=0.0, std=0.15, operation="add"))
         projected_gravity = ObsTerm(
             func=mdp.projected_gravity,
-            noise=Unoise(n_min=-0.05, n_max=0.05),
+            noise=Unoise(n_min=-0.075, n_max=0.075),
         )
         velocity_commands = ObsTerm(func=mdp.generated_commands, scale=1, params={"command_name": "base_velocity"})
         joint_pos = ObsTerm(func=mdp.joint_pos, scale=1, noise=Gnoise(mean=0.0, std=0.1, operation="add"),
@@ -217,9 +217,7 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.sim.gravity = (0.0, 0.0, -9.806)
         self.sim.render_interval = self.decimation
 
-        self.cycle_time = 0.64
 
-        
 
         # Scene
         self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
@@ -241,7 +239,7 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.track_ang_vel_z_exp.weight = 2.0
         self.rewards.alive.weight = 0.01
         self.rewards.lin_vel_z_l2.weight = -0.2
-        self.rewards.ang_vel_xy_l2.weight = -0.05
+        self.rewards.ang_vel_xy_l2.weight = -0.1
         self.rewards.dof_torques_l2.weight = -1.5e-7
         self.rewards.dof_acc_l2.weight = -1.25e-7
         self.rewards.action_rate_l2.weight = -0.005
