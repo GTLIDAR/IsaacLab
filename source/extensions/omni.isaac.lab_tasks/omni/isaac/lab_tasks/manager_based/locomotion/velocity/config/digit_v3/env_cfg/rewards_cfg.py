@@ -157,44 +157,44 @@ class DigitV3RewardsCfg(RewardsCfg):
         },
     )
 
-    torque_applied = RewTerm(
-        func=digit_v3_mdp.torque_applied_l2,
-        weight=0.5,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-            ),
-            "std": 0.5,
-        },
-    )
+    # torque_applied = RewTerm(
+    #     func=digit_v3_mdp.torque_applied_l2,
+    #     weight=0.5,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #         ),
+    #         "std": 0.5,
+    #     },
+    # )
 
-    com_deviation = RewTerm(
-        func=digit_v3_mdp.center_of_mass_deviation_l2,
-        weight=0.5,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                body_names=["left_toe_roll", "right_toe_roll"],
-                preserve_order=True,
-            ),
-            "std": 0.5,
-        },
-    )
+    # com_deviation = RewTerm(
+    #     func=digit_v3_mdp.center_of_mass_deviation_l2,
+    #     weight=0.5,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             body_names=["left_toe_roll", "right_toe_roll"],
+    #             preserve_order=True,
+    #         ),
+    #         "std": 0.5,
+    #     },
+    # )
 
-    shoulder_deviation = RewTerm(
-        func=digit_v3_mdp.shoulder_center_deviation_foot_center_l2,
-        weight=0.5,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                body_names=[
-                    "left_shoulder_roll",
-                    "right_shoulder_roll",
-                    "left_toe_roll",
-                    "right_toe_roll",
-                ],
-                preserve_order=True,
-            ),
-            "std": 0.5,
-        },
-    )
+    # shoulder_deviation = RewTerm(
+    #     func=digit_v3_mdp.shoulder_center_deviation_foot_center_l2,
+    #     weight=0.5,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             body_names=[
+    #                 "left_shoulder_roll",
+    #                 "right_shoulder_roll",
+    #                 "left_toe_roll",
+    #                 "right_toe_roll",
+    #             ],
+    #             preserve_order=True,
+    #         ),
+    #         "std": 0.5,
+    #     },
+    # )
