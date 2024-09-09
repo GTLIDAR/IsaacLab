@@ -419,9 +419,9 @@ def train_recurrentl2t():
         rollout_buffer_class=RLOptDictRecurrentReplayBuffer,
         **agent_cfg
     )
-    agent.set_parameters(
-        "/home/feiyang-wu/Documents/Research/RobotLearning/Repositories/IsaacLab/logs/sb3/Isaac-Velocity-Flat-Digit-V3-L2T-v0/2024-09-07_22-12-01_passive_toe_flat/model_999424000_steps.zip"
-    )
+    # agent.set_parameters(
+    #     "/home/feiyang-wu/Documents/Research/RobotLearning/Repositories/IsaacLab/logs/sb3/Isaac-Velocity-Flat-Digit-V3-L2T-v0/2024-09-07_22-12-01_passive_toe_flat/model_999424000_steps.zip"
+    # )
     # configure the logger
     new_logger = configure(log_dir, ["tensorboard"])
     agent.set_logger(new_logger)

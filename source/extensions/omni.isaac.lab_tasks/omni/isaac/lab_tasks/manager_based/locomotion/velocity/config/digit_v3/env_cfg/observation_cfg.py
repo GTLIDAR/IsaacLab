@@ -17,19 +17,20 @@ class TeacherObsCfg(ObsGroup):
     """Observations for policy group."""
 
     # observation terms (order preserved)
+    clock = ObsTerm(func=digit_mdp.clock, scale=1)
     base_lin_vel = ObsTerm(
         func=mdp.base_lin_vel,
         scale=1,
-        noise=Gnoise(mean=0.0, std=0.10, operation="add"),
+        noise=Gnoise(mean=0.0, std=0.15, operation="add"),
     )
     base_ang_vel = ObsTerm(
         func=mdp.base_ang_vel,
         scale=1,
-        noise=Gnoise(mean=0.0, std=0.10, operation="add"),
+        noise=Gnoise(mean=0.0, std=0.15, operation="add"),
     )
     projected_gravity = ObsTerm(
         func=mdp.projected_gravity,
-        noise=Unoise(n_min=-0.05, n_max=0.05),
+        noise=Unoise(n_min=-0.075, n_max=0.075),
     )
     velocity_commands = ObsTerm(
         func=mdp.generated_commands,
@@ -39,7 +40,7 @@ class TeacherObsCfg(ObsGroup):
     joint_pos = ObsTerm(
         func=mdp.joint_pos,
         scale=1,
-        noise=Gnoise(mean=0.0, std=0.10, operation="add"),
+        noise=Gnoise(mean=0.0, std=0.1, operation="add"),
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
@@ -252,19 +253,20 @@ class StudentObsCfg(ObsGroup):
     """Observations for student group."""
 
     # observation terms (order preserved)
+    clock = ObsTerm(func=digit_mdp.clock, scale=1)
     base_lin_vel = ObsTerm(
         func=mdp.base_lin_vel,
         scale=1,
-        noise=Gnoise(mean=0.0, std=0.10, operation="add"),
+        noise=Gnoise(mean=0.0, std=0.15, operation="add"),
     )
     base_ang_vel = ObsTerm(
         func=mdp.base_ang_vel,
         scale=1,
-        noise=Gnoise(mean=0.0, std=0.10, operation="add"),
+        noise=Gnoise(mean=0.0, std=0.15, operation="add"),
     )
     projected_gravity = ObsTerm(
         func=mdp.projected_gravity,
-        noise=Unoise(n_min=-0.05, n_max=0.05),
+        noise=Unoise(n_min=-0.075, n_max=0.075),
     )
     velocity_commands = ObsTerm(
         func=mdp.generated_commands,
@@ -274,7 +276,7 @@ class StudentObsCfg(ObsGroup):
     joint_pos = ObsTerm(
         func=mdp.joint_pos,
         scale=1,
-        noise=Gnoise(mean=0.0, std=0.10, operation="add"),
+        noise=Gnoise(mean=0.0, std=0.1, operation="add"),
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",

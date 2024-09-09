@@ -178,14 +178,25 @@ class DigitV3EventCfg(EventCfg):
         func=mdp.push_by_setting_velocity,
         mode="interval",
         interval_range_s=(9.0, 11.0),
-        params={"velocity_range": {"x": (-0.2, 0.4), "y": (-0.4, 0.4),}},
+        params={
+            "velocity_range": {
+                "x": (-0.2, 0.4),
+                "y": (-0.4, 0.4),
+            }
+        },
     )
 
     push_robot_z = EventTerm(
         func=mdp.push_by_setting_velocity,
         mode="interval",
         interval_range_s=(0.0, 2.0),
-        params={"velocity_range": {"x": (-0.1, 0.1),"y": (-0.1, 0.1),"z": (0.0, 0.2),}},
+        params={
+            "velocity_range": {
+                "x": (-0.1, 0.1),
+                "y": (-0.1, 0.1),
+                "z": (0.0, 0.2),
+            }
+        },
     )
 
     robot_joint_stiffness_and_damping = EventTerm(
