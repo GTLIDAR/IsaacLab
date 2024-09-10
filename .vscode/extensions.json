@@ -6,7 +6,6 @@
 		"ms-python.python",
         "ms-python.vscode-pylance",
 		"ban.spellright",
-		"ms-iot.vscode-ros",
 		"ExecutableBookProject.myst-highlight",
 	]
 }

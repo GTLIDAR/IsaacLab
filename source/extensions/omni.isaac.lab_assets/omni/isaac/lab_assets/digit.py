@@ -50,14 +50,12 @@ DIGITV3_CFG = ArticulationCfg(
     ),
     init_state=ArticulationCfg.InitialStateCfg(
         pos=(0.0, 0.0, 1.03077151),
-        # joint_pos={".*": 0.0},
         joint_vel={".*": 0.0},
         joint_pos={
             "left_hip_roll": 3.65171317e-01,
             "left_hip_yaw": -6.58221569e-03,
             "left_hip_pitch": 3.16910843e-01,
             "left_knee": 3.57944829e-01,
-            # "left_shin": -0.0130148100,
             "left_tarsus": -0.3311601,
             "left_heel_spring": -0.01160161,
             "left_toe_A": -1.32137105e-01,
@@ -72,7 +70,6 @@ DIGITV3_CFG = ArticulationCfg(
             "right_hip_yaw": 6.42881761e-03,
             "right_hip_pitch": -3.16910843e-01,
             "right_knee": -3.58016735e-01,
-            # "right_shin":  0.01303884,
             "right_tarsus": 0.33119604,
             "right_heel_spring": 0.01160569,
             "right_toe_A": 1.32006717e-01,
@@ -120,6 +117,16 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_hip_pitch": 5.0,
                 "right_knee": 5.0,
             },
+            armature={
+                "left_hip_roll": 0.1728,
+                "left_hip_yaw": 0.0675,
+                "left_hip_pitch": 0.120576,
+                "left_knee": 0.120576,
+                "right_hip_roll": 0.1728,
+                "right_hip_yaw": 0.0675,
+                "right_hip_pitch": 0.120576,
+                "right_knee": 0.120576,
+            },
             # min_delay=0,  # physics time steps (min: 1.0*0=0.0ms)
             # max_delay=8,  # physics time steps (max: 1.0*8=8.0ms)
         ),
@@ -156,6 +163,16 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_shoulder_yaw": 5.0,
                 "right_elbow": 5.0,
             },
+            armature={
+                "left_shoulder_roll": 0.1728,
+                "left_shoulder_pitch": 0.1728,
+                "left_shoulder_yaw": 0.0675,
+                "left_elbow": 0.1728,
+                "right_shoulder_roll": 0.1728,
+                "right_shoulder_pitch": 0.1728,
+                "right_shoulder_yaw": 0.0675,
+                "right_elbow": 0.1728,
+            },
             # min_delay=0,  # physics time steps (min: 1.0*0=0.0ms)
             # max_delay=8,  # physics time steps (max: 1.0*8=8.0ms)
         ),
@@ -179,6 +196,12 @@ DIGITV3_CFG = ArticulationCfg(
                 "left_toe_B": 1.0,
                 "right_toe_A": 1.0,
                 "right_toe_B": 1.0,
+            },
+            armature={
+                "left_toe_A": 0.035,
+                "left_toe_B": 0.035,
+                "right_toe_A": 0.035,
+                "right_toe_B": 0.035,
             },
         ),
     },
