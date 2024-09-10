@@ -116,8 +116,6 @@ class DigitV3RewardsCfg(RewardsCfg):
         weight=0.5,
         params={
             "std": 0.05,
-            "tanh_mult": 2.0,
-            "target_height": 0.12,
             "asset_cfg": SceneEntityCfg("robot", body_names=["left_toe_roll","right_toe_roll"],preserve_order=True),
         },
     )

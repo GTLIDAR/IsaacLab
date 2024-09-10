@@ -51,8 +51,7 @@ def foot_clearance_reward(
 
 
 def track_foot_height_l1(
-            env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, target_height: float, std: float, tanh_mult: float
-) -> torch.Tensor:
+            env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, std: float) -> torch.Tensor:
     """"""
     def height_target(t:torch.Tensor):
         assert t.shape[0] == env.num_envs
@@ -70,16 +69,15 @@ def track_foot_height_l1(
     stance_mask[:, 1] = sin_pos < 0
     stance_mask[torch.abs(sin_pos) < 0.1] = 1
     swing_mask = 1 - stance_mask
-
+    
     filt_foot = torch.where(swing_mask == 1, foot_z, torch.zeros_like(foot_z))
 
-    phase_mod = torch.fmod(2*torch.pi*phase, 0.5)
+    phase_mod = torch.fmod(phase, 0.5)
     feet_z_target = height_target(phase_mod)
     feet_z_value = torch.sum(filt_foot, dim=1)
 
-
-    reward = torch.exp(-torch.square(feet_z_value - feet_z_target))
-    # print(reward)
+    error = torch.square(feet_z_value - feet_z_target)
+    reward = torch.exp(-error/ std**2)
     return reward
 
 
