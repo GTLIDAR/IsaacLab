@@ -28,7 +28,7 @@ class DigitV3FlatEnvCfg(DigitV3RoughEnvCfg):
         self.rewards.track_lin_vel_xy_exp.weight = 2.0
         self.rewards.track_ang_vel_z_exp.weight = 2.0
         self.rewards.lin_vel_z_l2.weight = -0.3
-        self.rewards.ang_vel_xy_l2.weight = -0.2
+        self.rewards.ang_vel_xy_l2.weight = -0.05
 
         self.rewards.dof_torques_l2.weight = -2.0e-6
         self.rewards.dof_acc_l2.weight = -1.0e-7
@@ -40,7 +40,7 @@ class DigitV3FlatEnvCfg(DigitV3RoughEnvCfg):
         self.rewards.foot_clearance.weight = 0.5
         self.rewards.flat_orientation_l2.weight = -5.0
         self.rewards.foot_contact.weight = 0.5
-        self.rewards.track_foot_height.weight = 0.5
+        self.rewards.track_foot_height.weight = 0.2
         self.rewards.feet_distance.weight = 0.01
 
         self.rewards.dof_pos_limits.weight = -0.1

@@ -138,7 +138,7 @@ class DigitV3EventCfg(EventCfg):
         func=mdp.reset_joints_by_offset,
         mode="reset",
         params={
-            "position_range": (-0.02, 0.02),
+            "position_range": (-0.01, 0.01),
             "velocity_range": (-0.0, 0.0),
         },
     )
@@ -156,11 +156,11 @@ class DigitV3EventCfg(EventCfg):
     base_external_force_torque = EventTerm(
         func=mdp.apply_external_force_torque,
         mode="interval",
-        interval_range_s=(14.0, 16.0),
+        interval_range_s=(15.0, 16.0),
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "force_range": (-10.0, 15.0),
-            "torque_range": (-15.0, 15.0),
+            "force_range": (0.0, 12.0),
+            "torque_range": (-12.0, 12.0),
         },
     )
 

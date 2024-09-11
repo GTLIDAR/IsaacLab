@@ -108,7 +108,7 @@ class DigitV3RewardsCfg(RewardsCfg):
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=["left_toe_roll","right_toe_roll"],preserve_order=True),
             "pos_rw": 1.0,
-            "neg_rw": -0.5,
+            "neg_rw": -0.4,
         },
     )
 
