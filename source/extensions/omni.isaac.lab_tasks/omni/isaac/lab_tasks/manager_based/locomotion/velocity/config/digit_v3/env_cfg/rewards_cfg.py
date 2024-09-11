@@ -112,7 +112,7 @@ class DigitV3RewardsCfg(RewardsCfg):
     )
 
     track_foot_height = RewTerm(
-        func=digit_v3_mdp.track_foot_height_l1,
+        func=digit_v3_mdp.track_foot_height,
         weight=0.5,
         params={
             "std": 0.05,

@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from omni.isaac.lab.managers import RewardTermCfg
 
 
-def reward_feet_contact_number(env, sensor_cfg: SceneEntityCfg, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"))-> torch.Tensor:
+def reward_feet_contact_number(env, sensor_cfg: SceneEntityCfg, pos_rw: float, neg_rw: float)-> torch.Tensor:
     """
     Calculates a reward based on the number of feet contacts aligning with the gait phase. 
     Rewards or penalizes depending on whether the foot contact matches the expected gait phase.
@@ -33,7 +33,7 @@ def reward_feet_contact_number(env, sensor_cfg: SceneEntityCfg, asset_cfg: Scene
     stance_mask[:, 1] = sin_pos < 0
     stance_mask[torch.abs(sin_pos) < 0.1] = 1
 
-    reward = torch.where(contacts == stance_mask, 1, -0.3)
+    reward = torch.where(contacts == stance_mask, pos_rw, neg_rw)
     return torch.mean(reward, dim=1)
 
 
@@ -50,13 +50,16 @@ def foot_clearance_reward(
     return torch.exp(-torch.sum(reward, dim=1) / std)
 
 
-def track_foot_height_l1(
+def track_foot_height(
             env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, std: float) -> torch.Tensor:
     """"""
     def height_target(t:torch.Tensor):
         assert t.shape[0] == env.num_envs
-        a5, a4, a3, a2, a1, a0 = [9.6, 12.0, -18.8, 5.0, 0.1, 0.0]
+        # a5, a4, a3, a2, a1, a0 = [9.6, 12.0, -18.8, 5.0, 0.1, 0.0]
+        a5, a4, a3, a2, a1, a0 = [-40.9599, 81.919, -51.199, 10.24, 0.0, 0.0]
         return a5 * t**5 + a4 * t**4 + a3 * t**3 + a2 * t**2 + a1 * t + a0
+    
+
 
     asset: RigidObject = env.scene[asset_cfg.name]
     foot_z = asset.data.body_pos_w[:, asset_cfg.body_ids, 2]
@@ -95,4 +98,20 @@ def feet_distance( env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, min_dist: 
 
     return torch.exp(-torch.abs(d_min) * 100) 
 
+
+def feet_distance_l1( env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, min_dist: float, max_dist: float
+) -> torch.Tensor:
+    """
+    Calculates the reward based on the distance between the feet. Penalize feet get close to each other or too far away.
+    """
+    asset: RigidObject = env.scene[asset_cfg.name]
+    foot_pos = asset.data.body_pos_w[:, asset_cfg.body_ids, :3]
+    foot_dist = torch.norm(foot_pos[:, 0, :] - foot_pos[:, 1, :], dim=1)
+
+    d_min = torch.clamp(foot_dist - min_dist, -0.5, 0.)
+    # d_max = torch.clamp(foot_dist - max_dist, 0, 0.5)
+
+    # return torch.exp(-torch.abs(d_min) * 100) 
+
+    return torch.abs(d_min)
 
