@@ -25,15 +25,24 @@ def reward_feet_contact_number(env, sensor_cfg: SceneEntityCfg, pos_rw: float, n
     """
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
     contacts = contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :].norm(dim=-1).max(dim=1)[0] > 1.0
-
+    # print("contact", contacts.shape, contacts)
     phase = env.get_phase()
     sin_pos = torch.sin(2 * torch.pi * phase)
     stance_mask = torch.zeros((env.num_envs, 2), device=env.device)
     stance_mask[:, 0] = sin_pos >= 0
     stance_mask[:, 1] = sin_pos < 0
     stance_mask[torch.abs(sin_pos) < 0.1] = 1
+    mask_2 = 1 - stance_mask
+    # print("mask2", mask_2.shape, mask_2)
+    # print("stance", stance_mask.shape, stance_mask)
+    # print("")
+    if (torch.sum(contacts == stance_mask) > torch.sum(contacts == mask_2)):
+        # print("1")
+        reward = torch.where(contacts == stance_mask, pos_rw, neg_rw)
+        return torch.mean(reward, dim=1)
 
-    reward = torch.where(contacts == stance_mask, pos_rw, neg_rw)
+    # print("2")
+    reward = torch.where(contacts == mask_2, pos_rw, neg_rw)
     return torch.mean(reward, dim=1)
 
 
@@ -55,8 +64,8 @@ def track_foot_height(
     """"""
     def height_target(t:torch.Tensor):
         assert t.shape[0] == env.num_envs
-        # a5, a4, a3, a2, a1, a0 = [9.6, 12.0, -18.8, 5.0, 0.1, 0.0]
-        a5, a4, a3, a2, a1, a0 = [-40.9599, 81.919, -51.199, 10.24, 0.0, 0.0]
+        a5, a4, a3, a2, a1, a0 = [9.6, 12.0, -18.8, 5.0, 0.1, 0.0]
+        # a5, a4, a3, a2, a1, a0 = [-40.9599, 81.919, -51.199, 10.24, 0.0, 0.0]
         return a5 * t**5 + a4 * t**4 + a3 * t**3 + a2 * t**2 + a1 * t + a0
     
 
