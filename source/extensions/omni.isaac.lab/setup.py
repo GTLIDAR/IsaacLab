@@ -20,7 +20,7 @@ EXTENSION_TOML_DATA = toml.load(
 # Minimum dependencies required prior to installation
 INSTALL_REQUIRES = [
     # generic
-    "numpy",
+    "numpy<2",
     "torch>=2.2.2",
     "prettytable==3.3.0",
     "tensordict",
