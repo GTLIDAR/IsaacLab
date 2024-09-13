@@ -84,6 +84,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # -- set the framerate of the gym video recorder wrapper so that the playback speed of the produced video matches the simulation
         self.metadata["render_fps"] = 1 / self.step_dt
 
+        self.rand_clock = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
         print("[INFO]: Completed setting up the environment...")
 
     """
@@ -141,7 +142,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         if not hasattr(self, 'episode_length_buf') or self.episode_length_buf is None:
             return torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
         
-        phase = self.episode_length_buf * self.step_dt / 0.64
+        phase = (self.episode_length_buf + self.rand_clock) * self.step_dt / 0.64
         return phase
 
     def step(self, action: torch.Tensor) -> VecEnvStepReturn:
@@ -360,3 +361,5 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
         # reset the episode length buffer
         self.episode_length_buf[env_ids] = 0
+        self.rand_clock[env_ids] = torch.randint(0, 100, (len(env_ids),),device=self.device)
+

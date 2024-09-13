@@ -144,33 +144,44 @@ class DigitV3EventCfg(EventCfg):
         },
     )
 
-    # reset_robot_joints = EventTerm(
-    #     func=mdp.reset_joints_by_offset,
-    #     mode="reset",
-    #     params={
-    #         "position_range": (-0.2, 0.2),
-    #         "velocity_range": (-0.0, 0.0),
-    #     },
-    # )
+    reset_robot_joints_offset = EventTerm(
+        func=mdp.reset_joints_by_offset,
+        mode="reset",
+        params={
+            "position_range": (-0.01, 0.01),
+            "velocity_range": (-0.0, 0.0),
+        },
+    )
 
-    # reset_robot_joints = EventTerm(
-    #     func=mdp.reset_joints_by_scale,
-    #     mode="reset",
-    #     params={
-    #         "position_range": (0.5, 1.5),
-    #         "velocity_range": (0.0, 0.0),
-    #     },
-    # )
+    reset_robot_joints = EventTerm(
+        func=mdp.reset_joints_by_scale,
+        mode="reset",
+        params={
+            "position_range": (0.5, 1.5),
+            "velocity_range": (0.0, 0.0),
+        },
+    )
 
     # interval
     base_external_force_torque = EventTerm(
         func=mdp.apply_external_force_torque,
         mode="interval",
-        interval_range_s=(13.0, 15.0),
+        interval_range_s=(13.0, 14.0),
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "force_range": (-10.0, 15.0),
-            "torque_range": (-15.0, 15.0),
+            "force_range": (0.0, 12.0),
+            "torque_range": (0.0, 0.0),
+        },
+    )
+
+    base_external_torque = EventTerm(
+        func=mdp.apply_external_force_torque,
+        mode="interval",
+        interval_range_s=(15.0, 16.0),
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+            "force_range": (0.0, 0.0),
+            "torque_range": (-12.0, 12.0),
         },
     )
 
@@ -205,7 +216,7 @@ class DigitV3EventCfg(EventCfg):
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
             "stiffness_distribution_params": (0.75, 1.5),
-            "damping_distribution_params": (0.3, 3.0),
+            # "damping_distribution_params": (0.3, 3.0),
             "operation": "scale",
             "distribution": "log_uniform",
         },
