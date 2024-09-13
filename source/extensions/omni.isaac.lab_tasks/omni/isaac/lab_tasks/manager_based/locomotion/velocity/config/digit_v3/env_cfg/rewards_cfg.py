@@ -119,10 +119,11 @@ class DigitV3RewardsCfg(RewardsCfg):
         params={
             "std": 0.05,
             "asset_cfg": SceneEntityCfg("robot", body_names=["left_toe_roll","right_toe_roll"],preserve_order=True),
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=["left_toe_roll","right_toe_roll"],preserve_order=True),
         },
     )
 
-    feet_distance = RewTerm(
+    feet_distance_l1 = RewTerm(
         func=digit_v3_mdp.feet_distance_l1,
         weight=-0.1,
         params={

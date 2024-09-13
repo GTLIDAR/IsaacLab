@@ -33,6 +33,7 @@ def reward_feet_contact_number(env, sensor_cfg: SceneEntityCfg, pos_rw: float, n
     stance_mask[:, 1] = sin_pos < 0
     stance_mask[torch.abs(sin_pos) < 0.1] = 1
     mask_2 = 1 - stance_mask
+    mask_2[torch.abs(sin_pos) < 0.1] = 1
     # print("mask2", mask_2.shape, mask_2)
     # print("stance", stance_mask.shape, stance_mask)
     # print("")
@@ -60,7 +61,7 @@ def foot_clearance_reward(
 
 
 def track_foot_height(
-            env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, std: float) -> torch.Tensor:
+            env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, sensor_cfg: SceneEntityCfg, std: float) -> torch.Tensor:
     """"""
     def height_target(t:torch.Tensor):
         assert t.shape[0] == env.num_envs
@@ -68,10 +69,11 @@ def track_foot_height(
         # a5, a4, a3, a2, a1, a0 = [-40.9599, 81.919, -51.199, 10.24, 0.0, 0.0]
         return a5 * t**5 + a4 * t**4 + a3 * t**3 + a2 * t**2 + a1 * t + a0
     
-
-
     asset: RigidObject = env.scene[asset_cfg.name]
     foot_z = asset.data.body_pos_w[:, asset_cfg.body_ids, 2]
+
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    contacts = contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :].norm(dim=-1).max(dim=1)[0] > 1.0
 
     phase = env.get_phase()
 
@@ -80,7 +82,14 @@ def track_foot_height(
     stance_mask[:, 0] = sin_pos >= 0
     stance_mask[:, 1] = sin_pos < 0
     stance_mask[torch.abs(sin_pos) < 0.1] = 1
-    swing_mask = 1 - stance_mask
+    # swing_mask = 1 - stance_mask
+    mask_2 = 1 - stance_mask
+    mask_2[torch.abs(sin_pos) < 0.1] = 1
+
+    if (torch.sum(contacts == stance_mask) > torch.sum(contacts == mask_2)):
+        swing_mask = 1 - stance_mask
+    else:
+        swing_mask = 1 - mask_2
     
     filt_foot = torch.where(swing_mask == 1, foot_z, torch.zeros_like(foot_z))
 
@@ -93,19 +102,19 @@ def track_foot_height(
     return reward
 
 
-def feet_distance( env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, min_dist: float, max_dist: float
-) -> torch.Tensor:
-    """
-    Calculates the reward based on the distance between the feet. Penalize feet get close to each other or too far away.
-    """
-    asset: RigidObject = env.scene[asset_cfg.name]
-    foot_pos = asset.data.body_pos_w[:, asset_cfg.body_ids, :3]
-    foot_dist = torch.norm(foot_pos[:, 0, :] - foot_pos[:, 1, :], dim=1)
+# def feet_distance( env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, min_dist: float, max_dist: float
+# ) -> torch.Tensor:
+#     """
+#     Calculates the reward based on the distance between the feet. Penalize feet get close to each other or too far away.
+#     """
+#     asset: RigidObject = env.scene[asset_cfg.name]
+#     foot_pos = asset.data.body_pos_w[:, asset_cfg.body_ids, :3]
+#     foot_dist = torch.norm(foot_pos[:, 0, :] - foot_pos[:, 1, :], dim=1)
 
-    d_min = torch.clamp(foot_dist - min_dist, -0.5, 0.)
-    # d_max = torch.clamp(foot_dist - max_dist, 0, 0.5)
+#     d_min = torch.clamp(foot_dist - min_dist, -0.5, 0.)
+#     # d_max = torch.clamp(foot_dist - max_dist, 0, 0.5)
 
-    return torch.exp(-torch.abs(d_min) * 100) 
+#     return torch.exp(-torch.abs(d_min) * 100) 
 
 
 def feet_distance_l1( env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, min_dist: float, max_dist: float

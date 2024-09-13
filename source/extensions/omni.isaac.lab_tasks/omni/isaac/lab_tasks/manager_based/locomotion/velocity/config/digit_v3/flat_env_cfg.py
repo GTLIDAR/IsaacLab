@@ -38,9 +38,9 @@ class DigitV3FlatEnvCfg(DigitV3RoughEnvCfg):
         # self.rewards.feet_air_time.weight = 1.25
         # self.rewards.foot_clearance.weight = 0.5
         self.rewards.flat_orientation_l2.weight = -5.0
-        self.rewards.foot_contact.weight = 1.5
+        self.rewards.foot_contact.weight = 1.0
         self.rewards.track_foot_height.weight = 0.5
-        self.rewards.feet_distance.weight = -0.1
+        self.rewards.feet_distance_l1.weight = -0.1
 
         self.rewards.dof_pos_limits.weight = -0.1
         self.rewards.termination_penalty.weight = -200
