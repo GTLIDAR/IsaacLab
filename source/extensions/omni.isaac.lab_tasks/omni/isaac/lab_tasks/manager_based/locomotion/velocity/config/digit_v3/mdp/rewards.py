@@ -99,7 +99,62 @@ def track_foot_height_l1(
     feet_z_value = torch.sum(filt_foot, dim=1)
 
     reward = torch.exp(-torch.square(feet_z_value - feet_z_target))
-    # print(reward)
+
+    return reward
+
+
+def track_foot_height_poly(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg,
+    target_height: float,
+    std: float,
+    tanh_mult: float,
+) -> torch.Tensor:
+    """"""
+
+    def height_target(t: torch.Tensor):
+        # assert t.shape[0] == env.num_envs
+        a5, a4, a3, a2, a1, a0 = [9.6, 12.0, -18.8, 5.0, 0.1, 0.0]
+        return a5 * t**5 + a4 * t**4 + a3 * t**3 + a2 * t**2 + a1 * t + a0
+
+    asset: RigidObject = env.scene[asset_cfg.name]
+    foot_z = asset.data.body_pos_w[:, asset_cfg.body_ids, 2]
+    # get the phase of the gait
+    phase = env.get_phase()
+    sin_pos = torch.sin(2 * torch.pi * phase)
+
+    # create a mask for the stance and swing phase
+    stance_mask = torch.zeros((env.num_envs, 2), device=env.device)
+    stance_mask[:, 0] = sin_pos >= 0
+    stance_mask[:, 1] = sin_pos < 0
+    stance_mask[torch.abs(sin_pos) < 0.1] = 1
+    swing_mask = 1 - stance_mask
+    filt_foot_start_right = torch.where(
+        swing_mask == 1, foot_z, torch.zeros_like(foot_z)
+    )
+
+    phase_mod = torch.fmod(2 * torch.pi * phase, 0.5)
+    feet_z_target = height_target(phase_mod)
+    feet_z_value = torch.sum(filt_foot_start_right, dim=1)
+
+    reward = torch.exp(-torch.square(feet_z_value - feet_z_target))
+
+    # now suppose we start from the left foot
+    stance_mask = torch.zeros((env.num_envs, 2), device=env.device)
+    stance_mask[:, 0] = sin_pos < 0
+    stance_mask[:, 1] = sin_pos >= 0
+    stance_mask[torch.abs(sin_pos) < 0.1] = 1
+    swing_mask = 1 - stance_mask
+    filt_foot_start_left = torch.where(
+        swing_mask == 1, foot_z, torch.zeros_like(foot_z)
+    )
+
+    # phase_mod = torch.fmod(2 * torch.pi * phase, 0.5)
+    # feet_z_target = height_target(phase_mod)
+    feet_z_value_start_left = torch.sum(filt_foot_start_left, dim=1)
+
+    reward = torch.exp(-torch.square(feet_z_value_start_left - feet_z_target)) + reward
+
     return reward
 
 
