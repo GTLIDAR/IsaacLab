@@ -235,24 +235,24 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
 
         self.rewards.undesired_contacts = None
 
-        self.rewards.track_lin_vel_xy_exp.weight = 2.0
-        self.rewards.track_ang_vel_z_exp.weight = 2.0
-        self.rewards.alive.weight = 0.01
-        self.rewards.lin_vel_z_l2.weight = -0.2
-        self.rewards.ang_vel_xy_l2.weight = -0.1
-        self.rewards.dof_torques_l2.weight = -1.5e-7
-        self.rewards.dof_acc_l2.weight = -1.25e-7
-        self.rewards.action_rate_l2.weight = -0.005
+        # self.rewards.track_lin_vel_xy_exp.weight = 2.0
+        # self.rewards.track_ang_vel_z_exp.weight = 2.0
+        # self.rewards.alive.weight = 0.01
+        # self.rewards.lin_vel_z_l2.weight = -0.2
+        # self.rewards.ang_vel_xy_l2.weight = -0.1
+        # self.rewards.dof_torques_l2.weight = -1.5e-7
+        # self.rewards.dof_acc_l2.weight = -1.25e-7
+        # self.rewards.action_rate_l2.weight = -0.005
 
-        self.rewards.feet_air_time.weight = 1.0
-        self.rewards.flat_orientation_l2.weight = -5.0
+        # self.rewards.feet_air_time.weight = 1.0
+        # self.rewards.flat_orientation_l2.weight = -5.0
 
-        self.rewards.dof_pos_limits.weight = -0.1
-        self.rewards.termination_penalty.weight = -200.0
-        self.rewards.feet_slide.weight = -0.25
-        self.rewards.joint_deviation_hip.weight = -0.1
-        self.rewards.joint_deviation_arms.weight = -0.2
-        self.rewards.joint_deviation_torso.weight = -0.1
+        # self.rewards.dof_pos_limits.weight = -0.1
+        # self.rewards.termination_penalty.weight = -200.0
+        # self.rewards.feet_slide.weight = -0.25
+        # self.rewards.joint_deviation_hip.weight = -0.1
+        # self.rewards.joint_deviation_arms.weight = -0.2
+        # self.rewards.joint_deviation_torso.weight = -0.1
 
         # Commands
         self.commands.base_velocity.ranges.lin_vel_x = (-0.1, 1.0)

@@ -184,7 +184,7 @@ class DigitV3EventCfg(EventCfg):
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
             "stiffness_distribution_params": (0.75, 1.5),
-            "damping_distribution_params": (0.3, 3.0),
+            # "damping_distribution_params": (0.3, 3.0),
             "operation": "scale",
             "distribution": "log_uniform",
         },
