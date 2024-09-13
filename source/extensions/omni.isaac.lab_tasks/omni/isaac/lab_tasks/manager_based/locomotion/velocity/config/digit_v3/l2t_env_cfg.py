@@ -103,7 +103,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.dof_acc_l2.weight = -1.25e-7
         self.rewards.action_rate_l2.weight = -0.005
 
-        self.rewards.feet_air_time.weight = 1.0
+        # self.rewards.feet_air_time.weight = 1.0
         self.rewards.flat_orientation_l2.weight = -5.0
 
         self.rewards.dof_pos_limits.weight = -0.1
@@ -168,12 +168,12 @@ class DigitV3L2TFlatEnvCfg(DigitV3L2TRoughEnvCfg):
 
         self.rewards.action_rate_l2.weight = -0.005
 
-        self.rewards.feet_air_time.weight = 1.25
-        self.rewards.foot_clearance.weight = 0.5
+        # self.rewards.feet_air_time.weight = 1.25
+        # self.rewards.foot_clearance.weight = 0.5
         self.rewards.flat_orientation_l2.weight = -5.0
         self.rewards.foot_contact.weight = 0.5
         self.rewards.track_foot_height.weight = 0.5
-        self.rewards.feet_distance.weight = 0.01
+        # self.rewards.feet_distance.weight = 0.01
 
         self.rewards.dof_pos_limits.weight = -0.1
         self.rewards.termination_penalty.weight = -200
