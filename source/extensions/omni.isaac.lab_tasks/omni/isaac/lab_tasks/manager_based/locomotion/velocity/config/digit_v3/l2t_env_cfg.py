@@ -73,6 +73,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
+        self.scene.env_spacing = 5.0
         self.sim.dt = 0.001  # 0.001
         # self.sim.render_interval = 20
         self.decimation = 20

@@ -154,11 +154,11 @@ class DigitV3EventCfg(EventCfg):
     )
 
     reset_robot_joints = EventTerm(
-        func=mdp.reset_joints_by_scale,
+        func=mdp.reset_joints_by_offset,
         mode="reset",
         params={
-            "position_range": (0.5, 1.5),
-            "velocity_range": (0.0, 0.0),
+            "position_range": (-0.2, 0.2),
+            "velocity_range": (-0.1, 0.1),
         },
     )
 
@@ -216,7 +216,6 @@ class DigitV3EventCfg(EventCfg):
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
             "stiffness_distribution_params": (0.75, 1.5),
-            # "damping_distribution_params": (0.3, 3.0),
             "operation": "scale",
             "distribution": "log_uniform",
         },
