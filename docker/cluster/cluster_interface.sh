@@ -29,7 +29,7 @@ check_docker_version() {
     apptainer_version=$(apptainer --version | awk '{ print $3 }')
 
     # Check if version is above 25.xx
-    if [ "$(echo "${docker_version}" | cut -d '.' -f 1)" -ge 25 ]; then
+    if [ "$(echo "${docker_version}" | cut -d '.' -f 1)" -ge 29 ]; then
         echo "[ERROR]: Docker version ${docker_version} is not compatible with Apptainer version ${apptainer_version}. Exiting."
         exit 1
     else
@@ -62,7 +62,7 @@ submit_job() {
 
     case $CLUSTER_JOB_SCHEDULER in
         "SLURM")
-            CMD=sbatch
+            CMD=bash
             job_script_file=submit_job_slurm.sh
             ;;
         "PBS")

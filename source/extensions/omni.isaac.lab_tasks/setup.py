@@ -47,10 +47,16 @@ EXTRAS_REQUIRE = {
     "rl-games": ["rl-games==1.6.1", "gym"],  # rl-games still needs gym :(
     "rsl-rl": ["rsl-rl@git+https://github.com/leggedrobotics/rsl_rl.git"],
     "robomimic": [],
+    "sb3-contrib": ["sb3-contrib"],
+    "rlopt": ["rlopt@git+https://github.com/FeiyangWuPK/RLOpt.git"],
+    "hydra-core": ["hydra-core"],
+    "rich": ["rich"],
+    "tqdm": ["tqdm"],
 }
 # Add the names with hyphens as aliases for convenience
 EXTRAS_REQUIRE["rl_games"] = EXTRAS_REQUIRE["rl-games"]
 EXTRAS_REQUIRE["rsl_rl"] = EXTRAS_REQUIRE["rsl-rl"]
+EXTRAS_REQUIRE["sb3_contrib"] = EXTRAS_REQUIRE["sb3-contrib"]
 
 # Check if the platform is Linux and add the dependency
 if platform.system() == "Linux":

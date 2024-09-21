@@ -54,6 +54,9 @@ dir_name=$(basename "$1")
 # copy container to the compute node
 tar -xf $CLUSTER_SIF_PATH/$2.tar  -C $TMPDIR
 
+# create a persistant overlay using apptainer
+apptainer overlay create --size 20480 $TMPDIR/$2.img
+
 # execute command in singularity container
 # NOTE: ISAACLAB_PATH is normally set in `isaaclab.sh` but we directly call the isaac-sim python because we sync the entire
 # Isaac Lab directory to the compute node and remote the symbolic link to isaac-sim
@@ -68,7 +71,8 @@ singularity exec \
     -B $TMPDIR/docker-isaac-sim/documents:${DOCKER_USER_HOME}/Documents:rw \
     -B $TMPDIR/$dir_name:/workspace/isaaclab:rw \
     -B $CLUSTER_ISAACLAB_DIR/logs:/workspace/isaaclab/logs:rw \
-    --nv --writable --containall $TMPDIR/$2.sif \
+    --overlay $TMPDIR/$2.img \
+    --nv --containall $TMPDIR/$2.sif \
     bash -c "export ISAACLAB_PATH=/workspace/isaaclab && cd /workspace/isaaclab && /isaac-sim/python.sh ${CLUSTER_PYTHON_EXECUTABLE} ${@:3}"
 
 # copy resulting cache files back to host
