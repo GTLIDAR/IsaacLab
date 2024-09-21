@@ -18,13 +18,20 @@ if TYPE_CHECKING:
     from omni.isaac.lab.managers import RewardTermCfg
 
 
-def reward_feet_contact_number(env, sensor_cfg: SceneEntityCfg, pos_rw: float, neg_rw: float)-> torch.Tensor:
+def reward_feet_contact_number(
+    env, sensor_cfg: SceneEntityCfg, pos_rw: float, neg_rw: float
+) -> torch.Tensor:
     """
     Calculates a reward based on the number of feet contacts aligning with the gait phase.
     Rewards or penalizes depending on whether the foot contact matches the expected gait phase.
     """
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
-    contacts = contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :].norm(dim=-1).max(dim=1)[0] > 1.0
+    contacts = (
+        contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :]
+        .norm(dim=-1)
+        .max(dim=1)[0]
+        > 1.0
+    )
     # print("contact", contacts.shape, contacts)
     phase = env.get_phase()
     sin_pos = torch.sin(2 * torch.pi * phase)
@@ -37,7 +44,7 @@ def reward_feet_contact_number(env, sensor_cfg: SceneEntityCfg, pos_rw: float, n
     # print("mask2", mask_2.shape, mask_2)
     # print("stance", stance_mask.shape, stance_mask)
     # print("")
-    if (torch.sum(contacts == stance_mask) > torch.sum(contacts == mask_2)):
+    if torch.sum(contacts == stance_mask) > torch.sum(contacts == mask_2):
         # print("1")
         reward = torch.where(contacts == stance_mask, pos_rw, neg_rw)
         return torch.mean(reward, dim=1)
@@ -70,7 +77,11 @@ def foot_clearance_reward(
 
 
 def track_foot_height(
-            env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, sensor_cfg: SceneEntityCfg, std: float) -> torch.Tensor:
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg,
+    sensor_cfg: SceneEntityCfg,
+    std: float,
+) -> torch.Tensor:
     """"""
 
     def height_target(t: torch.Tensor):
@@ -78,12 +89,17 @@ def track_foot_height(
         a5, a4, a3, a2, a1, a0 = [9.6, 12.0, -18.8, 5.0, 0.1, 0.0]
         # a5, a4, a3, a2, a1, a0 = [-40.9599, 81.919, -51.199, 10.24, 0.0, 0.0]
         return a5 * t**5 + a4 * t**4 + a3 * t**3 + a2 * t**2 + a1 * t + a0
-    
+
     asset: RigidObject = env.scene[asset_cfg.name]
     foot_z = asset.data.body_pos_w[:, asset_cfg.body_ids, 2]
 
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
-    contacts = contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :].norm(dim=-1).max(dim=1)[0] > 1.0
+    contacts = (
+        contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :]
+        .norm(dim=-1)
+        .max(dim=1)[0]
+        > 1.0
+    )
 
     phase = env.get_phase()
 
@@ -96,11 +112,11 @@ def track_foot_height(
     mask_2 = 1 - stance_mask
     mask_2[torch.abs(sin_pos) < 0.1] = 1
 
-    if (torch.sum(contacts == stance_mask) > torch.sum(contacts == mask_2)):
+    if torch.sum(contacts == stance_mask) > torch.sum(contacts == mask_2):
         swing_mask = 1 - stance_mask
     else:
         swing_mask = 1 - mask_2
-    
+
     filt_foot = torch.where(swing_mask == 1, foot_z, torch.zeros_like(foot_z))
 
     phase_mod = torch.fmod(phase, 0.5)
@@ -108,7 +124,7 @@ def track_foot_height(
     feet_z_value = torch.sum(filt_foot, dim=1)
 
     error = torch.square(feet_z_value - feet_z_target)
-    reward = torch.exp(-error/ std**2)
+    reward = torch.exp(-error / std**2)
     return reward
 
 
@@ -124,10 +140,11 @@ def track_foot_height(
 #     d_min = torch.clamp(foot_dist - min_dist, -0.5, 0.)
 #     # d_max = torch.clamp(foot_dist - max_dist, 0, 0.5)
 
-#     return torch.exp(-torch.abs(d_min) * 100) 
+#     return torch.exp(-torch.abs(d_min) * 100)
 
 
-def feet_distance_l1( env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, min_dist: float, max_dist: float
+def feet_distance_l1(
+    env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, min_dist: float, max_dist: float
 ) -> torch.Tensor:
     """
     Calculates the reward based on the distance between the feet. Penalize feet get close to each other or too far away.
@@ -139,7 +156,4 @@ def feet_distance_l1( env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, min_dis
     d_min = torch.clamp(foot_dist - min_dist, -0.5, 0.0)
     # d_max = torch.clamp(foot_dist - max_dist, 0, 0.5)
 
-    return torch.exp(-torch.abs(d_min) * 100) 
-
-    return torch.abs(d_min)
-
+    return torch.exp(-torch.abs(d_min) * 100)

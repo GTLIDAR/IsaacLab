@@ -128,14 +128,14 @@ class TeacherObsCfg(ObsGroup):
 
     # applied_torque = ObsTerm(func=applied_torque)
 
-    # root_state_w = ObsTerm(
-    #     func=digit_mdp.root_state_w,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #         )
-    #     },
-    # )
+    root_state_w = ObsTerm(
+        func=digit_mdp.root_state_w,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+            )
+        },
+    )
 
     # acceleration = ObsTerm(
     #     func=digit_mdp.acceleration,
