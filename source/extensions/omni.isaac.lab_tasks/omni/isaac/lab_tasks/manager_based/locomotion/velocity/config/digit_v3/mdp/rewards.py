@@ -76,6 +76,13 @@ def foot_clearance_reward(
     return torch.exp(-torch.sum(reward, dim=1) / std)
 
 
+@torch.jit.script
+def height_target(t: torch.Tensor) -> torch.Tensor:
+
+    a5, a4, a3, a2, a1, a0 = [9.6, 12.0, -18.8, 5.0, 0.1, 0.0]
+    return a5 * t**5 + a4 * t**4 + a3 * t**3 + a2 * t**2 + a1 * t + a0
+
+
 def track_foot_height(
     env: ManagerBasedRLEnv,
     asset_cfg: SceneEntityCfg,
@@ -83,12 +90,6 @@ def track_foot_height(
     std: float,
 ) -> torch.Tensor:
     """"""
-
-    def height_target(t: torch.Tensor):
-        assert t.shape[0] == env.num_envs
-        a5, a4, a3, a2, a1, a0 = [9.6, 12.0, -18.8, 5.0, 0.1, 0.0]
-        # a5, a4, a3, a2, a1, a0 = [-40.9599, 81.919, -51.199, 10.24, 0.0, 0.0]
-        return a5 * t**5 + a4 * t**4 + a3 * t**3 + a2 * t**2 + a1 * t + a0
 
     asset: RigidObject = env.scene[asset_cfg.name]
     foot_z = asset.data.body_pos_w[:, asset_cfg.body_ids, 2]
@@ -157,3 +158,45 @@ def feet_distance_l1(
     # d_max = torch.clamp(foot_dist - max_dist, 0, 0.5)
 
     return torch.exp(-torch.abs(d_min) * 100)
+
+
+def torque_applied_l2(
+    env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, std: float
+) -> torch.Tensor:
+    """
+    Calculates the L2 norm of the torques applied to the joints of the robot.
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    torques = asset.data.applied_torque[:, asset_cfg.joint_ids]
+    return torch.exp(-torch.norm(torques, dim=1) / std)
+
+
+def center_of_mass_deviation_l2(
+    env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, std: float
+) -> torch.Tensor:
+    """
+    Calculates the L2 norm of the deviation of the center of mass from the center of two foot.
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    com_xy = asset.data.root_pos_w[:, :2]
+    foot_pos = asset.data.body_pos_w[:, asset_cfg.body_ids, :3]
+    foot_center = torch.mean(
+        foot_pos, dim=1
+    ).squeeze()  # from (batch, 2, 3) to (batch, 3)
+    foot_center_xy = foot_center[:, :2]
+    return torch.exp(-torch.norm(com_xy - foot_center_xy, dim=1) / std)
+
+
+def shoulder_center_deviation_foot_center_l2(
+    env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, std: float
+) -> torch.Tensor:
+    """
+    Calculates the L2 norm of the deviation of the center of the shoulder from the center of two foot.
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    shoulder_foot_pos = asset.data.body_pos_w[:, asset_cfg.body_ids, :3]
+    shoulder_pos = shoulder_foot_pos[:, :2, :]
+    shoulder_pos_center_xy = torch.mean(shoulder_pos, dim=1).squeeze()[:, :2]
+    foot_pos = shoulder_foot_pos[:, 2:, :]
+    foot_center_xy = torch.mean(foot_pos, dim=1).squeeze()[:, :2]
+    return torch.exp(-torch.norm(shoulder_pos_center_xy - foot_center_xy, dim=1) / std)

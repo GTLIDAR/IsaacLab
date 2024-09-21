@@ -34,7 +34,7 @@ class DigitV3FlatEnvCfg(DigitV3RoughEnvCfg):
         # self.rewards.dof_vel_l2.weight = -1.0e-7
 
         self.rewards.action_rate_l2.weight = -0.005
-        
+
         # self.rewards.feet_air_time.weight = 1.25
         # self.rewards.foot_clearance.weight = 0.5
         self.rewards.flat_orientation_l2.weight = -5.0
@@ -48,7 +48,7 @@ class DigitV3FlatEnvCfg(DigitV3RoughEnvCfg):
         self.rewards.joint_deviation_hip.weight = -0.2
         self.rewards.joint_deviation_arms.weight = -0.2
         self.rewards.joint_deviation_torso.weight = -0.2
-       
+
         # change terrain to flat
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None

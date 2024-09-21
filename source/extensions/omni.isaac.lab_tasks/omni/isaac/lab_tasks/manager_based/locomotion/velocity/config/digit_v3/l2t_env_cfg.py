@@ -74,9 +74,9 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # post init of parent
         super().__post_init__()
         self.scene.env_spacing = 5.0
-        self.sim.dt = 0.001  # 0.001
-        # self.sim.render_interval = 20
-        self.decimation = 20
+        self.sim.dt = 0.005  # 0.001
+        # self.sim.render_interval = 4
+        self.decimation = 4
         self.sim.gravity = (0.0, 0.0, -9.806)
         self.sim.render_interval = self.decimation
 
@@ -173,7 +173,7 @@ class DigitV3L2TFlatEnvCfg(DigitV3L2TRoughEnvCfg):
         # self.rewards.foot_clearance.weight = 0.5
         self.rewards.flat_orientation_l2.weight = -5.0
         self.rewards.foot_contact.weight = 0.5
-        self.rewards.track_foot_height.weight = 0.5
+        # self.rewards.track_foot_height.weight = 0.5
         # self.rewards.feet_distance.weight = 0.01
 
         self.rewards.dof_pos_limits.weight = -0.1

@@ -23,15 +23,13 @@ if TYPE_CHECKING:
     from omni.isaac.lab.envs import ManagerBasedEnv, ManagerBasedRLEnv
 
 
-def clock(
-    env: ManagerBasedRLEnv)-> torch.Tensor:
+def clock(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Clock time using sin and cos from the phase of the simulation."""
     phase = env.get_phase()
-    return torch.cat([torch.sin(2 * torch.pi * phase).unsqueeze(1), 
-                   torch.cos(2 * torch.pi * phase).unsqueeze(1)], dim=1).to(env.device)
-
-    
-
-
-
-
+    return torch.cat(
+        [
+            torch.sin(2 * torch.pi * phase).unsqueeze(1),
+            torch.cos(2 * torch.pi * phase).unsqueeze(1),
+        ],
+        dim=1,
+    ).to(env.device)

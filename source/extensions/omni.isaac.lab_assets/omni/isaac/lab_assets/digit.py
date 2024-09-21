@@ -31,7 +31,7 @@ full_path = os.path.dirname(os.path.realpath(__file__))
 
 DIGITV3_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"{ISAACLAB_ASSETS_DATA_DIR}/Robot/Agility/digit/digit_v3_sep10.usd",
+        usd_path=f"{ISAACLAB_ASSETS_DATA_DIR}/Robot/Agility/digit/digit_v3_aug2.usd",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
@@ -108,14 +108,14 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_knee": 200,
             },
             damping={
-                "left_hip_roll": 5.0 + 66.849,
-                "left_hip_yaw": 5.0 + 26.1129,
-                "left_hip_pitch": 5.0 + 38.05,
-                "left_knee": 5.0 + 38.05,
-                "right_hip_roll": 5.0 + 66.849,
-                "right_hip_yaw": 5.0 + 26.1129,
-                "right_hip_pitch": 5.0 + 38.05,
-                "right_knee": 5.0 + 38.05,
+                "left_hip_roll": 5.0,  # + 66.849,
+                "left_hip_yaw": 5.0,  # + 26.1129,
+                "left_hip_pitch": 5.0,  # + 38.05,
+                "left_knee": 5.0,  # + 38.05,
+                "right_hip_roll": 5.0,  # + 66.849,
+                "right_hip_yaw": 5.0,  # + 26.1129,
+                "right_hip_pitch": 5.0,  # + 38.05,
+                "right_knee": 5.0,  # + 38.05,
             },
             armature={
                 "left_hip_roll": 0.1728,
@@ -154,14 +154,14 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_elbow": 200,
             },
             damping={
-                "left_shoulder_roll": 5.0 + 66.849,
-                "left_shoulder_pitch": 5.0 + 66.849,
-                "left_shoulder_yaw": 5.0 + 26.1129,
-                "left_elbow": 5.0 + 66.849,
-                "right_shoulder_roll": 5.0 + 66.849,
-                "right_shoulder_pitch": 5.0 + 66.849,
-                "right_shoulder_yaw": 5.0 + 26.1129,
-                "right_elbow": 5.0 + 66.849,
+                "left_shoulder_roll": 5.0,  # + 66.849,
+                "left_shoulder_pitch": 5.0,  # + 66.849,
+                "left_shoulder_yaw": 5.0,  # + 26.1129,
+                "left_elbow": 5.0,  # + 66.849,
+                "right_shoulder_roll": 5.0,  # + 66.849,
+                "right_shoulder_pitch": 5.0,  # + 66.849,
+                "right_shoulder_yaw": 5.0,  # + 26.1129,
+                "right_elbow": 5.0,  # + 66.849,
             },
             armature={
                 "left_shoulder_roll": 0.1728,
@@ -192,10 +192,10 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_toe_B": 20,
             },
             damping={
-                "left_toe_A": 1.0 + 15.5532,
-                "left_toe_B": 1.0 + 15.5532,
-                "right_toe_A": 1.0 + 15.5532,
-                "right_toe_B": 1.0 + 15.5532,
+                "left_toe_A": 1.0,  # + 15.5532,
+                "left_toe_B": 1.0,  # + 15.5532,
+                "right_toe_A": 1.0,  # + 15.5532,
+                "right_toe_B": 1.0,  # + 15.5532,
             },
             armature={
                 "left_toe_A": 0.035,
