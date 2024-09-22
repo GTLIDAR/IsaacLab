@@ -55,24 +55,17 @@ def reward_feet_contact_number(
 
 
 def foot_clearance_reward(
-    env: ManagerBasedRLEnv,
-    asset_cfg: SceneEntityCfg,
-    target_height: float,
-    std: float,
-    tanh_mult: float,
+    env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, std: float, tanh_mult: float
 ) -> torch.Tensor:
     """
     Reward the swinging feet for clearing a specified height off the ground
     """
     asset: RigidObject = env.scene[asset_cfg.name]
-    foot_z_target_error = torch.square(
-        asset.data.body_pos_w[:, asset_cfg.body_ids, 2] - target_height
-    )
     foot_velocity_tanh = torch.tanh(
         tanh_mult
         * torch.norm(asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :2], dim=2)
     )
-    reward = foot_z_target_error * foot_velocity_tanh
+    reward = foot_velocity_tanh
     return torch.exp(-torch.sum(reward, dim=1) / std)
 
 
@@ -158,6 +151,17 @@ def feet_distance_l1(
     # d_max = torch.clamp(foot_dist - max_dist, 0, 0.5)
 
     return torch.exp(-torch.abs(d_min) * 100)
+
+    return torch.abs(d_min)
+
+
+def joint_torques_penalty(
+    env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg
+) -> torch.Tensor:
+    """Penalize joint torques on the articulation."""
+    # extract the used quantities (to enable type-hinting)
+    asset: Articulation = env.scene[asset_cfg.name]
+    return torch.linalg.norm((asset.data.applied_torque), dim=1)
 
 
 def torque_applied_l2(

@@ -170,17 +170,6 @@ class DigitV3EventCfg(EventCfg):
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base"),
             "force_range": (0.0, 12.0),
-            "torque_range": (0.0, 0.0),
-        },
-    )
-
-    base_external_torque = EventTerm(
-        func=mdp.apply_external_force_torque,
-        mode="interval",
-        interval_range_s=(15.0, 16.0),
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "force_range": (0.0, 0.0),
             "torque_range": (-12.0, 12.0),
         },
     )
@@ -215,7 +204,8 @@ class DigitV3EventCfg(EventCfg):
         mode="reset",
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
-            "stiffness_distribution_params": (0.75, 1.5),
+            "stiffness_distribution_params": (0.5, 1.5),
+            "damping_distribution_params": (0.3, 5.0),
             "operation": "scale",
             "distribution": "log_uniform",
         },
