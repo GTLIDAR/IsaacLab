@@ -114,8 +114,8 @@ def track_foot_height(
     filt_foot = torch.where(swing_mask == 1, foot_z, torch.zeros_like(foot_z))
 
     phase_mod = torch.fmod(phase, 0.5)
-    feet_z_target = height_target(phase_mod)
-    feet_z_value = torch.sum(filt_foot, dim=1)
+    feet_z_target = height_target(phase_mod) + torch.min(filt_foot, dim=1).values
+    feet_z_value = torch.max(filt_foot, dim=1).values
 
     error = torch.square(feet_z_value - feet_z_target)
     reward = torch.exp(-error / std**2)
@@ -151,8 +151,6 @@ def feet_distance_l1(
     # d_max = torch.clamp(foot_dist - max_dist, 0, 0.5)
 
     return torch.exp(-torch.abs(d_min) * 100)
-
-    return torch.abs(d_min)
 
 
 def joint_torques_penalty(

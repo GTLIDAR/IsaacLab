@@ -75,9 +75,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         super().__post_init__()
         self.scene.env_spacing = 5.0
         self.sim.dt = 0.001  # 0.001
-        self.sim.dt = 0.001  # 0.001
         # self.sim.render_interval = 4
-        self.decimation = 20
         self.decimation = 20
         self.sim.gravity = (0.0, 0.0, -9.806)
         self.sim.render_interval = self.decimation
@@ -101,29 +99,22 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         )
 
         self.rewards.undesired_contacts = None
-        self.rewards.undesired_contacts = None
-
         self.rewards.alive.weight = 0.01
         self.rewards.track_lin_vel_xy_exp.weight = 2.25
         self.rewards.track_ang_vel_z_exp.weight = 2.25
         self.rewards.lin_vel_z_l2.weight = -0.3
         self.rewards.ang_vel_xy_l2.weight = -0.075
-
         self.rewards.dof_torques_l2.weight = -1.0e-6
         self.rewards.dof_acc_l2.weight = -1.0e-6
         # self.rewards.dof_vel_l2.weight = -1.0e-7
-
         self.rewards.track_lin_vel_xy_exp.weight = 2.25
         self.rewards.track_ang_vel_z_exp.weight = 2.25
         self.rewards.lin_vel_z_l2.weight = -0.3
         self.rewards.ang_vel_xy_l2.weight = -0.075
-
         self.rewards.dof_torques_l2.weight = -1.0e-6
         self.rewards.dof_acc_l2.weight = -1.0e-6
         # self.rewards.dof_vel_l2.weight = -1.0e-7
-
         self.rewards.action_rate_l2.weight = -0.005
-
         # self.rewards.feet_air_time.weight = 1.25
         # self.rewards.foot_clearance.weight = 0.5
         # self.rewards.feet_air_time.weight = 1.25
@@ -132,9 +123,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.foot_contact.weight = 1.5
         # self.rewards.track_foot_height.weight = 0.5
         # self.rewards.feet_distance_l1.weight = -0.25
-
         self.rewards.dof_pos_limits.weight = -0.1
-        self.rewards.termination_penalty.weight = -200
         self.rewards.termination_penalty.weight = -200
         self.rewards.feet_slide.weight = -0.25
         self.rewards.joint_deviation_hip.weight = -0.2
@@ -186,7 +175,7 @@ class DigitV3L2TFlatEnvCfg(DigitV3L2TRoughEnvCfg):
         super().__post_init__()
 
         # override rewards
-        self.rewards.alive.weight = 0.01
+        self.rewards.alive.weight = 20
         self.rewards.track_lin_vel_xy_exp.weight = 2.0
         self.rewards.track_ang_vel_z_exp.weight = 2.0
         self.rewards.lin_vel_z_l2.weight = -0.3
