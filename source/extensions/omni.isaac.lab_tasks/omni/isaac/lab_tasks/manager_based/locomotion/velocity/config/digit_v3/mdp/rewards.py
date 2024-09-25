@@ -112,10 +112,11 @@ def track_foot_height(
         swing_mask = 1 - mask_2
 
     filt_foot = torch.where(swing_mask == 1, foot_z, torch.zeros_like(foot_z))
+    stand_foot = torch.where(swing_mask == 0, foot_z, torch.zeros_like(foot_z))
 
     phase_mod = torch.fmod(phase, 0.5)
-    feet_z_target = height_target(phase_mod) + torch.min(filt_foot, dim=1).values
-    feet_z_value = torch.max(filt_foot, dim=1).values
+    feet_z_target = height_target(phase_mod) + torch.sum(stand_foot, dim=1)
+    feet_z_value = torch.sum(filt_foot, dim=1)
 
     error = torch.square(feet_z_value - feet_z_target)
     reward = torch.exp(-error / std**2)
