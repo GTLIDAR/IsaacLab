@@ -113,7 +113,9 @@ from omni.isaac.lab_tasks.utils.wrappers.sb3 import (
 
 
 @hydra_task_config(args_cli.task, "sb3_cfg_entry_point")
-def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: dict):
+def main(
+    env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: dict
+):
     """Train with stable-baselines agent."""
     # override configurations with non-hydra CLI arguments
     env_cfg.scene.num_envs = (
@@ -428,9 +430,9 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
         rollout_buffer_class=RLOptDictRecurrentReplayBuffer,
         **agent_cfg
     )
-    # agent.set_parameters(
-    #     "logs/sb3/Isaac-Velocity-Rough-Digit-V3-L2T-v0/2024-09-06_08-23-06/model_253952000_steps_rough_good.zip"
-    # )
+    agent.set_parameters(
+        "/home/feiyang/Documents/Repository/digit_arsim_ros2/models/model_998400000_steps.zip"
+    )
     # configure the logger
     new_logger = configure(log_dir, ["tensorboard"])
     agent.set_logger(new_logger)
