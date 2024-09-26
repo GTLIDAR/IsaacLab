@@ -450,7 +450,6 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
         total_timesteps=n_timesteps,
         callback=callback_list,
         progress_bar=True,
-        log_interval=10,
     )
 
     # save the final model

@@ -110,13 +110,13 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.feet_air_time.weight = 5.0
         self.rewards.track_foot_height.weight = 5.0
         self.rewards.dof_pos_limits.weight = -0.1
-        self.rewards.termination_penalty.weight = -200
+        self.rewards.termination_penalty.weight = -400
         self.rewards.feet_slide.weight = -0.25
         self.rewards.joint_deviation_hip.weight = -0.2
         self.rewards.joint_deviation_torso.weight = -0.2
         self.rewards.flat_orientation_l2.weight = -1.0
         self.rewards.dof_torques_l2.weight = 0.0
-        self.rewards.action_rate_l2.weight = -0.005
+        self.rewards.action_rate_l2.weight = 0.0
         self.rewards.dof_acc_l2.weight = -1.25e-7
 
         # Commands

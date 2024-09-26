@@ -83,9 +83,9 @@ reportGeneralTypeIssues = "none"       # -> raises 218 errors (usage of literal 
 reportOptionalMemberAccess = "warning" # -> raises 8 errors
 reportPrivateUsage = "warning"
 
-extraPaths = ["${workspaceFolder}/source/extensions/omni.isaac.lab_tasks",
-                "${workspaceFolder}/source/extensions/omni.isaac.lab",
-                "${workspaceFolder}/source/extensions/omni.isaac.lab_assets"]
+# extraPaths = ["${workspaceFolder}/source/extensions/omni.isaac.lab_tasks",
+#                 "${workspaceFolder}/source/extensions/omni.isaac.lab",
+#                 "${workspaceFolder}/source/extensions/omni.isaac.lab_assets"]
 
 [tool.codespell]
 skip = '*.usd,*.svg,*.png,_isaac_sim*,*.bib,*.css,*/_build'
