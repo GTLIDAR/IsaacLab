@@ -58,8 +58,8 @@ class DigitV3EventCfg(EventCfg):
                     "right_toe_roll",
                 ],
             ),
-            "static_friction_range": (0.7, 1.3),
-            "dynamic_friction_range": (0.5, 1.8),
+            "static_friction_range": (0.8, 0.8),
+            "dynamic_friction_range": (0.6, 0.6),
             "restitution_range": (0.0, 0.0),
             "num_buckets": 64,
         },
@@ -112,78 +112,74 @@ class DigitV3EventCfg(EventCfg):
                     "right_toe_roll",
                 ],
             ),
-            "mass_distribution_params": (0.5, 1.5),
-            "operation": "scale",
-            "distribution": "uniform",
+            "mass_distribution_params": (-0.5, 0.5),
+            "operation": "add",
+            # "distribution": "uniform",
         },
     )
 
-    reset_gravity = EventTerm(
-        func=mdp.randomize_physics_scene_gravity,
-        mode="reset",
-        params={
-            "gravity_distribution_params": ([0.0, 0.0, -0.67], [0.0, 0.0, 0.67]),
-            "operation": "add",
-            "distribution": "gaussian",
-        },
-    )
+    # reset_gravity = EventTerm(
+    #     func=mdp.randomize_physics_scene_gravity,
+    #     mode="reset",
+    #     params={
+    #         "gravity_distribution_params": ([0.0, 0.0, -0.67], [0.0, 0.0, 0.67]),
+    #         "operation": "add",
+    #         "distribution": "gaussian",
+    #     },
+    # )
 
     reset_base = EventTerm(
         func=mdp.reset_root_state_uniform,
         mode="reset",
         params={
-            "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-0.5, 0.5)},
+            "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
             "velocity_range": {
-                "x": (-0.1, 0.1),
-                "y": (-0.1, 0.1),
-                "z": (-0.1, 0.1),
-                "roll": (-0.1, 0.1),
-                "pitch": (-0.2, 0.2),
-                "yaw": (-0.2, 0.2),
+                "x": (0.0, 0.0),
+                "y": (0.0, 0.0),
+                "z": (0.0, 0.0),
+                "roll": (0.0, 0.0),
+                "pitch": (0.0, 0.0),
+                "yaw": (0.0, 0.0),
             },
         },
     )
 
-    reset_robot_joints_offset = EventTerm(
-        func=mdp.reset_joints_by_offset,
-        mode="reset",
-        params={
-            "position_range": (-0.01, 0.01),
-            "velocity_range": (-0.0, 0.0),
-        },
-    )
+    # reset_robot_joints_offset = EventTerm(
+    #     func=mdp.reset_joints_by_offset,
+    #     mode="reset",
+    #     params={
+    #         "position_range": (-0.01, 0.01),
+    #         "velocity_range": (-0.0, 0.0),
+    #     },
+    # )
 
     reset_robot_joints = EventTerm(
-        func=mdp.reset_joints_by_offset,
+        func=mdp.reset_joints_by_scale,
         mode="reset",
         params={
-            "position_range": (-0.2, 0.2),
-            "velocity_range": (-0.1, 0.1),
+            "position_range": (1.0, 1.0),
+            "velocity_range": (0.0, 0.0),
         },
     )
+
+    # # interval
+    # base_external_force_torque = EventTerm(
+    #     func=mdp.apply_external_force_torque,
+    #     mode="interval",
+    #     interval_range_s=(13.0, 14.0),
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+    #         "force_range": (0.0, 12.0),
+    #         "torque_range": (-12.0, 12.0),
+    #     },
+    # )
 
     # interval
-    base_external_force_torque = EventTerm(
-        func=mdp.apply_external_force_torque,
-        mode="interval",
-        interval_range_s=(13.0, 14.0),
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "force_range": (0.0, 12.0),
-            "torque_range": (-12.0, 12.0),
-        },
-    )
-
     push_robot = EventTerm(
         func=mdp.push_by_setting_velocity,
         mode="interval",
-        interval_range_s=(9.0, 11.0),
-        params={
-            "velocity_range": {
-                "x": (-0.2, 0.4),
-                "y": (-0.4, 0.4),
-            }
-        },
+        interval_range_s=(10.0, 15.0),
+        params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)}},
     )
 
     # push_robot_z = EventTerm(
@@ -204,8 +200,8 @@ class DigitV3EventCfg(EventCfg):
         mode="reset",
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
-            "stiffness_distribution_params": (0.5, 1.5),
-            "damping_distribution_params": (0.3, 5.0),
+            "stiffness_distribution_params": (0.5, 2.0),
+            "damping_distribution_params": (0.5, 2.0),
             "operation": "scale",
             "distribution": "log_uniform",
         },

@@ -257,16 +257,16 @@ class StudentObsCfg(ObsGroup):
     base_lin_vel = ObsTerm(
         func=mdp.base_lin_vel,
         scale=1,
-        noise=Gnoise(mean=0.0, std=0.15, operation="add"),
+        noise=Unoise(n_min=-0.1, n_max=0.1),
     )
     base_ang_vel = ObsTerm(
         func=mdp.base_ang_vel,
         scale=1,
-        noise=Gnoise(mean=0.0, std=0.15, operation="add"),
+        noise=Unoise(n_min=-0.2, n_max=0.2),
     )
     projected_gravity = ObsTerm(
         func=mdp.projected_gravity,
-        noise=Unoise(n_min=-0.075, n_max=0.075),
+        noise=Unoise(n_min=-0.05, n_max=0.05),
     )
     velocity_commands = ObsTerm(
         func=mdp.generated_commands,
@@ -276,7 +276,7 @@ class StudentObsCfg(ObsGroup):
     joint_pos = ObsTerm(
         func=mdp.joint_pos,
         scale=1,
-        noise=Gnoise(mean=0.0, std=0.1, operation="add"),
+        noise=Unoise(n_min=-0.01, n_max=0.01),
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
@@ -320,7 +320,7 @@ class StudentObsCfg(ObsGroup):
     joint_vel = ObsTerm(
         func=mdp.joint_vel,
         scale=1,
-        noise=Gnoise(mean=0.0, std=0.1, operation="add"),
+        noise=Unoise(n_min=-1.5, n_max=1.5),
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",

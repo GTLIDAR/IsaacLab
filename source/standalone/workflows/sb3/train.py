@@ -412,7 +412,7 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
 
     # initialize wandb and make callback
     run = wandb.init(
-        project="l2t_digit",
+        project="L2T Digit",
         entity="rl-digit",
         name=log_time_note,
         config=agent_cfg,
@@ -431,7 +431,7 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
         **agent_cfg
     )
     agent.set_parameters(
-        "/home/feiyang/Documents/Repository/digit_arsim_ros2/models/model_998400000_steps.zip"
+        "/home/fwu/Documents/Research/digit_arsim_ros2/models/model_998400000_steps.zip"
     )
     # configure the logger
     new_logger = configure(log_dir, ["tensorboard"])

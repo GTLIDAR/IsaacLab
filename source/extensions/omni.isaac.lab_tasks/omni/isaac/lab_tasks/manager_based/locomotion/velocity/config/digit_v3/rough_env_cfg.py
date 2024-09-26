@@ -49,7 +49,7 @@ class DigitV3TerminationsCfg:
                     ".*elbow",
                 ],
             ),
-            "threshold": 10.0,
+            "threshold": 1.0,
         },
     )
 
