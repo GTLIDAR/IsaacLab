@@ -411,16 +411,16 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
     # wandb.tensorboard.patch(root_logdir=log_dir)
 
     # initialize wandb and make callback
-    # run = wandb.init(
-    #     project="L2T Digit",
-    #     entity="rl-digit",
-    #     name=log_time_note,
-    #     config=agent_cfg,
-    #     sync_tensorboard=True,
-    #     monitor_gym=False,
-    #     save_code=False,
-    # )
-    # wandb_callback = WandbCallback()
+    run = wandb.init(
+        project="L2T Digit",
+        entity="rl-digit",
+        name=log_time_note,
+        config=agent_cfg,
+        sync_tensorboard=True,
+        monitor_gym=False,
+        save_code=False,
+    )
+    wandb_callback = WandbCallback()
 
     # create agent from stable baselines
     agent = RecurrentL2T(
@@ -430,9 +430,9 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
         rollout_buffer_class=RLOptDictRecurrentReplayBuffer,
         **agent_cfg
     )
-    # agent.set_parameters(
-    #     "/home/fwu/Documents/Research/digit_arsim_ros2/models/model_998400000_steps.zip"
-    # )
+    agent.set_parameters(
+        "/home/feiyang/Documents/Repository/digit_arsim_ros2/models/model_998400000_steps.zip"
+    )
     # configure the logger
     new_logger = configure(log_dir, ["tensorboard"])
     agent.set_logger(new_logger)
@@ -443,11 +443,7 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
     )
 
     # chain the callbacks
-    callback_list = CallbackList(
-        [
-            checkpoint_callback,
-        ]
-    )
+    callback_list = CallbackList([checkpoint_callback, wandb_callback])
 
     # train the agent
     agent.learn(
@@ -463,7 +459,7 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
     env.close()
 
     # finish wandb
-    # run.finish()  # type: ignore
+    run.finish()  # type: ignore
 
 
 if __name__ == "__main__":
