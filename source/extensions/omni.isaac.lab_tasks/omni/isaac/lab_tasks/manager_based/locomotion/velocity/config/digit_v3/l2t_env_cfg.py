@@ -7,7 +7,7 @@ from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg imp
 from .rough_env_cfg import (
     DigitV3RewardsCfg,
     DigitV3TerminationsCfg,
-    DigitV3ActionCfg,
+    # DigitV3ActionCfg,
     DigitV3EventCfg,
 )
 from .env_cfg.observation_cfg import TeacherObsCfg, StudentObsCfg
@@ -97,8 +97,8 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
             "robot", joint_names=[".*_hip_.*", ".*_knee"]  # ".*toe_roll", ".*toe_pitch"
         )
 
-        self.rewards.undesired_contacts = None
-        self.rewards.alive.weight = 0.1
+        self.rewards.undesired_contacts = None  # type: ignore
+        self.rewards.alive.weight = 1.0
         self.rewards.track_lin_vel_xy_exp.weight = 2.25
         self.rewards.track_ang_vel_z_exp.weight = 2.25
         self.rewards.lin_vel_z_l2.weight = -3.0
@@ -108,12 +108,13 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.lin_vel_z_l2.weight = -0.5
         self.rewards.ang_vel_xy_l2.weight = -0.075
         self.rewards.feet_air_time.weight = 5.0
-        self.rewards.track_foot_height.weight = 5.0
+        # self.rewards.track_foot_height.weight = 5.0
         self.rewards.dof_pos_limits.weight = -0.1
         self.rewards.termination_penalty.weight = -400
         self.rewards.feet_slide.weight = -0.25
-        self.rewards.joint_deviation_hip.weight = -0.2
-        self.rewards.joint_deviation_torso.weight = -0.2
+        self.rewards.joint_deviation_hip.weight = -0.1
+        self.rewards.joint_deviation_torso.weight = -0.05
+        self.rewards.joint_deviation_arms.weight = -0.1
         self.rewards.flat_orientation_l2.weight = -1.0
         self.rewards.dof_torques_l2.weight = 0.0
         self.rewards.action_rate_l2.weight = 0.0
@@ -177,7 +178,7 @@ class DigitV3L2TFlatEnvCfg(DigitV3L2TRoughEnvCfg):
         # self.rewards.feet_air_time.weight = 1.25
         # self.rewards.foot_clearance.weight = 0.5
         self.rewards.flat_orientation_l2.weight = -5.0
-        self.rewards.foot_contact.weight = 0.5
+        # self.rewards.foot_contact.weight = 0.5
         # self.rewards.track_foot_height.weight = 0.5
         # self.rewards.feet_distance.weight = 0.01
 
