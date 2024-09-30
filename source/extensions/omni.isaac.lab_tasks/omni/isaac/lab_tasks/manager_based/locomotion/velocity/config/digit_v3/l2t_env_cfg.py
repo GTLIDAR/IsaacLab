@@ -17,6 +17,28 @@ import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
 # Pre-defined configs
 ##
 from omni.isaac.lab_assets.digit import DIGITV3_CFG  # isort: skip
+import math
+
+
+@configclass
+class CommandsCfg:
+    """Command specifications for the MDP."""
+
+    base_velocity = mdp.UniformVelocityCommandCfg(
+        asset_name="robot",
+        resampling_time_range=(10.0, 10.0),
+        rel_standing_envs=0.02,
+        rel_heading_envs=1.0,
+        heading_command=True,
+        heading_control_stiffness=0.5,
+        debug_vis=True,
+        ranges=mdp.UniformVelocityCommandCfg.Ranges(
+            lin_vel_x=(-1.0, 1.0),
+            lin_vel_y=(-1.0, 1.0),
+            ang_vel_z=(-1.0, 1.0),
+            heading=(-math.pi, math.pi),
+        ),
+    )
 
 
 @configclass
@@ -30,14 +52,14 @@ class L2TDigitV3ActionCfg:
             "left_hip_yaw",
             "left_hip_pitch",
             "left_knee",
-            "left_toe_A",
-            "left_toe_B",
+            # "left_toe_A",
+            # "left_toe_B",
             "right_hip_roll",
             "right_hip_yaw",
             "right_hip_pitch",
             "right_knee",
-            "right_toe_A",
-            "right_toe_B",
+            # "right_toe_A",
+            # "right_toe_B",
             "left_shoulder_roll",
             "left_shoulder_pitch",
             "left_shoulder_yaw",
@@ -69,13 +91,14 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     actions: L2TDigitV3ActionCfg = L2TDigitV3ActionCfg()
     observations: L2TObservationsCfg = L2TObservationsCfg()
     events: DigitV3EventCfg = DigitV3EventCfg()
+    commands: CommandsCfg = CommandsCfg()
 
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
         self.scene.env_spacing = 5.0
-        self.sim.dt = 0.0005
-        self.decimation = 10
+        self.sim.dt = 0.005
+        self.decimation = 4
         self.sim.gravity = (0.0, 0.0, -9.806)
         self.sim.render_interval = self.decimation
 
@@ -85,44 +108,33 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
             "robot", joint_names=[".*_hip_.*", ".*_knee"]
         )
-        self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
-            "robot", joint_names=[".*_hip_.*", ".*_knee"]
-        )
         # Rewards
         self.rewards.dof_acc_l2.params["asset_cfg"] = SceneEntityCfg(
             "robot", joint_names=[".*_hip.*", ".*_knee"]
         )
 
-        self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
-            "robot", joint_names=[".*_hip_.*", ".*_knee"]  # ".*toe_roll", ".*toe_pitch"
-        )
-
         self.rewards.undesired_contacts = None  # type: ignore
-        self.rewards.alive.weight = 1.0
-        self.rewards.track_lin_vel_xy_exp.weight = 2.25
-        self.rewards.track_ang_vel_z_exp.weight = 2.25
-        self.rewards.lin_vel_z_l2.weight = -3.0
-        self.rewards.ang_vel_xy_l2.weight = -0.75
-        self.rewards.track_lin_vel_xy_exp.weight = 2.25
-        self.rewards.track_ang_vel_z_exp.weight = 2.25
-        self.rewards.lin_vel_z_l2.weight = -0.5
-        self.rewards.ang_vel_xy_l2.weight = -0.075
-        self.rewards.feet_air_time.weight = 5.0
-        # self.rewards.track_foot_height.weight = 5.0
-        self.rewards.dof_pos_limits.weight = -0.1
-        self.rewards.termination_penalty.weight = -400
-        self.rewards.feet_slide.weight = -0.25
-        self.rewards.joint_deviation_hip.weight = -0.1
-        self.rewards.joint_deviation_torso.weight = -0.05
-        self.rewards.joint_deviation_arms.weight = -0.1
-        self.rewards.flat_orientation_l2.weight = -1.0
-        self.rewards.dof_torques_l2.weight = 0.0
-        self.rewards.action_rate_l2.weight = 0.0
-        self.rewards.dof_acc_l2.weight = -1.25e-7
+        self.rewards.alive.weight = 0.0
+        self.rewards.track_lin_vel_xy_exp.weight = 0.5
+        self.rewards.track_ang_vel_z_exp.weight = 1.0
+        # self.rewards.lin_vel_z_l2.weight = -0.5
+        self.rewards.ang_vel_xy_l2.weight = -0.1
+        self.rewards.dof_pos_limits.weight = -0.5
+        self.rewards.termination_penalty.weight = -200
+        self.rewards.feet_slide.weight = -1.0
+        self.rewards.joint_deviation_hip.weight = -1.0
+        self.rewards.joint_deviation_arms.weight = -0.5
+        self.rewards.flat_orientation_l2.weight = -10.0
+        self.rewards.dof_torques_l2.weight = -1.0e-6
+        self.rewards.action_rate_l2.weight = -0.001
+        # self.rewards.feet_distance_l1.weight = -0.01
+        # self.rewards.joint_deviation_torso.weight = -0.01
+        # self.rewards.dof_pos_limits.weight = 0.0
+        self.rewards.dof_acc_l2.weight = -5e-6
 
         # Commands
-        self.commands.base_velocity.ranges.lin_vel_x = (0.0, 1.0)
-        self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
+        self.commands.base_velocity.ranges.lin_vel_x = (-0.1, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_y = (-0.1, 0.1)
         self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
 
 
@@ -163,32 +175,32 @@ class DigitV3L2TFlatEnvCfg(DigitV3L2TRoughEnvCfg):
         super().__post_init__()
 
         # override rewards
-        self.rewards.alive.weight = 20
-        self.rewards.track_lin_vel_xy_exp.weight = 2.0
-        self.rewards.track_ang_vel_z_exp.weight = 2.0
-        self.rewards.lin_vel_z_l2.weight = -0.3
-        self.rewards.ang_vel_xy_l2.weight = -0.2
+        # self.rewards.alive.weight = 20
+        # self.rewards.track_lin_vel_xy_exp.weight = 2.0
+        # self.rewards.track_ang_vel_z_exp.weight = 2.0
+        # # self.rewards.lin_vel_z_l2.weight = -0.3
+        # self.rewards.ang_vel_xy_l2.weight = -0.2
 
-        self.rewards.dof_torques_l2.weight = -2.0e-6
-        self.rewards.dof_acc_l2.weight = -1.0e-7
-        # self.rewards.dof_vel_l2.weight = -1.0e-7
+        # self.rewards.dof_torques_l2.weight = -2.0e-6
+        # self.rewards.dof_acc_l2.weight = -1.0e-7
+        # # self.rewards.dof_vel_l2.weight = -1.0e-7
 
-        self.rewards.action_rate_l2.weight = -0.005
+        # self.rewards.action_rate_l2.weight = -0.005
 
-        # self.rewards.feet_air_time.weight = 1.25
-        # self.rewards.foot_clearance.weight = 0.5
-        self.rewards.flat_orientation_l2.weight = -5.0
-        # self.rewards.foot_contact.weight = 0.5
-        # self.rewards.track_foot_height.weight = 0.5
-        # self.rewards.feet_distance.weight = 0.01
+        # # self.rewards.feet_air_time.weight = 1.25
+        # # self.rewards.foot_clearance.weight = 0.5
+        # self.rewards.flat_orientation_l2.weight = -5.0
+        # # self.rewards.foot_contact.weight = 0.5
+        # # self.rewards.track_foot_height.weight = 0.5
+        # # self.rewards.feet_distance.weight = 0.01
 
-        self.rewards.dof_pos_limits.weight = -0.1
-        self.rewards.termination_penalty.weight = -200
-        self.rewards.feet_slide.weight = -0.25
-        self.rewards.joint_deviation_hip.weight = -0.2
-        self.rewards.joint_deviation_arms.weight = -0.2
-        self.rewards.joint_deviation_torso.weight = -0.2
-
+        # self.rewards.dof_pos_limits.weight = -0.1
+        # self.rewards.termination_penalty.weight = -200
+        # self.rewards.feet_slide.weight = -0.25
+        # self.rewards.joint_deviation_hip.weight = -0.2
+        # self.rewards.joint_deviation_arms.weight = -0.2
+        # self.rewards.joint_deviation_torso.weight = -0.2
+        # self.rewards.track_foot_height.weight = 1.0
         # change terrain to flat
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None

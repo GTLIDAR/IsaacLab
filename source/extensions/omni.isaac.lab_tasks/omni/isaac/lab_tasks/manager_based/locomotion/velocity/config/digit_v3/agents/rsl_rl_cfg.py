@@ -20,6 +20,7 @@ class DigitV3RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     experiment_name = "digit_v3_rough"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
+        class_name="ActorCriticRecurrent",
         init_noise_std=1.0,
         actor_hidden_dims=[512, 256, 128],
         critic_hidden_dims=[512, 256, 128],
@@ -39,7 +40,7 @@ class DigitV3RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         desired_kl=0.01,
         max_grad_norm=1.0,
     )
-    logger = "wandb"
+    logger = "tensorboard"
 
     # load_run = "2024-08-21_21-11-05-ok-2-rnn"
 
