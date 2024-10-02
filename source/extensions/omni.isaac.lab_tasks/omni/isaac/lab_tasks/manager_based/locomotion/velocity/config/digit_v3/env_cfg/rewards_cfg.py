@@ -33,7 +33,7 @@ class DigitV3RewardsCfg(RewardsCfg):
         params={"command_name": "base_velocity", "std": 0.5},
     )
     feet_air_time = None
-    # RewTerm(
+    # feet_air_time = RewTerm(
     #     func=mdp.feet_air_time_positive_biped,
     #     weight=0.25,
     #     params={
@@ -153,16 +153,16 @@ class DigitV3RewardsCfg(RewardsCfg):
     #     },
     # )
 
-    torque_applied = RewTerm(
-        func=digit_v3_mdp.torque_applied_l2,
-        weight=0.5,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-            ),
-            "std": 5.0,
-        },
-    )
+    # torque_applied = RewTerm(
+    #     func=digit_v3_mdp.torque_applied_l2,
+    #     weight=0.5,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #         ),
+    #         "std": 5.0,
+    #     },
+    # )
 
     # com_deviation = RewTerm(
     #     func=digit_v3_mdp.center_of_mass_deviation_l2,
@@ -178,15 +178,15 @@ class DigitV3RewardsCfg(RewardsCfg):
     #     },
     # )
 
-    foot_contact_force = RewTerm(
-        func=mdp.contact_forces,
-        weight=-0.2,
-        params={
-            "sensor_cfg": SceneEntityCfg(
-                "contact_forces",
-                body_names=["left_toe_roll", "right_toe_roll"],
-                preserve_order=True,
-            ),
-            "threshold": 500,
-        },
-    )
+    # foot_contact_force = RewTerm(
+    #     func=mdp.contact_forces,
+    #     weight=-0.2,
+    #     params={
+    #         "sensor_cfg": SceneEntityCfg(
+    #             "contact_forces",
+    #             body_names=["left_toe_roll", "right_toe_roll"],
+    #             preserve_order=True,
+    #         ),
+    #         "threshold": 500,
+    #     },
+    # )

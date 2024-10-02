@@ -52,14 +52,14 @@ class L2TDigitV3ActionCfg:
             "left_hip_yaw",
             "left_hip_pitch",
             "left_knee",
-            # "left_toe_A",
-            # "left_toe_B",
+            "left_toe_A",
+            "left_toe_B",
             "right_hip_roll",
             "right_hip_yaw",
             "right_hip_pitch",
             "right_knee",
-            # "right_toe_A",
-            # "right_toe_B",
+            "right_toe_A",
+            "right_toe_B",
             "left_shoulder_roll",
             "left_shoulder_pitch",
             "left_shoulder_yaw",
@@ -70,7 +70,7 @@ class L2TDigitV3ActionCfg:
             "right_elbow",
         ],
         # scale=0.5,
-        use_default_offset=False,
+        use_default_offset=True,
         preserve_order=True,
     )
 
@@ -114,7 +114,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         )
 
         self.rewards.undesired_contacts = None  # type: ignore
-        self.rewards.alive.weight = 0.0
+        self.rewards.alive.weight = 1.0
         self.rewards.track_lin_vel_xy_exp.weight = 0.5
         self.rewards.track_ang_vel_z_exp.weight = 1.0
         # self.rewards.lin_vel_z_l2.weight = -0.5
@@ -122,8 +122,8 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.dof_pos_limits.weight = -0.5
         self.rewards.termination_penalty.weight = -200
         self.rewards.feet_slide.weight = -1.0
-        self.rewards.joint_deviation_hip.weight = -1.0
-        self.rewards.joint_deviation_arms.weight = -0.5
+        # self.rewards.joint_deviation_hip.weight = -1.0
+        # self.rewards.joint_deviation_arms.weight = -0.5
         self.rewards.flat_orientation_l2.weight = -10.0
         self.rewards.dof_torques_l2.weight = -1.0e-6
         self.rewards.action_rate_l2.weight = -0.001
