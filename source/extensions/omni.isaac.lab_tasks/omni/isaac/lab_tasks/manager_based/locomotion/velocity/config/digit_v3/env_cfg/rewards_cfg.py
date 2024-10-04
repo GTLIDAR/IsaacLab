@@ -122,69 +122,69 @@ class DigitV3RewardsCfg(RewardsCfg):
         },
     )
 
-    # track_foot_height = RewTerm(
-    #     func=digit_v3_mdp.track_foot_height,
-    #     weight=0.005,
-    #     params={
-    #         "std": 0.05,
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             body_names=["left_toe_roll", "right_toe_roll"],
-    #             preserve_order=True,
-    #         ),
-    #         "sensor_cfg": SceneEntityCfg(
-    #             "contact_forces",
-    #             body_names=["left_toe_roll", "right_toe_roll"],
-    #             preserve_order=True,
-    #         ),
-    #     },
-    # )
-
-    feet_distance_l1 = RewTerm(
-        func=digit_v3_mdp.feet_distance_l1,
-        weight=-0.1,
+    track_foot_height = RewTerm(
+        func=digit_v3_mdp.track_foot_height,
+        weight=0.005,
         params={
-            # "sensor_cfg": SceneEntityCfg(
-            #     "contact_forces",
-            #     body_names=["left_toe_roll", "right_toe_roll"],
-            #     preserve_order=True,
-            # ),
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                body_names=["left_toe_roll", "right_toe_roll"],
-                preserve_order=True,
-            ),
-            "min_dist": 0.2,
-            "max_dist": 0.5,
-        },
-    )
-
-    foot_clearance = RewTerm(
-        func=digit_v3_mdp.foot_clearance_reward,
-        weight=0.25,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                body_names=["left_toe_roll", "right_toe_roll"],
-                preserve_order=True,
-            ),
             "std": 0.05,
-            "tanh_mult": 2.0,
-        },
-    )
-
-    foot_contact_force = RewTerm(
-        func=mdp.contact_forces,
-        weight=-0.2,
-        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                body_names=["left_toe_roll", "right_toe_roll"],
+                preserve_order=True,
+            ),
             "sensor_cfg": SceneEntityCfg(
                 "contact_forces",
                 body_names=["left_toe_roll", "right_toe_roll"],
                 preserve_order=True,
             ),
-            "threshold": 900,
         },
     )
+
+    # feet_distance_l1 = RewTerm(
+    #     func=digit_v3_mdp.feet_distance_l1,
+    #     weight=-0.1,
+    #     params={
+    #         # "sensor_cfg": SceneEntityCfg(
+    #         #     "contact_forces",
+    #         #     body_names=["left_toe_roll", "right_toe_roll"],
+    #         #     preserve_order=True,
+    #         # ),
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             body_names=["left_toe_roll", "right_toe_roll"],
+    #             preserve_order=True,
+    #         ),
+    #         "min_dist": 0.2,
+    #         "max_dist": 0.5,
+    #     },
+    # )
+
+    # foot_clearance = RewTerm(
+    #     func=digit_v3_mdp.foot_clearance_reward,
+    #     weight=0.25,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             body_names=["left_toe_roll", "right_toe_roll"],
+    #             preserve_order=True,
+    #         ),
+    #         "std": 0.05,
+    #         "tanh_mult": 2.0,
+    #     },
+    # )
+
+    # foot_contact_force = RewTerm(
+    #     func=mdp.contact_forces,
+    #     weight=-0.2,
+    #     params={
+    #         "sensor_cfg": SceneEntityCfg(
+    #             "contact_forces",
+    #             body_names=["left_toe_roll", "right_toe_roll"],
+    #             preserve_order=True,
+    #         ),
+    #         "threshold": 900,
+    #     },
+    # )
 
     # torque_applied = RewTerm(
     #     func=digit_v3_mdp.torque_applied_l2,

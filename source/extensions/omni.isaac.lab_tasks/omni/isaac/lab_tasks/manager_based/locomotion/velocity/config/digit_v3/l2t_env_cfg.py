@@ -70,7 +70,7 @@ class L2TDigitV3ActionCfg:
             "right_elbow",
         ],
         # scale=0.5,
-        use_default_offset=True,
+        use_default_offset=False,
         preserve_order=True,
     )
 
@@ -114,7 +114,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         )
 
         self.rewards.undesired_contacts = None  # type: ignore
-        self.rewards.alive.weight = 1.0
+        self.rewards.alive.weight = 10.0
         self.rewards.track_lin_vel_xy_exp.weight = 0.5
         self.rewards.track_ang_vel_z_exp.weight = 1.0
         # self.rewards.lin_vel_z_l2.weight = -0.5
@@ -135,7 +135,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # Commands
         self.commands.base_velocity.ranges.lin_vel_x = (-0.1, 1.0)
         self.commands.base_velocity.ranges.lin_vel_y = (-0.1, 0.1)
-        self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
+        self.commands.base_velocity.ranges.ang_vel_z = (-0.3, 0.3)
 
 
 @configclass
