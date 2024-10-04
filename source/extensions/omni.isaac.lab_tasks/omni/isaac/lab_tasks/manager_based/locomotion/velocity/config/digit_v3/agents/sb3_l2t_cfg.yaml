@@ -11,7 +11,7 @@ ent_coef: 0.01
 sde_sample_freq: 4
 max_grad_norm: 0.5
 vf_coef: 1.0
-learning_rate: !!float 3e-4
+learning_rate: lin_3e-4
 use_sde: False
 clip_range: 0.2
 device: "cuda:0"
@@ -20,18 +20,12 @@ policy_kwargs: "dict(
                   log_std_init=-1,
                   ortho_init=True,
                   activation_fn=nn.ELU,
-                  net_arch=dict(
-                    pi=[512,256,128],
-                    vf=[512,256,128]
-                  ),
+                  net_arch[256, 128],
                 )"
 student_policy_kwargs: "dict(
                   log_std_init=-1,
                   ortho_init=True,
                   activation_fn=nn.ELU,
-                  net_arch=dict(
-                    pi=[512,256,128],
-                    vf=[512,256,128]
-                  ),
-                  lstm_hidden_size=128
+                  net_arch=[256, 128],
+                  lstm_hidden_size=64,
                 )"
