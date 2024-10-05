@@ -69,6 +69,7 @@ simulation_app = app_launcher.app
 import gymnasium as gym
 import numpy as np
 import os
+import random
 from datetime import datetime
 
 import torch
@@ -117,6 +118,10 @@ def main(
     env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: dict
 ):
     """Train with stable-baselines agent."""
+    # randomly sample a seed if seed = -1
+    if args_cli.seed == -1:
+        args_cli.seed = random.randint(0, 10000)
+
     # override configurations with non-hydra CLI arguments
     env_cfg.scene.num_envs = (
         args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
@@ -133,6 +138,7 @@ def main(
     # set the environment seed
     # note: certain randomizations occur in the environment initialization so we set the seed here
     env_cfg.seed = agent_cfg["seed"]
+    env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
 
     # directory for logging into
     log_dir = os.path.join(
