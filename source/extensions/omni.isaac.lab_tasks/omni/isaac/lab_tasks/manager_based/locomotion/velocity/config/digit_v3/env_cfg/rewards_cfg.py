@@ -56,7 +56,7 @@ class DigitV3RewardsCfg(RewardsCfg):
         weight=-0.1,  # -1.0
         params={
             "asset_cfg": SceneEntityCfg(
-                "robot", joint_names=[".*toe_pitch", ".*toe_roll"]
+                "robot",
             )
         },  # joint_names=".*toe_roll"v
     )
@@ -86,11 +86,11 @@ class DigitV3RewardsCfg(RewardsCfg):
         },
     )
 
-    joint_deviation_torso = RewTerm(
-        func=mdp.joint_deviation_l1,  # type: ignore
-        weight=-0.1,
-        params={"asset_cfg": SceneEntityCfg("robot", body_names="base")},
-    )
+    # joint_deviation_torso = RewTerm(
+    #     func=mdp.joint_deviation_l1,  # type: ignore
+    #     weight=-0.1,
+    #     params={"asset_cfg": SceneEntityCfg("robot", body_names="base")},
+    # )
 
     joint_deviation_toes = RewTerm(
         func=mdp.joint_deviation_l1,  # type: ignore
