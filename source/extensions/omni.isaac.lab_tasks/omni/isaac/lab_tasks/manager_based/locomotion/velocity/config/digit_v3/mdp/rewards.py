@@ -69,6 +69,12 @@ def foot_clearance_reward(
     return torch.exp(-torch.sum(reward, dim=1) / std)
 
 
+@torch.jit.script
+def height_target(t: torch.Tensor):
+    a5, a4, a3, a2, a1, a0 = [9.6, 12.0, -18.8, 5.0, 0.1, 0.0]
+    return a5 * t**5 + a4 * t**4 + a3 * t**3 + a2 * t**2 + a1 * t + a0
+
+
 def track_foot_height(
     env: ManagerBasedRLEnv,
     asset_cfg: SceneEntityCfg,
@@ -76,12 +82,6 @@ def track_foot_height(
     std: float,
 ) -> torch.Tensor:
     """"""
-
-    def height_target(t: torch.Tensor):
-        assert t.shape[0] == env.num_envs
-        a5, a4, a3, a2, a1, a0 = [9.6, 12.0, -18.8, 5.0, 0.1, 0.0]
-        # a5, a4, a3, a2, a1, a0 = [-40.9599, 81.919, -51.199, 10.24, 0.0, 0.0]
-        return a5 * t**5 + a4 * t**4 + a3 * t**3 + a2 * t**2 + a1 * t + a0
 
     asset: RigidObject = env.scene[asset_cfg.name]
     foot_z = asset.data.body_pos_w[:, asset_cfg.body_ids, 2]
@@ -113,11 +113,12 @@ def track_foot_height(
     filt_foot = torch.where(swing_mask == 1, foot_z, torch.zeros_like(foot_z))
 
     phase_mod = torch.fmod(phase, 0.5)
-    feet_z_target = height_target(phase_mod)
-    feet_z_value = torch.sum(filt_foot, dim=1)
+    feet_z_target = height_target(phase_mod) + torch.min(foot_z, dim=1).values
+    feet_z_value = torch.max(filt_foot, dim=1).values
 
     error = torch.square(feet_z_value - feet_z_target)
     reward = torch.exp(-error / std**2)
+
     return reward
 
 
