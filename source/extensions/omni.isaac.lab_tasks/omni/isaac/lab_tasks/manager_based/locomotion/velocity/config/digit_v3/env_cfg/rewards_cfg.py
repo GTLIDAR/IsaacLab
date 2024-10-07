@@ -32,7 +32,7 @@ class DigitV3RewardsCfg(RewardsCfg):
         weight=1.0,
         params={"command_name": "base_velocity", "std": 0.5},
     )
-    # feet_air_time = None
+    feet_air_time = None
     # feet_air_time = RewTerm(
     #     func=mdp.feet_air_time,
     #     weight=0.25,
