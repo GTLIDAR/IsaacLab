@@ -70,7 +70,7 @@ class L2TDigitV3ActionCfg:
             "right_elbow",
         ],
         # scale=0.5,
-        use_default_offset=False,
+        use_default_offset=True,
         preserve_order=True,
     )
 
