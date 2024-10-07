@@ -138,7 +138,9 @@ def main(
     # set the environment seed
     # note: certain randomizations occur in the environment initialization so we set the seed here
     env_cfg.seed = agent_cfg["seed"]
-    env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
+    env_cfg.sim.device = (
+        args_cli.device if args_cli.device is not None else env_cfg.sim.device
+    )
 
     # directory for logging into
     log_dir = os.path.join(
@@ -436,9 +438,9 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
         rollout_buffer_class=RLOptDictRecurrentReplayBuffer,
         **agent_cfg
     )
-    # agent.set_parameters(
-    #     "/home/feiyang/Documents/Repository/IsaacLab/logs/sb3/Isaac-Velocity-Flat-Digit-V3-L2T-v0/2024-09-29_12-48-24_nominal_setup_flat/model_581632000_steps.zip"
-    # )
+    agent.set_parameters(
+        "/home/feiyang/Documents/Repository/digit_arsim_ros2/models/model_998400000_steps.zip"
+    )
     # configure the logger
     new_logger = configure(log_dir, ["tensorboard"])
     agent.set_logger(new_logger)

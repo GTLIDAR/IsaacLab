@@ -52,12 +52,12 @@ class DigitV3TerminationsCfg:
             "threshold": 1.0,
         },
     )
-    base_too_low = DoneTerm(
-        func=mdp.root_height_below_minimum,  # type: ignore
-        params={
-            "minimum_height": 0.6,
-        },
-    )
+    # base_too_low = DoneTerm(
+    #     func=mdp.root_height_below_minimum,  # type: ignore
+    #     params={
+    #         "minimum_height": 0.6,
+    #     },
+    # )
 
 
 @configclass
