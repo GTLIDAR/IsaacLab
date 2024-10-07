@@ -95,8 +95,17 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_hip_pitch",
                 "right_knee",
             ],
-            effort_limit=200.0,
-            velocity_limit=10.0,
+            effort_limit={
+                "left_hip_roll": 126,
+                "left_hip_yaw": 79,
+                "left_hip_pitch": 216,
+                "left_knee": 231,
+                "right_hip_roll": 126,
+                "right_hip_yaw": 79,
+                "right_hip_pitch": 216,
+                "right_knee": 231,
+            },
+            velocity_limit=60.0,
             stiffness={
                 "left_hip_roll": 100,
                 "left_hip_yaw": 100,
@@ -117,8 +126,6 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_hip_pitch": 5.0 + 38.05,
                 "right_knee": 5.0 + 38.05,
             },
-            # min_delay=0,  # physics time steps (min: 1.0*0=0.0ms)
-            # max_delay=4,  # physics time steps (max: 1.0*8=8.0ms)
         ),
         "arms": ImplicitActuatorCfg(
             joint_names_expr=[
@@ -131,8 +138,17 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_shoulder_yaw",
                 "right_elbow",
             ],
-            effort_limit=300.0,
-            velocity_limit=10.0,
+            effort_limit={
+                "left_shoulder_roll": 126,
+                "left_shoulder_pitch": 126,
+                "left_shoulder_yaw": 79,
+                "left_elbow": 126,
+                "right_shoulder_roll": 126,
+                "right_shoulder_pitch": 126,
+                "right_shoulder_yaw": 79,
+                "right_elbow": 126,
+            },
+            velocity_limit=60.0,
             stiffness={
                 "left_shoulder_roll": 300,
                 "left_shoulder_pitch": 300,
@@ -153,8 +169,6 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_shoulder_yaw": 5.0 + 26.1129,
                 "right_elbow": 5.0 + 66.849,
             },
-            # min_delay=0,  # physics time steps (min: 1.0*0=0.0ms)
-            # max_delay=4,  # physics time steps (max: 1.0*4=4.0ms)
         ),
         "toes": ImplicitActuatorCfg(
             joint_names_expr=[
@@ -163,8 +177,13 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_toe_A",
                 "right_toe_B",
             ],
-            effort_limit=200.0,
-            velocity_limit=10.0,
+            effort_limit={
+                 "left_toe_A": 41,
+                "left_toe_B": 41,
+                "right_toe_A": 41,
+                "right_toe_B": 41,
+            },
+            velocity_limit=60.0,
             stiffness={
                 "left_toe_A": 20,
                 "left_toe_B": 20,
@@ -177,8 +196,6 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_toe_A": 1.0 + 15.5532,
                 "right_toe_B": 1.0 + 15.5532,
             },
-            # min_delay=0,  # physics time steps (min: 1.0*0=0.0ms)
-            # max_delay=4,  # physics time steps (max: 1.0*4=4.0ms)
         ),
     },
 )

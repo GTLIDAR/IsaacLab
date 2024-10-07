@@ -19,9 +19,9 @@ class DigitV3RewardsCfg(RewardsCfg):
         weight=0.01,
     )
     action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.015)
-    # dof_vel_l2 = RewTerm(func=mdp.joint_vel_l2, weight=-5e-4)
+    dof_vel_l2 = RewTerm(func=mdp.joint_vel_l2, weight=-5e-4)
 
-    lin_vel_z_l2 = None
+    # lin_vel_z_l2 = None
     track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_yaw_frame_exp,
         weight=1.0,
