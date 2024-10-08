@@ -163,16 +163,16 @@ class DigitV3EventCfg(EventCfg):
     )
 
     # interval
-    # base_external_force_torque = EventTerm(
-    #     func=mdp.apply_external_force_torque,
-    #     mode="interval",
-    #     interval_range_s=(13.0, 14.0),
-    #     params={
-    #         "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-    #         "force_range": (0.0, 12.0),
-    #         "torque_range": (-12.0, 12.0),
-    #     },
-    # )
+    base_external_force_torque = EventTerm(
+        func=mdp.apply_external_force_torque,
+        mode="interval",
+        interval_range_s=(10.0, 20.0),
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+            "force_range": (0.0, 100.0),
+            "torque_range": (-12.0, 12.0),
+        },
+    )
 
     # push_robot = EventTerm(
     #     func=mdp.push_by_setting_velocity,
@@ -199,14 +199,14 @@ class DigitV3EventCfg(EventCfg):
     #     },
     # )
 
-    # robot_joint_stiffness_and_damping = EventTerm(
-    #     func=mdp.randomize_actuator_gains,
-    #     mode="reset",
-    #     params={
-    #         "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
-    #         "stiffness_distribution_params": (0.5, 1.5),
-    #         "damping_distribution_params": (0.3, 5.0),
-    #         "operation": "scale",
-    #         "distribution": "log_uniform",
-    #     },
-    # )
+    robot_joint_stiffness_and_damping = EventTerm(
+        func=mdp.randomize_actuator_gains,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
+            "stiffness_distribution_params": (0.9, 1.1),
+            "damping_distribution_params": (0.0, 1.1),
+            "operation": "scale",
+            "distribution": "log_uniform",
+        },
+    )
