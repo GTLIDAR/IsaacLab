@@ -223,3 +223,14 @@ class DigitV3RewardsCfg(RewardsCfg):
     #         "threshold": 500,
     #     },
     # )
+
+    # torso_height = RewTerm(
+    #     func=digit_v3_mdp.torso_height_reward,
+    #     weight=0.1,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #         ),
+    #         "std": 0.5,
+    #     },
+    # )

@@ -202,3 +202,15 @@ def shoulder_center_deviation_foot_center_l2(
     foot_pos = shoulder_foot_pos[:, 2:, :]
     foot_center_xy = torch.mean(foot_pos, dim=1).squeeze()[:, :2]
     return torch.exp(-torch.norm(shoulder_pos_center_xy - foot_center_xy, dim=1) / std)
+
+
+def torso_height_reward(
+    env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, std: float
+) -> torch.Tensor:
+    """
+    Reward the torso height.
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    torso_height = asset.data.root_pos_w[:, 2]
+    default_height = asset.data.default_root_state[2]
+    return torch.exp(-torch.norm(torso_height - default_height, dim=1) / std)
