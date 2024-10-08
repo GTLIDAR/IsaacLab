@@ -128,14 +128,14 @@ class TeacherObsCfg(ObsGroup):
 
     # applied_torque = ObsTerm(func=applied_torque)
 
-    # root_state_w = ObsTerm(
-    #     func=digit_mdp.root_state_w,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #         )
-    #     },
-    # )
+    root_state_w = ObsTerm(
+        func=digit_mdp.root_state_w,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+            )
+        },
+    )
 
     # acceleration = ObsTerm(
     #     func=digit_mdp.acceleration,
@@ -227,14 +227,14 @@ class TeacherObsCfg(ObsGroup):
     #     },
     # )
 
-    # incoming_wrench = ObsTerm(
-    #     func=mdp.body_incoming_wrench,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot", body_names=["left_toe_roll", "right_toe_roll"]
-    #         ),
-    #     },
-    # )
+    incoming_wrench = ObsTerm(
+        func=mdp.body_incoming_wrench,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot", body_names=["base", "left_toe_roll", "right_toe_roll"]
+            ),
+        },
+    )
 
     height_scan = ObsTerm(
         func=mdp.height_scan,
