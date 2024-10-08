@@ -114,7 +114,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         )
 
         self.rewards.undesired_contacts = None  # type: ignore
-        self.rewards.alive.weight = 10.0
+        self.rewards.alive.weight = 0.0
         self.rewards.track_lin_vel_xy_exp.weight = 0.5
         self.rewards.track_ang_vel_z_exp.weight = 1.0
         # self.rewards.lin_vel_z_l2.weight = -0.5

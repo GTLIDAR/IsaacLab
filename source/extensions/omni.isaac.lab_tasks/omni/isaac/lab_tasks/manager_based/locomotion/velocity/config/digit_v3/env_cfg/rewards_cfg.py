@@ -61,15 +61,15 @@ class DigitV3RewardsCfg(RewardsCfg):
         },  # joint_names=".*toe_roll"v
     )
     # Penalize deviation from default of the joints that are not essential for locomotion
-    joint_deviation_hip = RewTerm(
-        func=mdp.joint_deviation_l1,  # type: ignore
-        weight=-0.1,  # -0.2
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot", joint_names=[".*_hip_yaw", ".*_hip_roll"]
-            )
-        },
-    )
+    # joint_deviation_hip = RewTerm(
+    #     func=mdp.joint_deviation_l1,  # type: ignore
+    #     weight=-0.1,  # -0.2
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot", joint_names=[".*_hip_yaw", ".*_hip_roll"]
+    #         )
+    #     },
+    # )
     joint_deviation_arms = RewTerm(
         func=mdp.joint_deviation_l1,  # type: ignore
         weight=-0.2,
