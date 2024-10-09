@@ -227,13 +227,25 @@ class TeacherObsCfg(ObsGroup):
     #     },
     # )
 
-    incoming_wrench = ObsTerm(
-        func=mdp.body_incoming_wrench,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot", body_names=["base", "left_toe_roll", "right_toe_roll"]
-            ),
-        },
+    # incoming_wrench = ObsTerm(
+    #     func=mdp.body_incoming_wrench,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot", body_names=["base", "left_toe_roll", "right_toe_roll"]
+    #         ),
+    #     },
+    # )
+
+    root_lin_vel = ObsTerm(
+        func=mdp.root_lin_vel_w,
+        scale=1,
+        noise=Gnoise(mean=0.0, std=0.15, operation="add"),
+    )
+
+    root_ang_vel = ObsTerm(
+        func=mdp.root_ang_vel_w,
+        scale=1,
+        noise=Gnoise(mean=0.0, std=0.15, operation="add"),
     )
 
     height_scan = ObsTerm(
