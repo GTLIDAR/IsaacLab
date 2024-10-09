@@ -100,6 +100,7 @@ from omni.isaac.lab.envs import (
 )
 from omni.isaac.lab.utils.dict import print_dict
 from omni.isaac.lab.utils.io import dump_pickle, dump_yaml
+from omni.isaac.lab.utils import class_to_dict
 
 
 import omni.isaac.lab_tasks  # noqa: F401
@@ -423,7 +424,7 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
         project="L2T Digit",
         entity="rl-digit",
         name=log_time_note,
-        config=agent_cfg,
+        config=agent_cfg | class_to_dict(env_cfg),
         sync_tensorboard=True,
         monitor_gym=False,
         save_code=False,
