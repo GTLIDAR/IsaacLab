@@ -15,18 +15,6 @@ def applied_torque(
     return robot.data.applied_torque.to(env.device)
 
 
-# stiffness and damping
-def stiffness_and_damping(
-    env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
-) -> torch.Tensor:
-    """Joint stiffness and damping."""
-    robot = env.scene[asset_cfg.name]
-    robot: Articulation
-    return torch.cat([robot.data.joint_stiffness, robot.data.joint_damping], dim=-1).to(
-        env.device
-    )
-
-
 # root state in world frame
 def root_state_w(
     env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")

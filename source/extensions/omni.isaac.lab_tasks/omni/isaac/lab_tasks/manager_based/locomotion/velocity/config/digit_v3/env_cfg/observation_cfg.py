@@ -20,109 +20,23 @@ class TeacherObsCfg(ObsGroup):
     clock = ObsTerm(func=digit_mdp.clock, scale=1)
     base_lin_vel = ObsTerm(
         func=mdp.base_lin_vel,
-        scale=1,
-        noise=Gnoise(mean=0.0, std=0.15, operation="add"),
     )
     base_ang_vel = ObsTerm(
         func=mdp.base_ang_vel,
-        scale=1,
-        noise=Gnoise(mean=0.0, std=0.15, operation="add"),
     )
     projected_gravity = ObsTerm(
         func=mdp.projected_gravity,
-        noise=Unoise(n_min=-0.075, n_max=0.075),
     )
     velocity_commands = ObsTerm(
         func=mdp.generated_commands,
-        scale=1,
         params={"command_name": "base_velocity"},
     )
     joint_pos = ObsTerm(
         func=mdp.joint_pos,
-        scale=1,
-        noise=Gnoise(mean=0.0, std=0.1, operation="add"),
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                joint_names=[
-                    "left_hip_roll",
-                    "left_hip_yaw",
-                    "left_hip_pitch",
-                    "left_knee",
-                    "left_toe_A",
-                    "left_toe_B",
-                    "right_hip_roll",
-                    "right_hip_yaw",
-                    "right_hip_pitch",
-                    "right_knee",
-                    "right_toe_A",
-                    "right_toe_B",
-                    "left_shoulder_roll",
-                    "left_shoulder_pitch",
-                    "left_shoulder_yaw",
-                    "left_elbow",
-                    "right_shoulder_roll",
-                    "right_shoulder_pitch",
-                    "right_shoulder_yaw",
-                    "right_elbow",
-                    "left_shin",
-                    "left_tarsus",
-                    "left_toe_pitch",
-                    "left_toe_roll",
-                    "left_heel_spring",
-                    "right_shin",
-                    "right_tarsus",
-                    "right_toe_pitch",
-                    "right_toe_roll",
-                    "right_heel_spring",
-                ],
-                preserve_order=True,
-            )
-        },
     )
 
     joint_vel = ObsTerm(
         func=mdp.joint_vel,
-        scale=1,
-        noise=Gnoise(mean=0.0, std=0.1, operation="add"),
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                joint_names=[
-                    "left_hip_roll",
-                    "left_hip_yaw",
-                    "left_hip_pitch",
-                    "left_knee",
-                    "left_toe_A",
-                    "left_toe_B",
-                    "right_hip_roll",
-                    "right_hip_yaw",
-                    "right_hip_pitch",
-                    "right_knee",
-                    "right_toe_A",
-                    "right_toe_B",
-                    "left_shoulder_roll",
-                    "left_shoulder_pitch",
-                    "left_shoulder_yaw",
-                    "left_elbow",
-                    "right_shoulder_roll",
-                    "right_shoulder_pitch",
-                    "right_shoulder_yaw",
-                    "right_elbow",
-                    "left_shin",
-                    "left_tarsus",
-                    "left_toe_pitch",
-                    "left_toe_roll",
-                    "left_heel_spring",
-                    "right_shin",
-                    "right_tarsus",
-                    "right_toe_pitch",
-                    "right_toe_roll",
-                    "right_heel_spring",
-                ],
-                preserve_order=True,
-            )
-        },
     )
     actions = ObsTerm(func=mdp.last_action)
 
@@ -130,54 +44,10 @@ class TeacherObsCfg(ObsGroup):
 
     root_state_w = ObsTerm(
         func=digit_mdp.root_state_w,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-            )
-        },
     )
 
-    # acceleration = ObsTerm(
-    #     func=digit_mdp.acceleration,
-    #     noise=Unoise(n_min=-0.1, n_max=0.1, operation="add"),
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             joint_names=[
-    #                 "left_hip_roll",
-    #                 "left_hip_yaw",
-    #                 "left_hip_pitch",
-    #                 "left_knee",
-    #                 "left_toe_A",
-    #                 "left_toe_B",
-    #                 "right_hip_roll",
-    #                 "right_hip_yaw",
-    #                 "right_hip_pitch",
-    #                 "right_knee",
-    #                 "right_toe_A",
-    #                 "right_toe_B",
-    #                 "left_shoulder_roll",
-    #                 "left_shoulder_pitch",
-    #                 "left_shoulder_yaw",
-    #                 "left_elbow",
-    #                 "right_shoulder_roll",
-    #                 "right_shoulder_pitch",
-    #                 "right_shoulder_yaw",
-    #                 "right_elbow",
-    #                 "left_shin",
-    #                 "left_tarsus",
-    #                 "left_toe_pitch",
-    #                 "left_toe_roll",
-    #                 "left_heel_spring",
-    #                 "right_shin",
-    #                 "right_tarsus",
-    #                 "right_toe_pitch",
-    #                 "right_toe_roll",
-    #                 "right_heel_spring",
-    #             ],
-    #             preserve_order=True,
-    #         )
-    #     },
+    # joint_pos_limits_normalized = ObsTerm(
+    #     func=mdp.joint_pos_limit_normalized,
     # )
 
     # body_state_w = ObsTerm(
@@ -227,25 +97,12 @@ class TeacherObsCfg(ObsGroup):
     #     },
     # )
 
-    # incoming_wrench = ObsTerm(
-    #     func=mdp.body_incoming_wrench,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot", body_names=["base", "left_toe_roll", "right_toe_roll"]
-    #         ),
-    #     },
-    # )
-
     root_lin_vel = ObsTerm(
         func=mdp.root_lin_vel_w,
-        scale=1,
-        noise=Gnoise(mean=0.0, std=0.15, operation="add"),
     )
 
     root_ang_vel = ObsTerm(
         func=mdp.root_ang_vel_w,
-        scale=1,
-        noise=Gnoise(mean=0.0, std=0.15, operation="add"),
     )
 
     height_scan = ObsTerm(
