@@ -40,62 +40,9 @@ class TeacherObsCfg(ObsGroup):
     )
     actions = ObsTerm(func=mdp.last_action)
 
-    # applied_torque = ObsTerm(func=applied_torque)
-
     root_state_w = ObsTerm(
         func=digit_mdp.root_state_w,
     )
-
-    # joint_pos_limits_normalized = ObsTerm(
-    #     func=mdp.joint_pos_limit_normalized,
-    # )
-
-    # body_state_w = ObsTerm(
-    #     func=digit_mdp.body_state_w,
-    #     scale=1,
-    #     noise=Gnoise(mean=0.0, std=0.1, operation="add"),
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #         )
-    #     },
-    # )
-
-    # stiffness_and_damping = ObsTerm(
-    #     func=mdp.pd_gain,
-    #     scale=1,
-    #     noise=Unoise(
-    #         n_min=0.9, n_max=1.1, operation="scale"
-    #     ),  # scale nosie is data * (torch.rand_like(data) * (cfg.n_max - cfg.n_min) + cfg.n_min)
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             joint_names=[
-    #                 "left_hip_roll",
-    #                 "left_hip_yaw",
-    #                 "left_hip_pitch",
-    #                 "left_knee",
-    #                 "left_toe_A",
-    #                 "left_toe_B",
-    #                 "right_hip_roll",
-    #                 "right_hip_yaw",
-    #                 "right_hip_pitch",
-    #                 "right_knee",
-    #                 "right_toe_A",
-    #                 "right_toe_B",
-    #                 "left_shoulder_roll",
-    #                 "left_shoulder_pitch",
-    #                 "left_shoulder_yaw",
-    #                 "left_elbow",
-    #                 "right_shoulder_roll",
-    #                 "right_shoulder_pitch",
-    #                 "right_shoulder_yaw",
-    #                 "right_elbow",
-    #             ],
-    #             preserve_order=True,
-    #         )
-    #     },
-    # )
 
     root_lin_vel = ObsTerm(
         func=mdp.root_lin_vel_w,
@@ -108,7 +55,6 @@ class TeacherObsCfg(ObsGroup):
     height_scan = ObsTerm(
         func=mdp.height_scan,
         params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-        noise=Unoise(n_min=-0.1, n_max=0.1),
         clip=(-1.0, 1.0),
     )
 
