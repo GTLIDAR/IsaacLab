@@ -126,7 +126,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # self.rewards.joint_deviation_arms.weight = -0.5
         self.rewards.flat_orientation_l2.weight = -10.0
         self.rewards.dof_torques_l2.weight = -1.0e-6
-        self.rewards.action_rate_l2.weight = -0.001
+        self.rewards.action_rate_l2.weight = -0.002
         # self.rewards.feet_distance_l1.weight = -0.01
         # self.rewards.joint_deviation_torso.weight = -0.01
         # self.rewards.dof_pos_limits.weight = 0.0

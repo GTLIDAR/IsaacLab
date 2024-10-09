@@ -178,7 +178,7 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_toe_B",
             ],
             effort_limit={
-                 "left_toe_A": 41,
+                "left_toe_A": 41,
                 "left_toe_B": 41,
                 "right_toe_A": 41,
                 "right_toe_B": 41,
