@@ -439,9 +439,7 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
         rollout_buffer_class=RLOptDictRecurrentReplayBuffer,
         **agent_cfg
     )
-    # agent.set_parameters(
-    #     "/home/fwu/Documents/Research/digit_arsim_ros2/models/model_998400000_steps.zip"
-    # )
+
     # configure the logger
     new_logger = configure(log_dir, ["tensorboard"])
     agent.set_logger(new_logger)
