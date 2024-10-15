@@ -32,6 +32,7 @@ class DigitV3RewardsCfg(RewardsCfg):
         weight=1.0,
         params={"command_name": "base_velocity", "std": 0.5},
     )
+
     feet_air_time = None
     # feet_air_time = RewTerm(
     #     func=mdp.feet_air_time,
@@ -42,6 +43,7 @@ class DigitV3RewardsCfg(RewardsCfg):
     #         "threshold": 0.3,
     #     },
     # )
+
     feet_slide = RewTerm(
         func=mdp.feet_slide,
         weight=-0.25,
@@ -50,16 +52,18 @@ class DigitV3RewardsCfg(RewardsCfg):
             "asset_cfg": SceneEntityCfg("robot", body_names=".*toe_roll"),
         },
     )
+
     # Penalize ankle joint limits
     dof_pos_limits = RewTerm(
         func=mdp.joint_pos_limits,  # type: ignore
-        weight=-0.1,  # -1.0
+        weight=-0.1,
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
             )
-        },  # joint_names=".*toe_roll"v
+        },
     )
+
     # Penalize deviation from default of the joints that are not essential for locomotion
     joint_deviation_hip = RewTerm(
         func=mdp.joint_deviation_l1,  # type: ignore
@@ -86,12 +90,6 @@ class DigitV3RewardsCfg(RewardsCfg):
             )
         },
     )
-
-    # joint_deviation_torso = RewTerm(
-    #     func=mdp.joint_deviation_l1,  # type: ignore
-    #     weight=-0.1,
-    #     params={"asset_cfg": SceneEntityCfg("robot", body_names="base")},
-    # )
 
     joint_deviation_toes = RewTerm(
         func=mdp.joint_deviation_l1,  # type: ignore
@@ -140,98 +138,3 @@ class DigitV3RewardsCfg(RewardsCfg):
             ),
         },
     )
-
-    # feet_distance_l1 = RewTerm(
-    #     func=digit_v3_mdp.feet_distance_l1,
-    #     weight=-0.1,
-    #     params={
-    #         # "sensor_cfg": SceneEntityCfg(
-    #         #     "contact_forces",
-    #         #     body_names=["left_toe_roll", "right_toe_roll"],
-    #         #     preserve_order=True,
-    #         # ),
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             body_names=["left_toe_roll", "right_toe_roll"],
-    #             preserve_order=True,
-    #         ),
-    #         "min_dist": 0.2,
-    #         "max_dist": 0.5,
-    #     },
-    # )
-
-    # foot_clearance = RewTerm(
-    #     func=digit_v3_mdp.foot_clearance_reward,
-    #     weight=0.25,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             body_names=["left_toe_roll", "right_toe_roll"],
-    #             preserve_order=True,
-    #         ),
-    #         "std": 0.05,
-    #         "tanh_mult": 2.0,
-    #     },
-    # )
-
-    # foot_contact_force = RewTerm(
-    #     func=mdp.contact_forces,
-    #     weight=-0.2,
-    #     params={
-    #         "sensor_cfg": SceneEntityCfg(
-    #             "contact_forces",
-    #             body_names=["left_toe_roll", "right_toe_roll"],
-    #             preserve_order=True,
-    #         ),
-    #         "threshold": 900,
-    #     },
-    # )
-
-    # torque_applied = RewTerm(
-    #     func=digit_v3_mdp.torque_applied_l2,
-    #     weight=0.5,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #         ),
-    #         "std": 5.0,
-    #     },
-    # )
-
-    # com_deviation = RewTerm(
-    #     func=digit_v3_mdp.center_of_mass_deviation_l2,
-    #     weight=0.5,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             body_names=["left_toe_roll", "right_toe_roll"],
-    #             preserve_order=True,
-    #         ),
-    #         "std": 0.05,
-    #         "tanh_mult": 2.0,
-    #     },
-    # )
-
-    # foot_contact_force = RewTerm(
-    #     func=mdp.contact_forces,
-    #     weight=-0.2,
-    #     params={
-    #         "sensor_cfg": SceneEntityCfg(
-    #             "contact_forces",
-    #             body_names=["left_toe_roll", "right_toe_roll"],
-    #             preserve_order=True,
-    #         ),
-    #         "threshold": 500,
-    #     },
-    # )
-
-    # torso_height = RewTerm(
-    #     func=digit_v3_mdp.torso_height_reward,
-    #     weight=0.1,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #         ),
-    #         "std": 0.5,
-    #     },
-    # )

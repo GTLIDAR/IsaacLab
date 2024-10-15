@@ -86,9 +86,9 @@ def track_foot_height(
     asset: RigidObject = env.scene[asset_cfg.name]
     foot_z = asset.data.body_pos_w[:, asset_cfg.body_ids, 2]
 
-    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]  # type: ignore
     contacts = (
-        contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :]
+        contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :]  # type: ignore
         .norm(dim=-1)
         .max(dim=1)[0]
         > 1.0
@@ -120,21 +120,6 @@ def track_foot_height(
     reward = torch.exp(-error / std**2)
 
     return reward
-
-
-# def feet_distance( env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, min_dist: float, max_dist: float
-# ) -> torch.Tensor:
-#     """
-#     Calculates the reward based on the distance between the feet. Penalize feet get close to each other or too far away.
-#     """
-#     asset: RigidObject = env.scene[asset_cfg.name]
-#     foot_pos = asset.data.body_pos_w[:, asset_cfg.body_ids, :3]
-#     foot_dist = torch.norm(foot_pos[:, 0, :] - foot_pos[:, 1, :], dim=1)
-
-#     d_min = torch.clamp(foot_dist - min_dist, -0.5, 0.)
-#     # d_max = torch.clamp(foot_dist - max_dist, 0, 0.5)
-
-#     return torch.exp(-torch.abs(d_min) * 100)
 
 
 def feet_distance_l1(

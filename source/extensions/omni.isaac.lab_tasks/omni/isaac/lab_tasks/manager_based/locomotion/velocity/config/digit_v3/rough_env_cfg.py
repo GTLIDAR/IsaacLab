@@ -10,7 +10,6 @@ from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
 from omni.isaac.lab.managers import ObservationGroupCfg as ObsGroup
 from omni.isaac.lab.managers import ObservationTermCfg as ObsTerm
-from omni.isaac.lab.envs import ManagerBasedEnv
 from omni.isaac.lab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 from omni.isaac.lab.utils.noise import AdditiveGaussianNoiseCfg as Gnoise
 from omni.isaac.lab.utils import configclass
@@ -19,16 +18,10 @@ import omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.digit_v3.md
 import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
     LocomotionVelocityRoughEnvCfg,
-    RewardsCfg,
-    EventCfg,
 )
 
 from .env_cfg import DigitV3RewardsCfg, DigitV3EventCfg
 
-
-##
-# Pre-defined configs
-##
 from omni.isaac.lab_assets.digit import DIGITV3_CFG  # isort: skip
 
 
@@ -52,12 +45,6 @@ class DigitV3TerminationsCfg:
             "threshold": 1.0,
         },
     )
-    # base_too_low = DoneTerm(
-    #     func=mdp.root_height_below_minimum,  # type: ignore
-    #     params={
-    #         "minimum_height": 0.6,
-    #     },
-    # )
 
 
 @configclass
@@ -241,7 +228,7 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.sim.render_interval = self.decimation
 
         # Scene
-        self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base"
 
         # Rewards
@@ -253,7 +240,7 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
             "robot", joint_names=[".*_hip_.*", ".*_knee"]  # ".*toe_roll", ".*toe_pitch"
         )
 
-        self.rewards.undesired_contacts = None
+        self.rewards.undesired_contacts = None  # type: ignore
 
         # self.rewards.track_lin_vel_xy_exp.weight = 2.0
         # self.rewards.track_ang_vel_z_exp.weight = 2.0
@@ -303,8 +290,8 @@ class DigitV3RoughEnvCfg_PLAY(DigitV3RoughEnvCfg):
         # disable randomization for play
         self.observations.policy.enable_corruption = False
         # remove random pushing
-        self.events.base_external_force_torque = None
-        self.events.push_robot = None
+        self.events.base_external_force_torque = None  # type: ignore
+        self.events.push_robot = None  # type: ignore
 
         self.commands.base_velocity.ranges.lin_vel_x = (0.5, 0.5)
         self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)
