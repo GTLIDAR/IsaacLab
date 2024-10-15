@@ -100,6 +100,7 @@ from omni.isaac.lab.envs import (
 )
 from omni.isaac.lab.utils.dict import print_dict
 from omni.isaac.lab.utils.io import dump_pickle, dump_yaml
+from omni.isaac.lab.utils import class_to_dict
 
 
 import omni.isaac.lab_tasks  # noqa: F401
@@ -420,10 +421,10 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
 
     # initialize wandb and make callback
     run = wandb.init(
-        project="L2T Digit",
+        project="L2T Digit ablation-reward",
         entity="rl-digit",
         name=log_time_note,
-        config=agent_cfg,
+        config=agent_cfg | class_to_dict(env_cfg),
         sync_tensorboard=True,
         monitor_gym=False,
         save_code=False,
@@ -438,9 +439,7 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
         rollout_buffer_class=RLOptDictRecurrentReplayBuffer,
         **agent_cfg
     )
-    # agent.set_parameters(
-    #     "/home/fwu/Documents/Research/digit_arsim_ros2/models/model_998400000_steps.zip"
-    # )
+
     # configure the logger
     new_logger = configure(log_dir, ["tensorboard"])
     agent.set_logger(new_logger)

@@ -61,15 +61,16 @@ class DigitV3RewardsCfg(RewardsCfg):
         },  # joint_names=".*toe_roll"v
     )
     # Penalize deviation from default of the joints that are not essential for locomotion
-    # joint_deviation_hip = RewTerm(
-    #     func=mdp.joint_deviation_l1,  # type: ignore
-    #     weight=-0.1,  # -0.2
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot", joint_names=[".*_hip_yaw", ".*_hip_roll"]
-    #         )
-    #     },
-    # )
+    joint_deviation_hip = RewTerm(
+        func=mdp.joint_deviation_l1,  # type: ignore
+        weight=-0.1,  # -0.2
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot", joint_names=[".*_hip_yaw", ".*_hip_roll"]
+            )
+        },
+    )
+
     joint_deviation_arms = RewTerm(
         func=mdp.joint_deviation_l1,  # type: ignore
         weight=-0.2,
@@ -92,21 +93,21 @@ class DigitV3RewardsCfg(RewardsCfg):
     #     params={"asset_cfg": SceneEntityCfg("robot", body_names="base")},
     # )
 
-    # joint_deviation_toes = RewTerm(
-    #     func=mdp.joint_deviation_l1,  # type: ignore
-    #     weight=-0.1,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             joint_names=[
-    #                 ".*_toe_A",
-    #                 ".*_toe_B",
-    #                 ".*_toe_pitch",
-    #                 ".*_toe_roll",
-    #             ],
-    #         )
-    #     },
-    # )
+    joint_deviation_toes = RewTerm(
+        func=mdp.joint_deviation_l1,  # type: ignore
+        weight=-0.1,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=[
+                    ".*_toe_A",
+                    ".*_toe_B",
+                    ".*_toe_pitch",
+                    ".*_toe_roll",
+                ],
+            )
+        },
+    )
 
     foot_contact = RewTerm(
         func=digit_v3_mdp.reward_feet_contact_number,
@@ -221,5 +222,16 @@ class DigitV3RewardsCfg(RewardsCfg):
     #             preserve_order=True,
     #         ),
     #         "threshold": 500,
+    #     },
+    # )
+
+    # torso_height = RewTerm(
+    #     func=digit_v3_mdp.torso_height_reward,
+    #     weight=0.1,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #         ),
+    #         "std": 0.5,
     #     },
     # )

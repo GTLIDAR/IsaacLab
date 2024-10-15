@@ -166,10 +166,10 @@ class DigitV3EventCfg(EventCfg):
     # base_external_force_torque = EventTerm(
     #     func=mdp.apply_external_force_torque,
     #     mode="interval",
-    #     interval_range_s=(13.0, 14.0),
+    #     interval_range_s=(10.0, 20.0),
     #     params={
     #         "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-    #         "force_range": (0.0, 12.0),
+    #         "force_range": (0.0, 100.0),
     #         "torque_range": (-12.0, 12.0),
     #     },
     # )
@@ -199,14 +199,39 @@ class DigitV3EventCfg(EventCfg):
     #     },
     # )
 
-    # robot_joint_stiffness_and_damping = EventTerm(
-    #     func=mdp.randomize_actuator_gains,
-    #     mode="reset",
-    #     params={
-    #         "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
-    #         "stiffness_distribution_params": (0.5, 1.5),
-    #         "damping_distribution_params": (0.3, 5.0),
-    #         "operation": "scale",
-    #         "distribution": "log_uniform",
-    #     },
-    # )
+    robot_joint_stiffness_and_damping = EventTerm(
+        func=mdp.randomize_actuator_gains,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=[
+                    "left_hip_roll",
+                    "left_hip_yaw",
+                    "left_hip_pitch",
+                    "left_knee",
+                    "left_toe_A",
+                    "left_toe_B",
+                    "right_hip_roll",
+                    "right_hip_yaw",
+                    "right_hip_pitch",
+                    "right_knee",
+                    "right_toe_A",
+                    "right_toe_B",
+                    "left_shoulder_roll",
+                    "left_shoulder_pitch",
+                    "left_shoulder_yaw",
+                    "left_elbow",
+                    "right_shoulder_roll",
+                    "right_shoulder_pitch",
+                    "right_shoulder_yaw",
+                    "right_elbow",
+                ],
+                preserve_order=True,
+            ),
+            "stiffness_distribution_params": (0.9, 1.1),
+            "damping_distribution_params": (0.9, 1.1),
+            "operation": "scale",
+            "distribution": "log_uniform",
+        },
+    )
