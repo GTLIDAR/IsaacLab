@@ -33,7 +33,7 @@ full_path = os.path.dirname(os.path.realpath(__file__))
 
 DIGITV3_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"{ISAACLAB_ASSETS_DATA_DIR}/Robot/Agility/digit/digit_v3_oct19.usd",
+        usd_path=f"{ISAACLAB_ASSETS_DATA_DIR}/Robot/Agility/digit/digit_v3_oct20.usd",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
@@ -204,8 +204,8 @@ DIGITV3_CFG = ArticulationCfg(
         #         "left_shin",
         #         "left_tarsus",
         #         "left_heel_spring",
-        #         "left_achilles_rod",
-        #         "left_achilles_ros_heel_spring",
+        #         "left_achillies_rod",
+        #         "left_achillies_ros_heel_spring",
         #         "left_toe_A_rod",
         #         "left_toe_A_rod_toe_roll",
         #         "left_toe_B_rod",
@@ -228,8 +228,8 @@ DIGITV3_CFG = ArticulationCfg(
         #         "left_shin": 6000,
         #         "left_tarsus": 0,
         #         "left_heel_spring": 4375.0,
-        #         "left_achilles_rod": 0.0,
-        #         "left_achilles_ros_heel_spring": 0.0,
+        #         "left_achillies_rod": 0.0,
+        #         "left_achillies_ros_heel_spring": 0.0,
         #         "left_toe_A_rod": 0.0,
         #         "left_toe_A_rod_toe_roll": 0.0,
         #         "left_toe_B_rod": 0.0,
@@ -252,8 +252,8 @@ DIGITV3_CFG = ArticulationCfg(
         #         "left_shin": 0.0,
         #         "left_tarsus": 0.0,
         #         "left_heel_spring": 0.0,
-        #         "left_achilles_rod": 0.01,
-        #         "left_achilles_ros_heel_spring": 0.0,
+        #         "left_achillies_rod": 0.01,
+        #         "left_achillies_ros_heel_spring": 0.0,
         #         "left_toe_A_rod": 0.01,
         #         "left_toe_A_rod_toe_roll": 0.0,
         #         "left_toe_B_rod": 0.01,
