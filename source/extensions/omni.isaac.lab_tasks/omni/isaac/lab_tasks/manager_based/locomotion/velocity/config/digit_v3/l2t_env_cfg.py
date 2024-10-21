@@ -96,7 +96,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
-        self.scene.env_spacing = 2.5
+        self.scene.env_spacing = 5.0
         self.sim.dt = 0.005
         self.decimation = 4
         self.sim.gravity = (0.0, 0.0, -9.806)
@@ -128,6 +128,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.dof_torques_l2.weight = -1.0e-6
         self.rewards.action_rate_l2.weight = -0.002
         self.rewards.dof_acc_l2.weight = -5e-6
+        self.rewards.joint_deviation_toes.weight = -0.5
 
         # Commands
         self.commands.base_velocity.ranges.lin_vel_x = (0.0, 1.0)

@@ -11,58 +11,20 @@ from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg imp
 @configclass
 class DigitV3EventCfg(EventCfg):
     # startup
-    physics_material = EventTerm(
-        func=mdp.randomize_rigid_body_material,
-        mode="startup",
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                body_names=[
-                    "base",
-                    "left_shoulder_roll",
-                    "right_shoulder_roll",
-                    "left_hip_roll",
-                    "right_hip_roll",
-                    "left_shoulder_pitch",
-                    "right_shoulder_pitch",
-                    "left_hip_yaw",
-                    "right_hip_yaw",
-                    "left_shoulder_yaw",
-                    "right_shoulder_yaw",
-                    "left_hip_pitch",
-                    "right_hip_pitch",
-                    "left_elbow",
-                    "right_elbow",
-                    "left_knee",
-                    "right_knee",
-                    "left_achilles_rod",
-                    "right_achilles_rod",
-                    "left_shin",
-                    "right_shin",
-                    "left_tarsus",
-                    "right_tarsus",
-                    "left_heel_spring",
-                    "right_heel_spring",
-                    "left_toe_A",
-                    "left_toe_B",
-                    "left_toe_pitch",
-                    "right_toe_A",
-                    "right_toe_B",
-                    "right_toe_pitch",
-                    "left_toe_A_rod",
-                    "left_toe_B_rod",
-                    "left_toe_roll",
-                    "right_toe_A_rod",
-                    "right_toe_B_rod",
-                    "right_toe_roll",
-                ],
-            ),
-            "static_friction_range": (0.7, 1.3),
-            "dynamic_friction_range": (0.5, 1.8),
-            "restitution_range": (0.0, 0.0),
-            "num_buckets": 64,
-        },
-    )
+    # physics_material = EventTerm(
+    #     func=mdp.randomize_rigid_body_material,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             body_names="*",
+    #         ),
+    #         "static_friction_range": (0.8, 0.8),
+    #         "dynamic_friction_range": (0.6, 0.6),
+    #         "restitution_range": (0.0, 0.0),
+    #         "num_buckets": 64,
+    #     },
+    # )
 
     # reset
     add_base_mass = EventTerm(
