@@ -172,6 +172,11 @@ def track_foot_height(
         .max(dim=1)[0]
         > 1.0
     )
+    com_z = asset.data.root_pos_w[:, 2]
+    standing_position_com_z = asset.data.default_root_state[:, 2]
+    standing_height = com_z - standing_position_com_z
+    standing_position_toe_roll_z = 0.0626  # recorded from the default position
+    offset = (standing_height + standing_position_toe_roll_z)
 
     phase = env.get_phase()
 
@@ -192,8 +197,8 @@ def track_foot_height(
     filt_foot = torch.where(swing_mask == 1, foot_z, torch.zeros_like(foot_z))
 
     phase_mod = torch.fmod(phase, 0.5)
-    feet_z_target = height_target(phase_mod) + torch.min(foot_z, dim=1).values
-    feet_z_value = torch.max(filt_foot, dim=1).values
+    feet_z_target = height_target(phase_mod) + offset
+    feet_z_value = torch.sum(filt_foot, dim=1)
 
     error = torch.square(feet_z_value - feet_z_target)
     reward = torch.exp(-error / std**2)
