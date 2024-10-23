@@ -106,7 +106,27 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # Scene
         self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base"
-       
+        self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
+            "robot",
+            joint_names=[
+                ".*_hip_.*",
+                ".*_knee",
+                ".*_toe.*",
+                ".*_shoulder.*",
+                ".*_elbow",
+            ],
+        )
+        # Rewards
+        self.rewards.dof_acc_l2.params["asset_cfg"] = SceneEntityCfg(
+            "robot",
+            joint_names=[
+                ".*_hip_.*",
+                ".*_knee",
+                ".*_toe.*",
+                ".*_shoulder.*",
+                ".*_elbow",
+            ],
+        )
         # Rewards
         self.rewards.undesired_contacts = None  # type: ignore
         self.rewards.alive.weight = 0.0
@@ -120,9 +140,9 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.flat_orientation_l2.weight = -10.0
         self.rewards.dof_torques_l2.weight = -1.0e-6
         self.rewards.action_rate_l2.weight = -0.002
-        self.rewards.dof_acc_l2.weight = -5e-6
-        self.rewards.joint_deviation_toes.weight = -0.5
-        self.rewards.joint_deviation_arms.weight = -0.5
+        self.rewards.dof_acc_l2.weight = 0
+        # self.rewards.joint_deviation_toes.weight = -0.5
+        # self.rewards.joint_deviation_arms.weight = -0.5
 
         # Commands
         self.commands.base_velocity.ranges.lin_vel_x = (-0.0, 1.0)
