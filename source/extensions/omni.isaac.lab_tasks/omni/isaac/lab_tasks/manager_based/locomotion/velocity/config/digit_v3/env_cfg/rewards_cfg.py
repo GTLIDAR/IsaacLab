@@ -109,23 +109,23 @@ class DigitV3RewardsCfg(RewardsCfg):
         },
     )
 
-    # foot_contact = RewTerm(
-    #     func=digit_v3_mdp.reward_feet_contact_number,
-    #     weight=2.0,
-    #     params={
-    #         "sensor_cfg": SceneEntityCfg(
-    #             "contact_forces",
-    #             body_names=["left_toe_roll", "right_toe_roll"],
-    #             preserve_order=True,
-    #         ),
-    #         "pos_rw": 1.0,
-    #         "neg_rw": -0.3,
-    #     },
-    # )
+    foot_contact = RewTerm(
+        func=digit_v3_mdp.reward_feet_contact_number,
+        weight=2.0,
+        params={
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces",
+                body_names=["left_toe_roll", "right_toe_roll"],
+                preserve_order=True,
+            ),
+            "pos_rw": 1.0,
+            "neg_rw": -0.3,
+        },
+    )
 
     track_foot_height = RewTerm(
         func=digit_v3_mdp.track_foot_height,
-        weight=0.005,
+        weight=0.5,
         params={
             "std": 0.05,
             "asset_cfg": SceneEntityCfg(

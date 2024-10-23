@@ -33,7 +33,7 @@ full_path = os.path.dirname(os.path.realpath(__file__))
 
 DIGITV3_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"{ISAACLAB_ASSETS_DATA_DIR}/Robot/Agility/digit/digit_v3_oct20.usd",
+        usd_path=f"{ISAACLAB_ASSETS_DATA_DIR}/Robot/Agility/digit/digit_v3_oct19.usd",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
@@ -152,14 +152,14 @@ DIGITV3_CFG = ArticulationCfg(
             },
             velocity_limit=60.0,
             stiffness={
-                "left_shoulder_roll": 300,
-                "left_shoulder_pitch": 300,
-                "left_shoulder_yaw": 200,
-                "left_elbow": 200,
-                "right_shoulder_roll": 300,
-                "right_shoulder_pitch": 300,
-                "right_shoulder_yaw": 200,
-                "right_elbow": 200,
+                "left_shoulder_roll": 150,
+                "left_shoulder_pitch": 150,
+                "left_shoulder_yaw": 100,
+                "left_elbow": 100,
+                "right_shoulder_roll": 150,
+                "right_shoulder_pitch": 150,
+                "right_shoulder_yaw": 100,
+                "right_elbow": 100,
             },
             damping={
                 "left_shoulder_roll": 5.0 + 66.849,

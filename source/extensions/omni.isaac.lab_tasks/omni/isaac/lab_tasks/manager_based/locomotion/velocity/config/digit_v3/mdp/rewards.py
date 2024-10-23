@@ -54,6 +54,39 @@ def reward_feet_contact_number(
     return torch.mean(reward, dim=1)
 
 
+def new_reward_feet_contact_number(
+    env, sensor_cfg: SceneEntityCfg, pos_rw: float, neg_rw: float
+) -> torch.Tensor:
+    """
+    Calculates a reward based on the number of feet contacts aligning with the gait phase.
+    Rewards or penalizes depending on whether the foot contact matches the expected gait phase.
+    """
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    contacts = (
+        contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :]
+        .norm(dim=-1)
+        .max(dim=1)[0]
+        > 1.0
+    )
+
+    # get the desired standing count i.e., double stance or single stance, no matter which leg is in stance
+    phase = env.get_phase()
+    sin_pos = torch.sin(2 * torch.pi * phase)
+    stance_mask = torch.zeros((env.num_envs, 2), device=env.device)
+    stance_mask[:, 0] = sin_pos >= 0
+    stance_mask[:, 1] = sin_pos < 0
+    stance_mask[torch.abs(sin_pos) < 0.1] = 1
+    stance_mask = torch.sum(stance_mask, dim=1)
+
+    # get the current standing count i.e., double stance or single stance
+    stance = torch.sum(contacts, dim=1)
+
+    # reward the agent based on the stance
+    reward = torch.where(stance == stance_mask, pos_rw, neg_rw)
+
+    return reward
+
+
 def foot_clearance_reward(
     env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg, std: float, tanh_mult: float
 ) -> torch.Tensor:
@@ -73,6 +106,52 @@ def foot_clearance_reward(
 def height_target(t: torch.Tensor):
     a5, a4, a3, a2, a1, a0 = [9.6, 12.0, -18.8, 5.0, 0.1, 0.0]
     return a5 * t**5 + a4 * t**4 + a3 * t**3 + a2 * t**2 + a1 * t + a0
+
+
+def new_track_foot_height(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg,
+    sensor_cfg: SceneEntityCfg,
+    std: float,
+) -> torch.Tensor:
+    """"""
+
+    asset: RigidObject = env.scene[asset_cfg.name]
+    foot_z = asset.data.body_pos_w[:, asset_cfg.body_ids, 2]
+    com_z = asset.data.root_pos_w[:, 2]
+    standing_position_com_z = asset.data.default_root_state[:, 2]
+    standing_height = com_z - standing_position_com_z
+    standing_position_toe_roll_z = 0.0626  # recorded from the default position
+    offset = (standing_height + standing_position_toe_roll_z).unsqueeze(-1)
+
+    # contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]  # type: ignore
+    # contacts = (
+    #     contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :]  # type: ignore
+    #     .norm(dim=-1)
+    #     .max(dim=1)[0]
+    #     > 1.0
+    # )
+
+    phase = env.get_phase()
+
+    sin_pos = torch.sin(2 * torch.pi * phase)
+    stance_mask = torch.zeros((env.num_envs, 2), device=env.device)
+    stance_mask[:, 0] = sin_pos >= 0
+    stance_mask[:, 1] = sin_pos < 0
+    stance_mask[torch.abs(sin_pos) < 0.1] = 1
+    swing_mask = 1 - stance_mask
+
+    phase_mod = torch.fmod(phase, 0.5).unsqueeze(-1)
+    feet_z_target = height_target(phase_mod) + offset
+
+    desired_foot_height = torch.where(
+        swing_mask == 1, feet_z_target, torch.zeros_like(feet_z_target) + offset
+    )
+
+    error = torch.linalg.norm(foot_z - desired_foot_height, dim=1)
+
+    reward = torch.exp(-error / std**2)
+    return reward
 
 
 def track_foot_height(

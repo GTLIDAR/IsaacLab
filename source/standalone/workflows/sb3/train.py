@@ -49,6 +49,9 @@ parser.add_argument(
 parser.add_argument(
     "--note", type=str, default=None, help="Note to be added to the wandb run."
 )
+parser.add_argument(
+    "--load_model", type=str, default=None, help="Path to the model to be loaded."
+)
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
 # parse the arguments
@@ -421,13 +424,14 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
 
     # initialize wandb and make callback
     run = wandb.init(
-        project="L2T Digit",
+        project="L2T Digit flat",
         entity="rl-digit",
         name=log_time_note,
         config=agent_cfg | class_to_dict(env_cfg),
         sync_tensorboard=True,
         monitor_gym=False,
         save_code=False,
+        mode="disabled",
     )
     wandb_callback = WandbCallback()
 
@@ -439,6 +443,10 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
         rollout_buffer_class=RLOptDictRecurrentReplayBuffer,
         **agent_cfg
     )
+
+    # load the model if required
+    if args_cli.load_model:
+        agent.set_parameters(args_cli.load_model)
 
     # configure the logger
     new_logger = configure(log_dir, ["tensorboard"])
