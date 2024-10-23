@@ -424,14 +424,13 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
 
     # initialize wandb and make callback
     run = wandb.init(
-        project="L2T Digit flat",
+        project="L2T Digit",
         entity="rl-digit",
         name=log_time_note,
         config=agent_cfg | class_to_dict(env_cfg),
         sync_tensorboard=True,
         monitor_gym=False,
         save_code=False,
-        mode="disabled",
     )
     wandb_callback = WandbCallback()
 

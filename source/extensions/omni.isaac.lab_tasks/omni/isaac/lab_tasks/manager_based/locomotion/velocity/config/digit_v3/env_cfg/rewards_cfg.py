@@ -100,8 +100,8 @@ class DigitV3RewardsCfg(RewardsCfg):
             "asset_cfg": SceneEntityCfg(
                 "robot",
                 joint_names=[
-                    ".*_toe_A",
-                    ".*_toe_B",
+                    # ".*_toe_A",
+                    # ".*_toe_B",
                     ".*_toe_pitch",
                     ".*_toe_roll",
                 ],
