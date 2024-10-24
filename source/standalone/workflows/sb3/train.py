@@ -50,7 +50,18 @@ parser.add_argument(
     "--note", type=str, default=None, help="Note to be added to the wandb run."
 )
 parser.add_argument(
-    "--load_model", type=str, default=None, help="Path to the model to be loaded."
+    "--resume_training",
+    action="store_true",
+    default=False,
+    help="Continue training using the either the latest model or specified by checkpoint argument (default using best saved model in the last run).",
+)
+parser.add_argument(
+    "--checkpoint", type=str, default=None, help="Path to model checkpoint."
+)
+parser.add_argument(
+    "--use_last_checkpoint",
+    action="store_true",
+    help="When no checkpoint provided, use the last saved model. Otherwise use the best saved model.",
 )
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
@@ -107,7 +118,11 @@ from omni.isaac.lab.utils import class_to_dict
 
 
 import omni.isaac.lab_tasks  # noqa: F401
-from omni.isaac.lab_tasks.utils import load_cfg_from_registry, parse_env_cfg
+from omni.isaac.lab_tasks.utils import (
+    load_cfg_from_registry,
+    parse_env_cfg,
+    get_checkpoint_path,
+)
 from omni.isaac.lab_tasks.utils.hydra import hydra_task_config
 from omni.isaac.lab_tasks.utils.wrappers.sb3 import (
     Sb3VecEnvWrapper,
@@ -370,6 +385,20 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
     # note: certain randomizations occur in the environment initialization so we set the seed here
     env_cfg.seed = agent_cfg["seed"]
 
+    if args_cli.resume_training:
+        # directory for logging into
+        log_root_path = os.path.join("logs", "sb3", args_cli.task)
+        log_root_path = os.path.abspath(log_root_path)
+        # check checkpoint is valid
+        if args_cli.checkpoint is None:
+            if args_cli.use_last_checkpoint:
+                checkpoint = "model_.*.zip"
+            else:
+                checkpoint = "model.zip"
+            checkpoint_path = get_checkpoint_path(log_root_path, ".*", checkpoint)
+        else:
+            checkpoint_path = args_cli.checkpoint
+
     log_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     note = "_" + args_cli.note if args_cli.note else ""
     log_time_note = log_time + note
@@ -424,7 +453,7 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
 
     # initialize wandb and make callback
     run = wandb.init(
-        project="L2T Digit",
+        project="L2T Digit flat",
         entity="rl-digit",
         name=log_time_note,
         config=agent_cfg | class_to_dict(env_cfg),
@@ -444,8 +473,8 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
     )
 
     # load the model if required
-    if args_cli.load_model:
-        agent.set_parameters(args_cli.load_model)
+    if args_cli.resume_training:
+        agent.set_parameters(checkpoint_path)
 
     # configure the logger
     new_logger = configure(log_dir, ["tensorboard"])

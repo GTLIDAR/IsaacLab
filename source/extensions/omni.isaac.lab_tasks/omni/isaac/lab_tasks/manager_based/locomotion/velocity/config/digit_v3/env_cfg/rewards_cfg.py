@@ -141,10 +141,13 @@ class DigitV3RewardsCfg(RewardsCfg):
         },
     )
 
-    # foot_clearance = RewTerm(
-    #     func=digit_v3_mdp.foot_clearance_reward,
-    #     weight=0.5,
-    #     params={
-    #         "threshold": 0.2,
-    #     },
-    # )
+    foot_clearance = RewTerm(
+        func=digit_v3_mdp.foot_clearance_reward,
+        weight=0.5,
+        params={
+            "target_height": 0.2,
+            "std": 0.05,
+            "tanh_mult": 2.0,
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*_toe_roll"),
+        },
+    )
