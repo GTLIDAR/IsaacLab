@@ -27,13 +27,13 @@ parser.add_argument(
 parser.add_argument(
     "--video_length",
     type=int,
-    default=200,
+    default=500,
     help="Length of the recorded video (in steps).",
 )
 parser.add_argument(
     "--video_interval",
     type=int,
-    default=2000,
+    default=5000,
     help="Interval between video recordings (in steps).",
 )
 parser.add_argument(
@@ -458,7 +458,7 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
         name=log_time_note,
         config=agent_cfg | class_to_dict(env_cfg),
         sync_tensorboard=True,
-        monitor_gym=False,
+        monitor_gym=True if args_cli.video else False,
         save_code=False,
     )
     wandb_callback = WandbCallback()

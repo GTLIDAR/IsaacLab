@@ -3,10 +3,11 @@ seed: 42
 
 n_timesteps: !!float 10e8
 policy: 'MlpPolicy'
-n_steps: 12
+n_steps: 4
 gamma: 0.99
 gae_lambda: 0.95
 n_epochs: 5
+n_batches: 5
 ent_coef: 0.01
 sde_sample_freq: 4
 max_grad_norm: 0.5
