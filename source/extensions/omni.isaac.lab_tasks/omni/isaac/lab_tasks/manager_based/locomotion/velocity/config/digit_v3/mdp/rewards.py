@@ -41,15 +41,12 @@ def reward_feet_contact_number(
     stance_mask[torch.abs(sin_pos) < 0.1] = 1
     mask_2 = 1 - stance_mask
     mask_2[torch.abs(sin_pos) < 0.1] = 1
-    # print("mask2", mask_2.shape, mask_2)
-    # print("stance", stance_mask.shape, stance_mask)
-    # print("")
+
     if torch.sum(contacts == stance_mask) > torch.sum(contacts == mask_2):
-        # print("1")
+
         reward = torch.where(contacts == stance_mask, pos_rw, neg_rw)
         return torch.mean(reward, dim=1)
 
-    # print("2")
     reward = torch.where(contacts == mask_2, pos_rw, neg_rw)
     return torch.mean(reward, dim=1)
 
@@ -68,23 +65,15 @@ def new_reward_feet_contact_number(
         .max(dim=1)[0]
         > 1.0
     )
-
-    # get the desired standing count i.e., double stance or single stance, no matter which leg is in stance
+    # print("contact", contacts.shape, contacts)
     phase = env.get_phase()
     sin_pos = torch.sin(2 * torch.pi * phase)
     stance_mask = torch.zeros((env.num_envs, 2), device=env.device)
     stance_mask[:, 0] = sin_pos >= 0
     stance_mask[:, 1] = sin_pos < 0
     stance_mask[torch.abs(sin_pos) < 0.1] = 1
-    stance_mask = torch.sum(stance_mask, dim=1)
-
-    # get the current standing count i.e., double stance or single stance
-    stance = torch.sum(contacts, dim=1)
-
-    # reward the agent based on the stance
-    reward = torch.where(stance == stance_mask, pos_rw, neg_rw)
-
-    return reward
+    reward = torch.where(contacts == stance_mask, pos_rw, neg_rw)
+    return torch.mean(reward, dim=1)
 
 
 def foot_clearance_reward(
@@ -137,16 +126,7 @@ def new_track_foot_height(
     standing_position_toe_roll_z = 0.0626  # recorded from the default position
     offset = (standing_height + standing_position_toe_roll_z).unsqueeze(-1)
 
-    # contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]  # type: ignore
-    # contacts = (
-    #     contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :]  # type: ignore
-    #     .norm(dim=-1)
-    #     .max(dim=1)[0]
-    #     > 1.0
-    # )
-
     phase = env.get_phase()
-
     sin_pos = torch.sin(2 * torch.pi * phase)
     stance_mask = torch.zeros((env.num_envs, 2), device=env.device)
     stance_mask[:, 0] = sin_pos >= 0
@@ -154,16 +134,15 @@ def new_track_foot_height(
     stance_mask[torch.abs(sin_pos) < 0.1] = 1
     swing_mask = 1 - stance_mask
 
-    phase_mod = torch.fmod(phase, 0.5).unsqueeze(-1)
+    filt_foot = torch.where(swing_mask == 1, foot_z, torch.zeros_like(foot_z))
+
+    phase_mod = torch.fmod(phase, 0.5)
     feet_z_target = height_target(phase_mod) + offset
+    feet_z_value = torch.sum(filt_foot, dim=1)
 
-    desired_foot_height = torch.where(
-        swing_mask == 1, feet_z_target, torch.zeros_like(feet_z_target) + offset
-    )
-
-    error = torch.linalg.norm(foot_z - desired_foot_height, dim=1)
-
+    error = torch.square(feet_z_value - feet_z_target)
     reward = torch.exp(-error / std**2)
+
     return reward
 
 

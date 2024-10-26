@@ -94,9 +94,7 @@ class L2TTerminationsCfg:
         params={
             "sensor_cfg": SceneEntityCfg(
                 "contact_forces",
-                body_names=[
-                    ".*base",
-                ],
+                body_names=[".*base", ".*hip.*", ".*knee", ".*elbow"],
             ),
             "threshold": 1.0,
         },
@@ -130,6 +128,22 @@ class L2TTerminationsCfg:
     #                 ".*_shoulder_pitch",
     #                 ".*_shoulder_roll",
     #                 ".*_shoulder_yaw",
+    #                 ".*_elbow",
+    #             ],
+    #         ),
+    #     },
+    # )
+
+    # joint_pos_out_of_limit = DoneTerm(
+    #     func=mdp.joint_pos_out_of_limit,  # type: ignore
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             joint_names=[
+    #                 ".*_hip_.*",
+    #                 ".*_knee",
+    #                 ".*_toe.*",
+    #                 ".*_shoulder.*",
     #                 ".*_elbow",
     #             ],
     #         ),
@@ -191,21 +205,19 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
             ],
         )
 
-        # self.rewards.undesired_contacts = None  # type: ignore
+        self.rewards.undesired_contacts = None  # type: ignore
         self.rewards.alive.weight = 0.0
         self.rewards.track_lin_vel_xy_exp.weight = 0.5
         self.rewards.track_ang_vel_z_exp.weight = 1.0
         self.rewards.ang_vel_xy_l2.weight = -0.1
         self.rewards.dof_pos_limits.weight = -0.5
-        self.rewards.termination_penalty.weight = -2000
+        self.rewards.termination_penalty.weight = -200
         self.rewards.feet_slide.weight = -1.0
         self.rewards.joint_deviation_hip.weight = -5.0
         self.rewards.flat_orientation_l2.weight = -10.0
         self.rewards.dof_torques_l2.weight = -1.0e-6
         self.rewards.action_rate_l2.weight = -0.002
         self.rewards.dof_acc_l2.weight = 0
-        # self.rewards.joint_deviation_toes.weight = -0.5
-        # self.rewards.joint_deviation_arms.weight = -0.5
 
         # Commands
         self.commands.base_velocity.ranges.lin_vel_x = (-0.0, 1.0)

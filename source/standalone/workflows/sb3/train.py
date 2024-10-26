@@ -27,13 +27,13 @@ parser.add_argument(
 parser.add_argument(
     "--video_length",
     type=int,
-    default=500,
+    default=200,
     help="Length of the recorded video (in steps).",
 )
 parser.add_argument(
     "--video_interval",
     type=int,
-    default=5000,
+    default=1000,
     help="Interval between video recordings (in steps).",
 )
 parser.add_argument(
