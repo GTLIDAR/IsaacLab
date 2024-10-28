@@ -2,7 +2,6 @@ from omni.isaac.lab.managers import EventTermCfg as EventTerm
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.utils import configclass
 
-import omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.digit_v3.mdp as digit_v3_mdp
 import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
     EventCfg,
@@ -74,42 +73,6 @@ class DigitV3EventCfg(EventCfg):
                 "robot",
                 body_names=[
                     "base",
-                    # "left_shoulder_roll",
-                    # "right_shoulder_roll",
-                    # "left_hip_roll",
-                    # "right_hip_roll",
-                    # "left_shoulder_pitch",
-                    # "right_shoulder_pitch",
-                    # "left_hip_yaw",
-                    # "right_hip_yaw",
-                    # "left_shoulder_yaw",
-                    # "right_shoulder_yaw",
-                    # "left_hip_pitch",
-                    # "right_hip_pitch",
-                    # "left_elbow",
-                    # "right_elbow",
-                    # "left_knee",
-                    # "right_knee",
-                    # "left_achilles_rod",
-                    # "right_achilles_rod",
-                    # "left_shin",
-                    # "right_shin",
-                    # "left_tarsus",
-                    # "right_tarsus",
-                    # "left_heel_spring",
-                    # "right_heel_spring",
-                    # "left_toe_A",
-                    # "left_toe_B",
-                    # "left_toe_pitch",
-                    # "right_toe_A",
-                    # "right_toe_B",
-                    # "right_toe_pitch",
-                    # "left_toe_A_rod",
-                    # "left_toe_B_rod",
-                    # "left_toe_roll",
-                    # "right_toe_A_rod",
-                    # "right_toe_B_rod",
-                    # "right_toe_roll",
                 ],
             ),
             "mass_distribution_params": (0.5, 1.5),
@@ -162,43 +125,6 @@ class DigitV3EventCfg(EventCfg):
         },
     )
 
-    # interval
-    # base_external_force_torque = EventTerm(
-    #     func=mdp.apply_external_force_torque,
-    #     mode="interval",
-    #     interval_range_s=(10.0, 20.0),
-    #     params={
-    #         "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-    #         "force_range": (0.0, 100.0),
-    #         "torque_range": (-12.0, 12.0),
-    #     },
-    # )
-
-    # push_robot = EventTerm(
-    #     func=mdp.push_by_setting_velocity,
-    #     mode="interval",
-    #     interval_range_s=(9.0, 11.0),
-    #     params={
-    #         "velocity_range": {
-    #             "x": (-0.2, 0.4),
-    #             "y": (-0.4, 0.4),
-    #         }
-    #     },
-    # )
-
-    # push_robot_z = EventTerm(
-    #     func=mdp.push_by_setting_velocity,
-    #     mode="interval",
-    #     interval_range_s=(0.0, 2.0),
-    #     params={
-    #         "velocity_range": {
-    #             "x": (-0.1, 0.1),
-    #             "y": (-0.1, 0.1),
-    #             "z": (0.0, 0.2),
-    #         }
-    #     },
-    # )
-
     robot_joint_stiffness_and_damping = EventTerm(
         func=mdp.randomize_actuator_gains,
         mode="reset",
@@ -229,8 +155,8 @@ class DigitV3EventCfg(EventCfg):
                 ],
                 preserve_order=True,
             ),
-            "stiffness_distribution_params": (0.9, 1.1),
-            "damping_distribution_params": (0.9, 1.1),
+            "stiffness_distribution_params": (0.8, 1.2),
+            "damping_distribution_params": (0.8, 1.2),
             "operation": "scale",
             "distribution": "log_uniform",
         },

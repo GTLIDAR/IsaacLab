@@ -1,13 +1,9 @@
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.managers import ObservationGroupCfg as ObsGroup
 from omni.isaac.lab.managers import ObservationTermCfg as ObsTerm
-from omni.isaac.lab.utils.noise import AdditiveGaussianNoiseCfg as Gnoise
 from omni.isaac.lab.utils.noise import UniformNoiseCfg as Unoise
 from omni.isaac.lab.utils import configclass
 
-from omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.digit_v3.mdp.state import (
-    applied_torque,
-)
 import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
 import omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.digit_v3.mdp as digit_mdp
 
@@ -91,7 +87,7 @@ class StudentObsCfg(ObsGroup):
     joint_pos = ObsTerm(
         func=mdp.joint_pos,
         scale=1,
-        noise=Unoise(n_min=-0.01, n_max=0.01),
+        noise=Unoise(n_min=-0.1, n_max=0.1),
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",

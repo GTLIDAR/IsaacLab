@@ -12,9 +12,11 @@ The following configurations are available:
 
 import omni.isaac.lab.sim as sim_utils
 from omni.isaac.lab.actuators import ImplicitActuatorCfg
-from omni.isaac.lab.actuators import DelayedPDActuatorCfg
+
+# from omni.isaac.lab.actuators import DelayedPDActuatorCfg
 from omni.isaac.lab.assets.articulation import ArticulationCfg
-from omni.isaac.lab.utils.assets import ISAACLAB_NUCLEUS_DIR
+
+# from omni.isaac.lab.utils.assets import ISAACLAB_NUCLEUS_DIR
 from omni.isaac.lab_assets import ISAACLAB_ASSETS_DATA_DIR
 
 ##
@@ -31,7 +33,7 @@ full_path = os.path.dirname(os.path.realpath(__file__))
 
 DIGITV3_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"{ISAACLAB_ASSETS_DATA_DIR}/Robot/Agility/digit/digit_v3_sep10.usd",
+        usd_path=f"{ISAACLAB_ASSETS_DATA_DIR}/Robot/Agility/digit/digit_v3_oct28.usd",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
@@ -150,14 +152,14 @@ DIGITV3_CFG = ArticulationCfg(
             },
             velocity_limit=60.0,
             stiffness={
-                "left_shoulder_roll": 300,
-                "left_shoulder_pitch": 300,
-                "left_shoulder_yaw": 200,
-                "left_elbow": 200,
-                "right_shoulder_roll": 300,
-                "right_shoulder_pitch": 300,
-                "right_shoulder_yaw": 200,
-                "right_elbow": 200,
+                "left_shoulder_roll": 150,
+                "left_shoulder_pitch": 150,
+                "left_shoulder_yaw": 100,
+                "left_elbow": 100,
+                "right_shoulder_roll": 150,
+                "right_shoulder_pitch": 150,
+                "right_shoulder_yaw": 100,
+                "right_elbow": 100,
             },
             damping={
                 "left_shoulder_roll": 5.0 + 66.849,
@@ -197,5 +199,79 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_toe_B": 1.0 + 15.5532,
             },
         ),
+        # "passive": ImplicitActuatorCfg(
+        #     joint_names_expr=[
+        #         "left_shin",
+        #         "left_tarsus",
+        #         "left_heel_spring",
+        #         "left_achillies_rod",
+        #         "left_achillies_ros_heel_spring",
+        #         "left_toe_A_rod",
+        #         "left_toe_A_rod_toe_roll",
+        #         "left_toe_B_rod",
+        #         "left_toe_B_rod_toe_roll",
+        #         "left_toe_pitch",
+        #         "left_toe_roll",
+        #         "right_shin",
+        #         "right_tarsus",
+        #         "right_heel_spring",
+        #         "right_achilles_rod",
+        #         "right_achilles_ros_heel_spring",
+        #         "right_toe_A_rod",
+        #         "right_toe_A_rod_toe_roll",
+        #         "right_toe_B_rod",
+        #         "right_toe_B_rod_toe_roll",
+        #         "right_toe_pitch",
+        #         "right_toe_roll",
+        #     ],
+        #     stiffness={
+        #         "left_shin": 6000,
+        #         "left_tarsus": 0,
+        #         "left_heel_spring": 4375.0,
+        #         "left_achillies_rod": 0.0,
+        #         "left_achillies_ros_heel_spring": 0.0,
+        #         "left_toe_A_rod": 0.0,
+        #         "left_toe_A_rod_toe_roll": 0.0,
+        #         "left_toe_B_rod": 0.0,
+        #         "left_toe_B_rod_toe_roll": 0.0,
+        #         "left_toe_pitch": 0.0,
+        #         "left_toe_roll": 0.0,
+        #         "right_shin": 6000,
+        #         "right_tarsus": 0,
+        #         "right_heel_spring": 4375.0,
+        #         "right_achilles_rod": 0.0,
+        #         "right_achilles_ros_heel_spring": 0.0,
+        #         "right_toe_A_rod": 0.0,
+        #         "right_toe_A_rod_toe_roll": 0.0,
+        #         "right_toe_B_rod": 0.0,
+        #         "right_toe_B_rod_toe_roll": 0.0,
+        #         "right_toe_pitch": 0.0,
+        #         "right_toe_roll": 0.0,
+        #     },
+        #     damping={
+        #         "left_shin": 0.0,
+        #         "left_tarsus": 0.0,
+        #         "left_heel_spring": 0.0,
+        #         "left_achillies_rod": 0.01,
+        #         "left_achillies_ros_heel_spring": 0.0,
+        #         "left_toe_A_rod": 0.01,
+        #         "left_toe_A_rod_toe_roll": 0.0,
+        #         "left_toe_B_rod": 0.01,
+        #         "left_toe_B_rod_toe_roll": 0.0,
+        #         "left_toe_pitch": 0.0,
+        #         "left_toe_roll": 0.0,
+        #         "right_shin": 0.0,
+        #         "right_tarsus": 0,
+        #         "right_heel_spring": 0.0,
+        #         "right_achilles_rod": 0.01,
+        #         "right_achilles_ros_heel_spring": 0.0,
+        #         "right_toe_A_rod": 0.01,
+        #         "right_toe_A_rod_toe_roll": 0.0,
+        #         "right_toe_B_rod": 0.01,
+        #         "right_toe_B_rod_toe_roll": 0.0,
+        #         "right_toe_pitch": 0.0,
+        #         "right_toe_roll": 0.0,
+        #     },
+        # ),
     },
 )

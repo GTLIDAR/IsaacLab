@@ -40,23 +40,21 @@ class DigitV3FlatEnvCfg(DigitV3RoughEnvCfg):
         self.rewards.flat_orientation_l2.weight = -5.0
         self.rewards.foot_contact.weight = 1.0
         self.rewards.track_foot_height.weight = 0.5
-        self.rewards.feet_distance_l1.weight = -0.1
 
         self.rewards.dof_pos_limits.weight = -0.1
         self.rewards.termination_penalty.weight = -200
         self.rewards.feet_slide.weight = -0.25
         self.rewards.joint_deviation_hip.weight = -0.2
         self.rewards.joint_deviation_arms.weight = -0.2
-        self.rewards.joint_deviation_torso.weight = -0.2
 
         # change terrain to flat
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None
         # no height scan
-        self.scene.height_scanner = None
-        self.observations.policy.height_scan = None
+        self.scene.height_scanner = None  # type: ignore
+        self.observations.policy.height_scan = None  # type: ignore
         # no terrain curriculum
-        self.curriculum.terrain_levels = None
+        self.curriculum.terrain_levels = None  # type: ignore
 
 
 class DigitV3FlatEnvCfg_PLAY(DigitV3FlatEnvCfg):
@@ -70,8 +68,8 @@ class DigitV3FlatEnvCfg_PLAY(DigitV3FlatEnvCfg):
         # disable randomization for play
         self.observations.policy.enable_corruption = False
         # remove random pushing event
-        self.events.base_external_force_torque = None
-        self.events.push_robot = None
+        self.events.base_external_force_torque = None  # type: ignore
+        self.events.push_robot = None  # type: ignore
 
         self.commands.base_velocity.ranges.lin_vel_x = (0.5, 0.5)
         self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)

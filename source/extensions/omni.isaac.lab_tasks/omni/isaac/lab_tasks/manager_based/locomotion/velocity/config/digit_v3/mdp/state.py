@@ -1,8 +1,8 @@
 import torch
-from omni.isaac.lab.assets import articulation
 from omni.isaac.lab.assets.articulation.articulation import Articulation
 from omni.isaac.lab.envs import ManagerBasedRLEnv
 from omni.isaac.lab.managers import SceneEntityCfg
+from omni.isaac.lab.sensors import ContactSensor
 
 
 # applied torque
@@ -61,7 +61,7 @@ def feet_slide(
     # Penalize feet sliding
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
     contacts = (
-        contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :]
+        contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :]  # type: ignore
         .norm(dim=-1)
         .max(dim=1)[0]
         > 1.0
@@ -83,8 +83,8 @@ def feet_air_time_positive_biped(
     """
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
     # compute the reward
-    air_time = contact_sensor.data.current_air_time[:, sensor_cfg.body_ids]
-    contact_time = contact_sensor.data.current_contact_time[:, sensor_cfg.body_ids]
+    air_time = contact_sensor.data.current_air_time[:, sensor_cfg.body_ids]  # type: ignore
+    contact_time = contact_sensor.data.current_contact_time[:, sensor_cfg.body_ids]  # type: ignore
     in_contact = contact_time > 0.0
     in_mode_time = torch.where(in_contact, contact_time, air_time)
     single_stance = torch.sum(in_contact.int(), dim=1) == 1
