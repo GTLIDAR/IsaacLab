@@ -161,7 +161,7 @@ class DigitV3RewardsCfg(RewardsCfg):
                 body_names=["left_toe_roll", "right_toe_roll"],
                 preserve_order=True,
             ),
-            "min_dist": 0.3,
+            "min_dist": 0.2,
             "max_dist": 0.65,
         },
     )
