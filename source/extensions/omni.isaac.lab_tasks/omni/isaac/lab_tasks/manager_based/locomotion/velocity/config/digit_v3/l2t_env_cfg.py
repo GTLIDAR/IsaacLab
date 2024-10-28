@@ -208,7 +208,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.alive.weight = 0.0
         self.rewards.track_lin_vel_xy_exp.weight = 0.5
         self.rewards.track_ang_vel_z_exp.weight = 1.0
-        self.rewards.ang_vel_xy_l2.weight = -0.1
+        self.rewards.ang_vel_xy_l2.weight = -0.5
         self.rewards.dof_pos_limits.weight = -0.5
         self.rewards.termination_penalty.weight = -200
         self.rewards.feet_slide.weight = -1.0
@@ -219,10 +219,9 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.dof_acc_l2.weight = -1.25e-7
 
         # Commands
-        self.commands.base_velocity.ranges.lin_vel_x = (-0.0, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_x = (-0.2, 1.0)
         self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)
-        self.commands.base_velocity.ranges.ang_vel_z = (-0.0, 0.0)
-        self.commands.base_velocity.heading_command = False
+        self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
 
 
 @configclass

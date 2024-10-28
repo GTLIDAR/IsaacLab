@@ -148,14 +148,14 @@ def feet_distance_l1(
     """
     Calculates the reward based on the distance between the feet. Penalize feet get close to each other or too far away.
     """
-    asset: RigidObject = env.scene[asset_cfg.name]
+    asset: Articulation = env.scene[asset_cfg.name]
     foot_pos = asset.data.body_pos_w[:, asset_cfg.body_ids, :3]
     foot_dist = torch.norm(foot_pos[:, 0, :] - foot_pos[:, 1, :], dim=1)
 
-    d_min = torch.clamp(foot_dist - min_dist, -0.5, 0.0)
-    # d_max = torch.clamp(foot_dist - max_dist, 0, 0.5)
+    d_min = -(foot_dist - min_dist).clip(max=0.0)
+    d_max = (foot_dist - max_dist).clip(min=0.0)
 
-    return torch.exp(-torch.abs(d_min) * 100)
+    return d_min + d_max
 
 
 def joint_torques_penalty(
