@@ -93,9 +93,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # -- set the framerate of the gym video recorder wrapper so that the playback speed of the produced video matches the simulation
         self.metadata["render_fps"] = 1 / self.step_dt
 
-        self.rand_clock = torch.zeros(
-            self.num_envs, device=self.device, dtype=torch.long
-        )
+        self.starting_leg = torch.randint(0, 2, (self.num_envs,), device=self.device)
         print("[INFO]: Completed setting up the environment...")
 
     """
@@ -157,6 +155,10 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         phase = self.episode_length_buf * self.step_dt / 0.64
         return phase
 
+    def get_starting_leg(self) -> torch.Tensor:
+        """Get the starting leg of the environment. 0 for left and 1 for right."""
+        return self.starting_leg
+
     def step(self, action: torch.Tensor) -> VecEnvStepReturn:
         """Execute one time-step of the environment's dynamics and reset terminated environments.
 
@@ -217,7 +219,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # -- reset envs that terminated/timed-out and log the episode information
         reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
         if len(reset_env_ids) > 0:
-            self._reset_idx(reset_env_ids)
+            self._reset_idx(reset_env_ids)  # type: ignore
             # if sensors are added to the scene, make sure we render to reflect changes in reset
             if self.sim.has_rtx_sensors() and self.cfg.rerender_on_reset:
                 self.sim.render()
@@ -290,7 +292,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
                 self._rgb_annotator = rep.AnnotatorRegistry.get_annotator(
                     "rgb", device="cpu"
                 )
-                self._rgb_annotator.attach([self._render_product])
+                self._rgb_annotator.attach([self._render_product])  # type: ignore
             # obtain the rgb data
             rgb_data = self._rgb_annotator.get_data()
             # convert to numpy array
@@ -340,13 +342,13 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
             # if not concatenated, then we need to add each term separately as a dictionary
             if has_concatenated_obs:
                 self.single_observation_space[group_name] = gym.spaces.Box(
-                    low=-np.inf, high=np.inf, shape=group_dim
+                    low=-np.inf, high=np.inf, shape=group_dim  # type: ignore
                 )
             else:
                 self.single_observation_space[group_name] = gym.spaces.Dict(
                     {
                         term_name: gym.spaces.Box(
-                            low=-np.inf, high=np.inf, shape=term_dim
+                            low=-np.inf, high=np.inf, shape=term_dim  # type: ignore
                         )
                         for term_name, term_dim in zip(group_term_names, group_dim)
                     }
@@ -410,6 +412,8 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
         # reset the episode length buffer
         self.episode_length_buf[env_ids] = 0
-        self.rand_clock[env_ids] = torch.randint(
-            0, 100, (len(env_ids),), device=self.device
+
+        # reset the starting leg
+        self.starting_leg[env_ids] = torch.randint(
+            0, 2, (len(env_ids),), device=self.device
         )

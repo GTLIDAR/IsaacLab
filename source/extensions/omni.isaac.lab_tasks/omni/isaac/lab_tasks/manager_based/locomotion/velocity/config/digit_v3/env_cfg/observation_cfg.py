@@ -87,7 +87,7 @@ class StudentObsCfg(ObsGroup):
     joint_pos = ObsTerm(
         func=mdp.joint_pos,
         scale=1,
-        noise=Unoise(n_min=-0.01, n_max=0.01),
+        noise=Unoise(n_min=-0.1, n_max=0.1),
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",

@@ -7,11 +7,12 @@ from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg imp
 from .rough_env_cfg import (
     DigitV3RewardsCfg,
     DigitV3TerminationsCfg,
-    # DigitV3ActionCfg,
     DigitV3EventCfg,
 )
+from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
 from .env_cfg.observation_cfg import TeacherObsCfg, StudentObsCfg
 import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
+import omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.digit_v3.mdp as digit_mdp
 
 ##
 # Pre-defined configs
@@ -84,9 +85,76 @@ class L2TObservationsCfg:
 
 
 @configclass
+class L2TTerminationsCfg:
+    """Termination terms for the MDP."""
+
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)  # type: ignore
+    base_contact = DoneTerm(
+        func=mdp.illegal_contact,  # type: ignore
+        params={
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces",
+                body_names=[".*base", ".*hip.*", ".*knee", ".*elbow"],
+            ),
+            "threshold": 1.0,
+        },
+    )
+
+    base_too_low = DoneTerm(
+        func=digit_mdp.root_height_below_minimum_adaptive,  # type: ignore
+        params={
+            "minimum_height": 0.4,
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                body_names=[
+                    ".*toe_roll.*",
+                ],
+            ),
+        },
+    )
+
+    # bad_orientation = DoneTerm(
+    #     func=mdp.bad_orientation,  # type: ignore
+    #     params={"limit_angle": 0.7},
+    # )
+
+    # arm_deviation = DoneTerm(
+    #     func=digit_mdp.arm_deviation_too_much,  # type: ignore
+    #     params={
+    #         "threshold": 1.0,
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             joint_names=[
+    #                 ".*_shoulder_pitch",
+    #                 ".*_shoulder_roll",
+    #                 ".*_shoulder_yaw",
+    #                 ".*_elbow",
+    #             ],
+    #         ),
+    #     },
+    # )
+
+    # joint_pos_out_of_limit = DoneTerm(
+    #     func=mdp.joint_pos_out_of_limit,  # type: ignore
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             joint_names=[
+    #                 ".*_hip_.*",
+    #                 ".*_knee",
+    #                 ".*_toe.*",
+    #                 ".*_shoulder.*",
+    #                 ".*_elbow",
+    #             ],
+    #         ),
+    #     },
+    # )
+
+
+@configclass
 class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     rewards: DigitV3RewardsCfg = DigitV3RewardsCfg()
-    terminations: DigitV3TerminationsCfg = DigitV3TerminationsCfg()
+    terminations: L2TTerminationsCfg = L2TTerminationsCfg()
     actions: L2TDigitV3ActionCfg = L2TDigitV3ActionCfg()
     observations: L2TObservationsCfg = L2TObservationsCfg()
     events: DigitV3EventCfg = DigitV3EventCfg()
@@ -122,33 +190,38 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
             joint_names=[
                 ".*_hip_.*",
                 ".*_knee",
-                ".*_toe.*",
                 ".*_shoulder.*",
                 ".*_elbow",
             ],
         )
-        # Rewards
+        self.rewards.undesired_contacts.params["sensor_cfg"] = SceneEntityCfg(
+            "contact_forces",
+            body_names=[
+                ".*knee.*",
+                ".*tarsus.*",
+                ".*rod.*",
+                ".*shin.*",
+            ],
+        )
+
         self.rewards.undesired_contacts = None  # type: ignore
         self.rewards.alive.weight = 0.0
         self.rewards.track_lin_vel_xy_exp.weight = 0.5
         self.rewards.track_ang_vel_z_exp.weight = 1.0
-        self.rewards.ang_vel_xy_l2.weight = -0.1
+        self.rewards.ang_vel_xy_l2.weight = -0.5
         self.rewards.dof_pos_limits.weight = -0.5
         self.rewards.termination_penalty.weight = -200
         self.rewards.feet_slide.weight = -1.0
         self.rewards.joint_deviation_hip.weight = -5.0
         self.rewards.flat_orientation_l2.weight = -10.0
-        self.rewards.dof_torques_l2.weight = -1.0e-6
-        self.rewards.action_rate_l2.weight = -0.002
-        self.rewards.dof_acc_l2.weight = 0
-        # self.rewards.joint_deviation_toes.weight = -0.5
-        # self.rewards.joint_deviation_arms.weight = -0.5
+        self.rewards.dof_torques_l2.weight = -1.0e-5
+        self.rewards.action_rate_l2.weight = -0.005
+        self.rewards.dof_acc_l2.weight = -1.25e-7
 
         # Commands
-        self.commands.base_velocity.ranges.lin_vel_x = (-0.0, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_x = (-0.2, 1.0)
         self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)
-        self.commands.base_velocity.ranges.ang_vel_z = (-0.0, 0.0)
-        self.commands.base_velocity.heading_command = False
+        self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
 
 
 @configclass
