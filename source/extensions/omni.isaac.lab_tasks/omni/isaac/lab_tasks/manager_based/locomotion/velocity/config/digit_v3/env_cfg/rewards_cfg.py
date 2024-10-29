@@ -36,7 +36,7 @@ class DigitV3RewardsCfg(RewardsCfg):
     # feet_air_time = None
     feet_air_time = RewTerm(
         func=mdp.feet_air_time_positive_biped,
-        weight=0.25,
+        weight=0.5,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg(
@@ -111,15 +111,15 @@ class DigitV3RewardsCfg(RewardsCfg):
 
     foot_contact = RewTerm(
         func=digit_v3_mdp.reward_feet_contact_number,
-        weight=2.0,
+        weight=0.5,
         params={
             "sensor_cfg": SceneEntityCfg(
                 "contact_forces",
                 body_names=["left_toe_roll", "right_toe_roll"],
                 preserve_order=True,
             ),
-            "pos_rw": 1.0,
-            "neg_rw": -0.3,
+            "pos_rw": 0.1,
+            "neg_rw": -0.1,
         },
     )
 

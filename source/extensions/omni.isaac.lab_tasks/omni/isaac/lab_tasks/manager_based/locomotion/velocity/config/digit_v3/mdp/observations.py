@@ -33,3 +33,8 @@ def clock(env: ManagerBasedRLEnv) -> torch.Tensor:
         ],
         dim=1,
     ).to(env.device)
+
+
+def starting_leg(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """Starting leg of the robot."""
+    return env.get_starting_leg().unsqueeze(-1).float()

@@ -18,22 +18,27 @@ if TYPE_CHECKING:
 
 
 @torch.jit.script
-def create_stance_mask(phase: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+def create_stance_mask(phase: torch.Tensor, starting_leg: torch.Tensor) -> torch.Tensor:
     """
     Creates a stance mask based on the gait phase.
     """
-    sin_pos = torch.sin(2 * torch.pi * phase).unsqueeze(-1).repeat(1, 2)
-    stance_mask = torch.where(sin_pos >= 0, 1, 0)
-    stance_mask[:, 1] = 1 - stance_mask[:, 1]
-    stance_mask[torch.abs(sin_pos) < 0.1] = 1
+    sin_pos = torch.sin(2 * torch.pi * phase)
 
-    mask_2 = 1 - stance_mask
-    mask_2[torch.abs(sin_pos) < 0.1] = 1
-    return stance_mask, mask_2
+    # starting leg follows sin_pos, opposite leg follows 1 - sin_pos
+    stance_mask = torch.zeros_like(sin_pos).repeat(2, 1)
+
+    # starting leg is the one that should start the swing phase
+    stance_mask[starting_leg, 0] = (sin_pos[starting_leg] >= 0).float()
+    stance_mask[starting_leg, 1] = (sin_pos[starting_leg] < 0).float()
+
+    stance_mask[1 - starting_leg, 0] = (sin_pos[1 - starting_leg] < 0).float()
+    stance_mask[1 - starting_leg, 1] = (sin_pos[1 - starting_leg] >= 0).float()
+
+    return stance_mask
 
 
 def reward_feet_contact_number(
-    env, sensor_cfg: SceneEntityCfg, pos_rw: float, neg_rw: float
+    env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg, pos_rw: float, neg_rw: float
 ) -> torch.Tensor:
     """
     Calculates a reward based on the number of feet contacts aligning with the gait phase.
@@ -46,15 +51,13 @@ def reward_feet_contact_number(
         .max(dim=1)[0]
         > 1.0
     )
+
     # print("contact", contacts.shape, contacts)
     phase = env.get_phase()
-    stance_mask, mask_2 = create_stance_mask(phase)
-
-    if torch.sum(contacts == stance_mask) > torch.sum(contacts == mask_2):
-        reward = torch.where(contacts == stance_mask, pos_rw, neg_rw)
-        return torch.mean(reward, dim=1)
-
-    reward = torch.where(contacts == mask_2, pos_rw, neg_rw)
+    # tensor of type int
+    starting_leg = env.get_starting_leg()
+    stance_mask = create_stance_mask(phase, starting_leg)
+    reward = torch.where(contacts == stance_mask, pos_rw, neg_rw)
     return torch.mean(reward, dim=1)
 
 
@@ -123,12 +126,9 @@ def track_foot_height(
 
     phase = env.get_phase()
 
-    stance_mask, mask_2 = create_stance_mask(phase)
+    stance_mask = create_stance_mask(phase, env.get_starting_leg())
 
-    if torch.sum(contacts == stance_mask) > torch.sum(contacts == mask_2):
-        swing_mask = 1 - stance_mask
-    else:
-        swing_mask = 1 - mask_2
+    swing_mask = 1 - stance_mask
 
     filt_foot = torch.where(swing_mask == 1, foot_z, torch.zeros_like(foot_z))
 
