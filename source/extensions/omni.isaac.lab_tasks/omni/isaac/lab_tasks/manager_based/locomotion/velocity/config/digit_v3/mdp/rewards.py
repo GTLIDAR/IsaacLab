@@ -25,7 +25,7 @@ def create_stance_mask(phase: torch.Tensor, starting_leg: torch.Tensor) -> torch
     sin_pos = torch.sin(2 * torch.pi * phase)
 
     # starting leg follows sin_pos, opposite leg follows 1 - sin_pos
-    stance_mask = torch.zeros_like(sin_pos).repeat(2, 1)
+    stance_mask = torch.zeros((sin_pos.shape[0], 2), device=sin_pos.device)
 
     # starting leg is the one that should start the swing phase
     stance_mask[starting_leg, 0] = (sin_pos[starting_leg] >= 0).float()

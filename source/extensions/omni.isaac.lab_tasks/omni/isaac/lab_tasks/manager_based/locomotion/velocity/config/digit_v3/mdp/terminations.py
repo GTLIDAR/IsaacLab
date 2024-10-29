@@ -25,11 +25,13 @@ def root_height_below_minimum_adaptive(
     # extract the used quantities (to enable type-hinting)
     asset: Articulation = env.scene[asset_cfg.name]
 
-    average_foot_height = (asset.data.body_pos_w[:, asset_cfg.body_ids, 2]).mean(dim=1)
+    min_foot_height = (
+        (asset.data.body_pos_w[:, asset_cfg.body_ids, 2]).min(dim=1).values
+    )
 
     # print(f"asset.data.root_pos_w[:, 2] {asset.data.root_pos_w[:5, 2]}")
 
-    return asset.data.root_pos_w[:, 2] - average_foot_height < minimum_height
+    return asset.data.root_pos_w[:, 2] - min_foot_height < minimum_height
 
 
 def arm_deviation_too_much(

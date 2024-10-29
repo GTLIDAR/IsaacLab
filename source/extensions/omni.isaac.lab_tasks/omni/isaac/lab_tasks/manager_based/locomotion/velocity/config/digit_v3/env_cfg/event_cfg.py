@@ -120,8 +120,8 @@ class DigitV3EventCfg(EventCfg):
         func=mdp.reset_joints_by_offset,
         mode="reset",
         params={
-            "position_range": (-0.1, 0.1),
-            "velocity_range": (0.0, 0.0),
+            "position_range": (-0.12, 0.12),
+            "velocity_range": (-0.01, 0.01),
         },
     )
 

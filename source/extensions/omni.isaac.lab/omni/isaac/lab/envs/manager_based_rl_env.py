@@ -92,7 +92,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         )
         # -- set the framerate of the gym video recorder wrapper so that the playback speed of the produced video matches the simulation
         self.metadata["render_fps"] = 1 / self.step_dt
-
+        # -- starting leg
         self.starting_leg = torch.randint(0, 2, (self.num_envs,), device=self.device)
         print("[INFO]: Completed setting up the environment...")
 
@@ -157,6 +157,11 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
     def get_starting_leg(self) -> torch.Tensor:
         """Get the starting leg of the environment. 0 for left and 1 for right."""
+        if not hasattr(self, "starting_leg") or self.starting_leg is None:
+            self.starting_leg = torch.randint(
+                0, 2, (self.num_envs,), device=self.device
+            )
+
         return self.starting_leg
 
     def step(self, action: torch.Tensor) -> VecEnvStepReturn:
