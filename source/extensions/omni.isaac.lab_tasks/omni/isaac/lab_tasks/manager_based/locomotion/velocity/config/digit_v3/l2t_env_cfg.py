@@ -3,17 +3,19 @@ from omni.isaac.lab.utils import configclass
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
     LocomotionVelocityRoughEnvCfg,
 )
+from omni.isaac.lab.managers import RewardTermCfg as RewTerm
+from omni.isaac.lab.managers import EventTermCfg as EventTerm
 
-from .rough_env_cfg import (
-    DigitV3RewardsCfg,
-    DigitV3TerminationsCfg,
-    DigitV3EventCfg,
-)
+
+
 from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
 from .env_cfg.observation_cfg import TeacherObsCfg, StudentObsCfg
+
 import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
 import omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.digit_v3.mdp as digit_mdp
-
+from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
+    RewardsCfg, EventCfg,
+)
 ##
 # Pre-defined configs
 ##
@@ -151,6 +153,316 @@ class L2TTerminationsCfg:
     # )
 
 
+
+@configclass
+class DigitV3RewardsCfg(RewardsCfg):
+    termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)  # type: ignore
+
+    action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.015)
+    dof_vel_l2 = RewTerm(func=mdp.joint_vel_l2, weight=-5e-4)
+
+    lin_vel_z_l2 = None
+    track_lin_vel_xy_exp = RewTerm(
+        func=mdp.track_lin_vel_xy_yaw_frame_exp,
+        weight=0.5,
+        params={"command_name": "base_velocity", "std": 0.5},
+    )
+    track_ang_vel_z_exp = RewTerm(
+        func=mdp.track_ang_vel_z_world_exp,
+        weight=0.5,
+        params={"command_name": "base_velocity", "std": 0.5},
+    )
+
+    # feet_air_time = None
+    feet_air_time = RewTerm(
+        func=mdp.feet_air_time_positive_biped,
+        weight=1.0,
+        params={
+            "command_name": "base_velocity",
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=["left_toe_roll", "right_toe_roll"]
+            ),
+            "threshold": 0.6,
+        },
+    )
+
+    feet_slide = RewTerm(
+        func=mdp.feet_slide,
+        weight=-0.25,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*toe_roll"),
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*toe_roll"),
+        },
+    )
+
+    # Penalize ankle joint limits
+    dof_pos_limits = RewTerm(
+        func=mdp.joint_pos_limits,  # type: ignore
+        weight=-0.1,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+            )
+        },
+    )
+
+    # Penalize deviation from default of the joints that are not essential for locomotion
+    joint_deviation_hip = RewTerm(
+        func=mdp.joint_deviation_l1,  # type: ignore
+        weight=-0.05, 
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot", joint_names=[".*_hip_yaw", ".*_hip_roll"]
+            )
+        },
+    )
+
+    joint_deviation_arms = RewTerm(
+        func=mdp.joint_deviation_l1,  # type: ignore
+        weight=-0.1,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=[
+                    ".*_shoulder_pitch",
+                    ".*_shoulder_roll",
+                    ".*_shoulder_yaw",
+                    ".*_elbow",
+                ],  # [".*_shoulder_.*", ".*_elbow"]
+            )
+        },
+    )
+
+    # joint_deviation_toes = RewTerm(
+    #     func=mdp.joint_deviation_l1,  # type: ignore
+    #     weight=-0.1,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             joint_names=[
+    #                 # ".*_toe_A",
+    #                 # ".*_toe_B",
+    #                 ".*_toe_pitch",
+    #                 ".*_toe_roll",
+    #             ],
+    #         )
+    #     },
+    # )
+
+    # foot_contact = RewTerm(
+    #     func=digit_v3_mdp.reward_feet_contact_number,
+    #     weight=0.5,
+    #     params={
+    #         "sensor_cfg": SceneEntityCfg(
+    #             "contact_forces",
+    #             body_names=["left_toe_roll", "right_toe_roll"],
+    #             preserve_order=True,
+    #         ),
+    #         "pos_rw": 0.3,
+    #         "neg_rw": -0.0,
+    #     },
+    # )
+
+    # track_foot_height = RewTerm(
+    #     func=digit_v3_mdp.track_foot_height,
+    #     weight=0.5,
+    #     params={
+    #         "std": 0.05,
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             body_names=["left_toe_roll", "right_toe_roll"],
+    #             preserve_order=True,
+    #         ),
+    #         "sensor_cfg": SceneEntityCfg(
+    #             "contact_forces",
+    #             body_names=["left_toe_roll", "right_toe_roll"],
+    #             preserve_order=True,
+    #         ),
+    #     },
+    # )
+
+    # foot_clearance = RewTerm(
+    #     func=digit_v3_mdp.foot_clearance_reward,
+    #     weight=0.5,
+    #     params={
+    #         "target_height": 0.2,
+    #         "std": 0.5,
+    #         "tanh_mult": 2.0,
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*_toe_roll"),
+    #     },
+    # )
+
+    # foot_distance = RewTerm(
+    #     func=digit_v3_mdp.feet_distance_l1,
+    #     weight=-2.0,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             body_names=["left_toe_roll", "right_toe_roll"],
+    #             preserve_order=True,
+    #         ),
+    #         "min_dist": 0.2,
+    #         "max_dist": 0.65,
+    #     },
+    # )
+
+
+
+@configclass
+class DigitV3EventCfg(EventCfg):
+    # startup
+    # physics_material = EventTerm(
+    #     func=mdp.randomize_rigid_body_material,
+    #     mode="startup",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             body_names=[
+    #                 "base",
+    #                 "left_shoulder_roll",
+    #                 "right_shoulder_roll",
+    #                 "left_hip_roll",
+    #                 "right_hip_roll",
+    #                 "left_shoulder_pitch",
+    #                 "right_shoulder_pitch",
+    #                 "left_hip_yaw",
+    #                 "right_hip_yaw",
+    #                 "left_shoulder_yaw",
+    #                 "right_shoulder_yaw",
+    #                 "left_hip_pitch",
+    #                 "right_hip_pitch",
+    #                 "left_elbow",
+    #                 "right_elbow",
+    #                 "left_knee",
+    #                 "right_knee",
+    #                 "left_achilles_rod",
+    #                 "right_achilles_rod",
+    #                 "left_shin",
+    #                 "right_shin",
+    #                 "left_tarsus",
+    #                 "right_tarsus",
+    #                 "left_heel_spring",
+    #                 "right_heel_spring",
+    #                 "left_toe_A",
+    #                 "left_toe_B",
+    #                 "left_toe_pitch",
+    #                 "right_toe_A",
+    #                 "right_toe_B",
+    #                 "right_toe_pitch",
+    #                 "left_toe_A_rod",
+    #                 "left_toe_B_rod",
+    #                 "left_toe_roll",
+    #                 "right_toe_A_rod",
+    #                 "right_toe_B_rod",
+    #                 "right_toe_roll",
+    #             ],
+    #         ),
+    #         "static_friction_range": (0.7, 1.3),
+    #         "dynamic_friction_range": (0.5, 1.8),
+    #         "restitution_range": (0.0, 0.0),
+    #         "num_buckets": 64,
+    #     },
+    # )
+
+    # reset
+    add_base_mass = EventTerm(
+        func=mdp.randomize_rigid_body_mass,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                body_names=[
+                    "base",
+                ],
+            ),
+            "mass_distribution_params": (0.5, 1.5),
+            "operation": "scale",
+            "distribution": "uniform",
+        },
+    )
+
+    reset_gravity = EventTerm(
+        func=mdp.randomize_physics_scene_gravity,
+        mode="reset",
+        params={
+            "gravity_distribution_params": ([0.0, 0.0, -0.1], [0.0, 0.0, 0.1]),
+            "operation": "add",
+            "distribution": "gaussian",
+        },
+    )
+
+    reset_base = EventTerm(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "pose_range": {"x": (-0.3, 0.3), "y": (-0.3, 0.3), "yaw": (-3.14, 3.14)},
+            "velocity_range": {
+                "x": (-0.0, 0.0),
+                "y": (-0.0, 0.0),
+                "z": (-0.0, 0.0),
+                "roll": (-0.0, 0.0),
+                "pitch": (-0.0, 0.0),
+                "yaw": (-0.0, 0.0),
+            },
+        },
+    )
+
+    reset_robot_joints_offset = EventTerm(
+        func=mdp.reset_joints_by_offset,
+        mode="reset",
+        params={
+            "position_range": (-0.01, 0.01),
+            "velocity_range": (-0.0, 0.0),
+        },
+    )
+
+    reset_robot_joints = EventTerm(
+        func=mdp.reset_joints_by_offset,
+        mode="reset",
+        params={
+            "position_range": (-0.12, 0.12),
+            "velocity_range": (-0.01, 0.01),
+        },
+    )
+
+    robot_joint_stiffness_and_damping = EventTerm(
+        func=mdp.randomize_actuator_gains,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=[
+                    "left_hip_roll",
+                    "left_hip_yaw",
+                    "left_hip_pitch",
+                    "left_knee",
+                    "left_toe_A",
+                    "left_toe_B",
+                    "right_hip_roll",
+                    "right_hip_yaw",
+                    "right_hip_pitch",
+                    "right_knee",
+                    "right_toe_A",
+                    "right_toe_B",
+                    "left_shoulder_roll",
+                    "left_shoulder_pitch",
+                    "left_shoulder_yaw",
+                    "left_elbow",
+                    "right_shoulder_roll",
+                    "right_shoulder_pitch",
+                    "right_shoulder_yaw",
+                    "right_elbow",
+                ],
+                preserve_order=True,
+            ),
+            "stiffness_distribution_params": (0.8, 1.2),
+            "damping_distribution_params": (0.8, 1.2),
+            "operation": "scale",
+            "distribution": "log_uniform",
+        },
+    )
+
+
 @configclass
 class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     rewards: DigitV3RewardsCfg = DigitV3RewardsCfg()
@@ -201,12 +513,11 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         )
 
         self.rewards.undesired_contacts = None  # type: ignore
-        self.rewards.alive.weight = 0.0
         self.rewards.dof_torques_l2.weight = 0
         self.rewards.flat_orientation_l2.weight = -1.0
         self.rewards.dof_acc_l2.weight = -1.25e-7
         # Commands
-        self.commands.base_velocity.ranges.lin_vel_x = (-0.5, 0.5)
+        self.commands.base_velocity.ranges.lin_vel_x = (-0.0, 1.0)
         self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)
         self.commands.base_velocity.ranges.ang_vel_z = (-0.0, 0.0)
 

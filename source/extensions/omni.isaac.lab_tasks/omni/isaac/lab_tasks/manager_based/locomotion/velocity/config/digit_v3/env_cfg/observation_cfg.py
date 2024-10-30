@@ -13,7 +13,7 @@ class TeacherObsCfg(ObsGroup):
     """Observations for policy group."""
 
     # observation terms (order preserved)
-    # clock = ObsTerm(func=digit_mdp.clock, scale=1)
+    clock = ObsTerm(func=digit_mdp.clock, scale=1)
     base_lin_vel = ObsTerm(
         func=mdp.base_lin_vel,
     )
@@ -28,11 +28,11 @@ class TeacherObsCfg(ObsGroup):
         params={"command_name": "base_velocity"},
     )
     joint_pos = ObsTerm(
-        func=mdp.joint_pos,
+        func=mdp.joint_pos_rel,
     )
 
     joint_vel = ObsTerm(
-        func=mdp.joint_vel,
+        func=mdp.joint_vel_rel,
     )
     actions = ObsTerm(func=mdp.last_action)
 
@@ -68,7 +68,7 @@ class StudentObsCfg(ObsGroup):
     """Observations for student group."""
 
     # observation terms (order preserved)
-    # clock = ObsTerm(func=digit_mdp.clock, scale=1)
+    clock = ObsTerm(func=digit_mdp.clock, scale=1)
     base_lin_vel = ObsTerm(
         func=mdp.base_lin_vel,
         scale=1,
@@ -89,7 +89,7 @@ class StudentObsCfg(ObsGroup):
         params={"command_name": "base_velocity"},
     )
     joint_pos = ObsTerm(
-        func=mdp.joint_pos,
+        func=mdp.joint_pos_rel,
         scale=1,
         noise=Unoise(n_min=-0.1, n_max=0.1),
         params={
@@ -133,7 +133,7 @@ class StudentObsCfg(ObsGroup):
     )
 
     joint_vel = ObsTerm(
-        func=mdp.joint_vel,
+        func=mdp.joint_vel_rel,
         scale=1,
         noise=Unoise(n_min=-1.5, n_max=1.5),
         params={
