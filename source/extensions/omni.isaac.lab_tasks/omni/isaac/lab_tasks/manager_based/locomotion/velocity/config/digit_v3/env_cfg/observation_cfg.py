@@ -54,9 +54,9 @@ class TeacherObsCfg(ObsGroup):
         clip=(-1.0, 1.0),
     )
 
-    # starting_leg = ObsTerm(
-    #     func=digit_mdp.starting_leg,
-    # )
+    starting_leg = ObsTerm(
+        func=digit_mdp.starting_leg,
+    )
 
     def __post_init__(self):
         self.enable_corruption = False
@@ -177,9 +177,9 @@ class StudentObsCfg(ObsGroup):
     )
     actions = ObsTerm(func=mdp.last_action)
 
-    # starting_leg = ObsTerm(
-    #     func=digit_mdp.starting_leg,
-    # )
+    starting_leg = ObsTerm(
+        func=digit_mdp.starting_leg,
+    )
 
     def __post_init__(self):
         self.enable_corruption = True

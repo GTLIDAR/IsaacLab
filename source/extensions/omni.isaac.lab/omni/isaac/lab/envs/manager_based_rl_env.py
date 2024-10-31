@@ -152,7 +152,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         if not hasattr(self, "episode_length_buf") or self.episode_length_buf is None:
             return torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
 
-        phase = self.episode_length_buf * self.step_dt / 0.64
+        phase = self.episode_length_buf * self.step_dt / 0.4
         return phase
 
     def get_starting_leg(self) -> torch.Tensor:

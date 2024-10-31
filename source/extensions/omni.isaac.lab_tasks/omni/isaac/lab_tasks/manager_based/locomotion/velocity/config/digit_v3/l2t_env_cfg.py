@@ -1,21 +1,17 @@
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.utils import configclass
-from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
-    LocomotionVelocityRoughEnvCfg,
-)
 from omni.isaac.lab.managers import RewardTermCfg as RewTerm
 from omni.isaac.lab.managers import EventTermCfg as EventTerm
-
-
-
 from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
 from .env_cfg.observation_cfg import TeacherObsCfg, StudentObsCfg
-
 import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
 import omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.digit_v3.mdp as digit_mdp
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
-    RewardsCfg, EventCfg,
+    LocomotionVelocityRoughEnvCfg,
+    RewardsCfg,
+    EventCfg,
 )
+
 ##
 # Pre-defined configs
 ##
@@ -153,7 +149,6 @@ class L2TTerminationsCfg:
     # )
 
 
-
 @configclass
 class DigitV3RewardsCfg(RewardsCfg):
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)  # type: ignore
@@ -209,7 +204,7 @@ class DigitV3RewardsCfg(RewardsCfg):
     # Penalize deviation from default of the joints that are not essential for locomotion
     joint_deviation_hip = RewTerm(
         func=mdp.joint_deviation_l1,  # type: ignore
-        weight=-0.05, 
+        weight=-0.05,
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot", joint_names=[".*_hip_yaw", ".*_hip_roll"]
@@ -263,23 +258,23 @@ class DigitV3RewardsCfg(RewardsCfg):
     #     },
     # )
 
-    # track_foot_height = RewTerm(
-    #     func=digit_v3_mdp.track_foot_height,
-    #     weight=0.5,
-    #     params={
-    #         "std": 0.05,
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             body_names=["left_toe_roll", "right_toe_roll"],
-    #             preserve_order=True,
-    #         ),
-    #         "sensor_cfg": SceneEntityCfg(
-    #             "contact_forces",
-    #             body_names=["left_toe_roll", "right_toe_roll"],
-    #             preserve_order=True,
-    #         ),
-    #     },
-    # )
+    track_foot_height = RewTerm(
+        func=digit_mdp.track_foot_height,
+        weight=0.5,
+        params={
+            "std": 0.05,
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                body_names=["left_toe_roll", "right_toe_roll"],
+                preserve_order=True,
+            ),
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces",
+                body_names=["left_toe_roll", "right_toe_roll"],
+                preserve_order=True,
+            ),
+        },
+    )
 
     # foot_clearance = RewTerm(
     #     func=digit_v3_mdp.foot_clearance_reward,
@@ -305,7 +300,6 @@ class DigitV3RewardsCfg(RewardsCfg):
     #         "max_dist": 0.65,
     #     },
     # )
-
 
 
 @configclass

@@ -34,6 +34,9 @@ def create_stance_mask(phase: torch.Tensor, starting_leg: torch.Tensor) -> torch
     stance_mask[1 - starting_leg, 0] = (sin_pos[1 - starting_leg] < 0).float()
     stance_mask[1 - starting_leg, 1] = (sin_pos[1 - starting_leg] >= 0).float()
 
+    # if sin_pos is close to 0, both legs are in stance phase
+    stance_mask[torch.abs(sin_pos) < 0.1] = 1
+
     return stance_mask
 
 
@@ -118,26 +121,38 @@ def track_foot_height(
         .max(dim=1)[0]
         > 1.0
     )
-    com_z = asset.data.root_pos_w[:, 2]
-    standing_position_com_z = asset.data.default_root_state[:, 2]
-    standing_height = com_z - standing_position_com_z
-    standing_position_toe_roll_z = 0.0626  # recorded from the default position
-    offset = standing_height + standing_position_toe_roll_z
+
+    default_com_height = asset.data.default_root_state[:, 2].unsqueeze(-1).repeat(1, 2)
+    current_com_height = asset.data.root_pos_w[:, 2].unsqueeze(-1).repeat(1, 2)
+    # if both feet are in contact, the offset is the minimum height of the two feet
+    # if one foot is in contact, the offset is the height of the foot in contact
+    # if no feet are in contact, the offset is 0
+    contact_count = contacts.int().sum(-1)
+    offset = torch.where(
+        contact_count == 2,
+        torch.min(foot_z, dim=1)[0],
+        torch.where(
+            contact_count == 1,
+            torch.where(contacts[:, 0], foot_z[:, 0], foot_z[:, 1]),
+            torch.zeros_like(foot_z[:, 0]),
+        ),
+    )
 
     phase = env.get_phase()
-
-    stance_mask = create_stance_mask(phase, env.get_starting_leg())
-
-    swing_mask = 1 - stance_mask
-
-    filt_foot = torch.where(swing_mask == 1, foot_z, torch.zeros_like(foot_z))
+    desired_stance_mask = create_stance_mask(phase, env.get_starting_leg())
 
     phase_mod = torch.fmod(phase, 0.5)
-    feet_z_target = height_target(phase_mod) + offset
-    feet_z_value = torch.sum(filt_foot, dim=1)
+    feet_z_target = (height_target(phase_mod)).unsqueeze(-1).repeat(1, 2)
+    # for the stance foot, the target is to keep body height at the default height
+    # for the swing foot, the target is to follow the desired trajectory
+    error = torch.where(
+        desired_stance_mask == 0,
+        torch.square(foot_z - feet_z_target),
+        torch.square(current_com_height - foot_z - default_com_height),
+    ).sum(-1)
+    assert error.shape == (foot_z.shape[0],)
 
-    error = torch.square(feet_z_value - feet_z_target)
-    reward = torch.exp(-error / std**2)
+    reward = -error
 
     return reward
 
