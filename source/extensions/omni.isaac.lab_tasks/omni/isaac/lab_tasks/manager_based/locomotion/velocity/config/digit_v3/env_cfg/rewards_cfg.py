@@ -29,18 +29,18 @@ class DigitV3RewardsCfg(RewardsCfg):
         params={"command_name": "base_velocity", "std": 0.5},
     )
 
-    # feet_air_time = None
-    feet_air_time = RewTerm(
-        func=mdp.feet_air_time_positive_biped,
-        weight=1.0,
-        params={
-            "command_name": "base_velocity",
-            "sensor_cfg": SceneEntityCfg(
-                "contact_forces", body_names=["left_toe_roll", "right_toe_roll"]
-            ),
-            "threshold": 0.6,
-        },
-    )
+    feet_air_time = None
+    # feet_air_time = RewTerm(
+    #     func=mdp.feet_air_time_positive_biped,
+    #     weight=1.0,
+    #     params={
+    #         "command_name": "base_velocity",
+    #         "sensor_cfg": SceneEntityCfg(
+    #             "contact_forces", body_names=["left_toe_roll", "right_toe_roll"]
+    #         ),
+    #         "threshold": 0.6,
+    #     },
+    # )
 
     feet_slide = RewTerm(
         func=mdp.feet_slide,
