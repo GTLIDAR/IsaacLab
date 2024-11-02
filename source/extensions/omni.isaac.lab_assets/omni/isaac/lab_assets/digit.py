@@ -84,7 +84,7 @@ DIGITV3_CFG = ArticulationCfg(
             "right_elbow": 1.39086517e-01,
         },
     ),
-    soft_joint_pos_limit_factor=0.9,
+    soft_joint_pos_limit_factor=0.95,
     actuators={
         "feet": ImplicitActuatorCfg(
             joint_names_expr=[

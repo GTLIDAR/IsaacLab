@@ -153,7 +153,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
             return torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
 
         if not hasattr(self, "phase_dt"):
-            self.phase_dt = 0.5
+            self.phase_dt = 0.8
 
         phase = (
             torch.fmod(self.episode_length_buf * self.step_dt, self.phase_dt)

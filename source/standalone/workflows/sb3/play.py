@@ -415,6 +415,7 @@ def main_recurrentl2t_student():
     # reset environment
     obs = env.reset()
     timestep = 0
+    i = 0
     # simulate environment
     while simulation_app.is_running():
         # run everything in inference mode
@@ -437,6 +438,9 @@ def main_recurrentl2t_student():
                 _last_episode_starts.clone().to(agent.device).type(torch.float32)
             )
         print("step:", timestep)
+        # i += 1
+        # if i == 10:
+        #     break
         if args_cli.video:
             timestep += 1
             # Exit the play loop after recording one video

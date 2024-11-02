@@ -48,7 +48,6 @@ EXTRAS_REQUIRE = {
     "rsl-rl": ["rsl-rl@git+https://github.com/leggedrobotics/rsl_rl.git"],
     "robomimic": [],
     "sb3-contrib": ["sb3-contrib"],
-    "rlopt": ["rlopt@git+https://github.com/FeiyangWuPK/RLOpt.git"],
     "hydra-core": ["hydra-core"],
     "rich": ["rich"],
     "tqdm": ["tqdm"],
