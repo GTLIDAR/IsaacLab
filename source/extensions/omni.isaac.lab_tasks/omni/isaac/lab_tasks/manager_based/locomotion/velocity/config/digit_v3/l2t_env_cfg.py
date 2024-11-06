@@ -168,18 +168,18 @@ class DigitV3RewardsCfg(RewardsCfg):
         params={"command_name": "base_velocity", "std": 0.5},
     )
 
-    # feet_air_time = None
-    feet_air_time = RewTerm(
-        func=mdp.feet_air_time_positive_biped,
-        weight=0.25,
-        params={
-            "command_name": "base_velocity",
-            "sensor_cfg": SceneEntityCfg(
-                "contact_forces", body_names=["left_toe_roll", "right_toe_roll"]
-            ),
-            "threshold": 0.2,
-        },
-    )
+    feet_air_time = None
+    # feet_air_time = RewTerm(
+    #     func=mdp.feet_air_time_positive_biped,
+    #     weight=0.25,
+    #     params={
+    #         "command_name": "base_velocity",
+    #         "sensor_cfg": SceneEntityCfg(
+    #             "contact_forces", body_names=["left_toe_roll", "right_toe_roll"]
+    #         ),
+    #         "threshold": 0.2,
+    #     },
+    # )
 
     feet_slide = RewTerm(
         func=mdp.feet_slide,
@@ -235,8 +235,8 @@ class DigitV3RewardsCfg(RewardsCfg):
     #         "asset_cfg": SceneEntityCfg(
     #             "robot",
     #             joint_names=[
-    #                 # ".*_toe_A",
-    #                 # ".*_toe_B",
+    #                 ".*_toe_A",
+    #                 ".*_toe_B",
     #                 ".*_toe_pitch",
     #                 ".*_toe_roll",
     #             ],
@@ -449,8 +449,8 @@ class DigitV3EventCfg(EventCfg):
                 ],
                 preserve_order=True,
             ),
-            "stiffness_distribution_params": (0.7, 1.3),
-            "damping_distribution_params": (0.7, 1.3),
+            "stiffness_distribution_params": (0.7, 2.2),
+            "damping_distribution_params": (0.7, 2.2),
             "operation": "scale",
             "distribution": "log_uniform",
         },

@@ -58,6 +58,38 @@ class TeacherObsCfg(ObsGroup):
         func=digit_mdp.starting_leg,
     )
 
+    pd_gain = ObsTerm(
+        func=mdp.pd_gain,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=[
+                    "left_hip_roll",
+                    "left_hip_yaw",
+                    "left_hip_pitch",
+                    "left_knee",
+                    "left_toe_A",
+                    "left_toe_B",
+                    "right_hip_roll",
+                    "right_hip_yaw",
+                    "right_hip_pitch",
+                    "right_knee",
+                    "right_toe_A",
+                    "right_toe_B",
+                    "left_shoulder_roll",
+                    "left_shoulder_pitch",
+                    "left_shoulder_yaw",
+                    "left_elbow",
+                    "right_shoulder_roll",
+                    "right_shoulder_pitch",
+                    "right_shoulder_yaw",
+                    "right_elbow",
+                ],
+                preserve_order=True,
+            ),
+        },
+    )
+
     def __post_init__(self):
         self.enable_corruption = False
         self.concatenate_terms = True
@@ -72,16 +104,16 @@ class StudentObsCfg(ObsGroup):
     base_lin_vel = ObsTerm(
         func=mdp.base_lin_vel,
         scale=1,
-        noise=Unoise(n_min=-0.1, n_max=0.1),
+        noise=Unoise(n_min=-0.2, n_max=0.2),
     )
     base_ang_vel = ObsTerm(
         func=mdp.base_ang_vel,
         scale=1,
-        noise=Unoise(n_min=-0.2, n_max=0.2),
+        noise=Unoise(n_min=-0.3, n_max=0.3),
     )
     projected_gravity = ObsTerm(
         func=mdp.projected_gravity,
-        noise=Unoise(n_min=-0.05, n_max=0.05),
+        noise=Unoise(n_min=-0.1, n_max=0.1),
     )
     velocity_commands = ObsTerm(
         func=mdp.generated_commands,
@@ -91,7 +123,7 @@ class StudentObsCfg(ObsGroup):
     joint_pos = ObsTerm(
         func=mdp.joint_pos_rel,
         scale=1,
-        noise=Unoise(n_min=-0.1, n_max=0.1),
+        noise=Unoise(n_min=-0.2, n_max=0.2),
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
@@ -135,7 +167,7 @@ class StudentObsCfg(ObsGroup):
     joint_vel = ObsTerm(
         func=mdp.joint_vel_rel,
         scale=1,
-        noise=Unoise(n_min=-1.5, n_max=1.5),
+        noise=Unoise(n_min=-2, n_max=2),
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
