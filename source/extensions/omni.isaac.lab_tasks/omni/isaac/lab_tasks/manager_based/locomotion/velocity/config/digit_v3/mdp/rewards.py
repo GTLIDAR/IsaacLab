@@ -1,9 +1,3 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
-# All rights reserved.
-#
-# SPDX-License-Identifier: BSD-3-Clause
-
-
 from __future__ import annotations
 
 import torch
@@ -147,7 +141,7 @@ def desired_height(phase, starting_foot):
 
     # Step length (L) and max height (H) for the swing phase
     L = 0.5  # Step length
-    H = 0.35  # Maximum height in the swing phase
+    H = 0.2  # Maximum height in the swing phase
 
     # Define control points for the swing phase Bézier curve
     control_points_swing = torch.tensor(
@@ -223,6 +217,7 @@ def track_foot_height(
     # if one foot is in contact, the offset is the height of the foot in contact
     # if no feet are in contact, the offset is 0
     contact_count = contacts.int().sum(-1)
+
     offset = torch.where(
         contact_count == 2,
         torch.min(foot_z, dim=1)[0],
@@ -235,7 +230,9 @@ def track_foot_height(
 
     phase = env.get_phase()
 
-    feet_z_target = desired_height(phase, env.get_starting_leg()) + 0
+    feet_z_target = desired_height(phase, env.get_starting_leg()) + offset.unsqueeze(
+        -1
+    ).repeat(1, 2)
 
     error = torch.linalg.norm(foot_z - feet_z_target, dim=1)
 
