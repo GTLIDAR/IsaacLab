@@ -168,18 +168,18 @@ class DigitV3RewardsCfg(RewardsCfg):
         params={"command_name": "base_velocity", "std": 0.5},
     )
 
-    feet_air_time = None
-    # feet_air_time = RewTerm(
-    #     func=mdp.feet_air_time_positive_biped,
-    #     weight=0.25,
-    #     params={
-    #         "command_name": "base_velocity",
-    #         "sensor_cfg": SceneEntityCfg(
-    #             "contact_forces", body_names=["left_toe_roll", "right_toe_roll"]
-    #         ),
-    #         "threshold": 0.2,
-    #     },
-    # )
+    # feet_air_time = None
+    feet_air_time = RewTerm(
+        func=mdp.feet_air_time_positive_biped,
+        weight=0.25,
+        params={
+            "command_name": "base_velocity",
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=["left_toe_roll", "right_toe_roll"]
+            ),
+            "threshold": 0.4,
+        },
+    )
 
     feet_slide = RewTerm(
         func=mdp.feet_slide,
@@ -223,7 +223,7 @@ class DigitV3RewardsCfg(RewardsCfg):
                     ".*_shoulder_roll",
                     ".*_shoulder_yaw",
                     ".*_elbow",
-                ],  # [".*_shoulder_.*", ".*_elbow"]
+                ],
             )
         },
     )
@@ -258,34 +258,34 @@ class DigitV3RewardsCfg(RewardsCfg):
     #     },
     # )
 
-    track_foot_height = RewTerm(
-        func=digit_mdp.track_foot_height,
-        weight=0.5,
-        params={
-            "std": 0.05,
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                body_names=["left_toe_roll", "right_toe_roll"],
-                preserve_order=True,
-            ),
-            "sensor_cfg": SceneEntityCfg(
-                "contact_forces",
-                body_names=["left_toe_roll", "right_toe_roll"],
-                preserve_order=True,
-            ),
-        },
-    )
-
-    # foot_clearance = RewTerm(
-    #     func=digit_mdp.foot_clearance_reward,
+    # track_foot_height = RewTerm(
+    #     func=digit_mdp.track_foot_height,
     #     weight=0.5,
     #     params={
-    #         "target_height": 0.2,
-    #         "std": 0.5,
-    #         "tanh_mult": 2.0,
-    #         "asset_cfg": SceneEntityCfg("robot", body_names=".*_toe_roll"),
+    #         "std": 0.05,
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             body_names=["left_toe_roll", "right_toe_roll"],
+    #             preserve_order=True,
+    #         ),
+    #         "sensor_cfg": SceneEntityCfg(
+    #             "contact_forces",
+    #             body_names=["left_toe_roll", "right_toe_roll"],
+    #             preserve_order=True,
+    #         ),
     #     },
     # )
+
+    foot_clearance = RewTerm(
+        func=digit_mdp.foot_clearance_reward,
+        weight=0.5,
+        params={
+            "target_height": 0.2,
+            "std": 0.5,
+            "tanh_mult": 2.0,
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*_toe_roll"),
+        },
+    )
 
     foot_distance = RewTerm(
         func=digit_mdp.feet_distance_l1,
@@ -480,22 +480,22 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # Scene
         self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base"
-        # self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
-        #     "robot",
-        #     joint_names=[
-        #         ".*_hip_.*",
-        #         ".*_knee",
-        #         ".*_toe.*",
-        #     ],
-        # )
+        self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
+            "robot",
+            joint_names=[
+                ".*_hip_.*",
+                ".*_knee",
+                ".*_toe.*",
+            ],
+        )
         # Rewards
-        # self.rewards.dof_acc_l2.params["asset_cfg"] = SceneEntityCfg(
-        #     "robot",
-        #     joint_names=[
-        #         ".*_hip_.*",
-        #         ".*_knee",
-        #     ],
-        # )
+        self.rewards.dof_acc_l2.params["asset_cfg"] = SceneEntityCfg(
+            "robot",
+            joint_names=[
+                ".*_hip_.*",
+                ".*_knee",
+            ],
+        )
         self.rewards.undesired_contacts.params["sensor_cfg"] = SceneEntityCfg(
             "contact_forces",
             body_names=[

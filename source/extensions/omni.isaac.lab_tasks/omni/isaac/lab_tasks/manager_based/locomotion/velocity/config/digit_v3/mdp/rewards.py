@@ -141,7 +141,7 @@ def desired_height(phase, starting_foot):
 
     # Step length (L) and max height (H) for the swing phase
     L = 0.5  # Step length
-    H = 0.2  # Maximum height in the swing phase
+    H = 0.3  # Maximum height in the swing phase
 
     # Define control points for the swing phase Bézier curve
     control_points_swing = torch.tensor(
@@ -230,9 +230,10 @@ def track_foot_height(
 
     phase = env.get_phase()
 
-    feet_z_target = desired_height(phase, env.get_starting_leg()) + offset.unsqueeze(
-        -1
-    ).repeat(1, 2)
+    feet_z_target = desired_height(phase, env.get_starting_leg()) + 0.0626
+    # + offset.unsqueeze(
+    #     -1
+    # ).repeat(1, 2)
 
     error = torch.linalg.norm(foot_z - feet_z_target, dim=1)
 

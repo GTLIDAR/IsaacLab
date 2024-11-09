@@ -18,13 +18,11 @@ clip_range: 0.2
 device: "cuda:0"
 mixture_coeff: 0.1
 policy_kwargs: "dict(
-                  log_std_init=0,
                   ortho_init=True,
                   activation_fn=nn.ELU,
                   net_arch=[512, 256, 128],
                 )"
 student_policy_kwargs: "dict(
-                  log_std_init=0,
                   ortho_init=True,
                   activation_fn=nn.ELU,
                   net_arch=[512, 256, 128],
