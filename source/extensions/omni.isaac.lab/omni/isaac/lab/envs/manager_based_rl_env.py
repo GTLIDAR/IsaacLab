@@ -101,6 +101,11 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
     """
 
     @property
+    def phase_dt(self) -> float:
+        """Phase time interval in seconds."""
+        return 1.0
+
+    @property
     def max_episode_length_s(self) -> float:
         """Maximum episode length in seconds."""
         return self.cfg.episode_length_s
@@ -151,9 +156,6 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
         if not hasattr(self, "episode_length_buf") or self.episode_length_buf is None:
             return torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
-
-        if not hasattr(self, "phase_dt"):
-            self.phase_dt = 1.0
 
         phase = (
             torch.fmod(self.episode_length_buf * self.step_dt, self.phase_dt)

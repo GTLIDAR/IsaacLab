@@ -68,7 +68,7 @@ class L2TDigitV3ActionCfg:
             "right_shoulder_yaw",
             "right_elbow",
         ],
-        use_default_offset=True,
+        use_default_offset=False,
         preserve_order=True,
     )
 
@@ -156,7 +156,7 @@ class DigitV3RewardsCfg(RewardsCfg):
     action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.015)
     dof_vel_l2 = RewTerm(func=mdp.joint_vel_l2, weight=-5e-4)
 
-    lin_vel_z_l2 = None
+    # lin_vel_z_l2 = None
     track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_yaw_frame_exp,
         weight=0.5,
@@ -205,11 +205,7 @@ class DigitV3RewardsCfg(RewardsCfg):
     joint_deviation_hip = RewTerm(
         func=mdp.joint_deviation_l1,  # type: ignore
         weight=-0.05,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot", joint_names=[".*_hip_yaw", ".*_hip_roll"]
-            )
-        },
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_.*"])},
     )
 
     joint_deviation_arms = RewTerm(
@@ -228,21 +224,19 @@ class DigitV3RewardsCfg(RewardsCfg):
         },
     )
 
-    # joint_deviation_toes = RewTerm(
-    #     func=mdp.joint_deviation_l1,  # type: ignore
-    #     weight=-0.1,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             joint_names=[
-    #                 ".*_toe_A",
-    #                 ".*_toe_B",
-    #                 ".*_toe_pitch",
-    #                 ".*_toe_roll",
-    #             ],
-    #         )
-    #     },
-    # )
+    joint_deviation_toes = RewTerm(
+        func=mdp.joint_deviation_l1,  # type: ignore
+        weight=-0.1,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=[
+                    ".*_toe_A",
+                    ".*_toe_B",
+                ],
+            )
+        },
+    )
 
     # foot_contact = RewTerm(
     #     func=digit_v3_mdp.reward_feet_contact_number,
@@ -275,6 +269,24 @@ class DigitV3RewardsCfg(RewardsCfg):
     #         ),
     #     },
     # )
+
+    track_foot_trajectory = RewTerm(
+        func=digit_mdp.track_foot_trajectory,
+        weight=0.5,
+        params={
+            "std": 0.05,
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                body_names=["left_toe_roll", "right_toe_roll"],
+                preserve_order=True,
+            ),
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces",
+                body_names=["left_toe_roll", "right_toe_roll"],
+                preserve_order=True,
+            ),
+        },
+    )
 
     foot_clearance = RewTerm(
         func=digit_mdp.foot_clearance_reward,
@@ -492,8 +504,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.dof_acc_l2.params["asset_cfg"] = SceneEntityCfg(
             "robot",
             joint_names=[
-                ".*_hip_.*",
-                ".*_knee",
+                ".*",
             ],
         )
         self.rewards.undesired_contacts.params["sensor_cfg"] = SceneEntityCfg(

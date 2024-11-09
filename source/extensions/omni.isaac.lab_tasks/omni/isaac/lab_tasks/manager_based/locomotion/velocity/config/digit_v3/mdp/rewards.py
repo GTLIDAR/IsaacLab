@@ -162,12 +162,12 @@ def desired_height(phase, starting_foot):
         is_other_leg = ~is_starting_leg
 
         # Swing phase masks for the starting leg
-        swing_mask_starting_leg = is_starting_leg & (phase >= 0.05) & (phase < 0.5)
-        t_swing_starting = (phase[swing_mask_starting_leg] - 0.05) / 0.45
+        swing_mask_starting_leg = is_starting_leg & (phase >= 0.02) & (phase < 0.5)
+        t_swing_starting = (phase[swing_mask_starting_leg] - 0.02) / 0.48
 
         # Swing phase masks for the other leg
-        swing_mask_other_leg = is_other_leg & (phase >= 0.55) & (phase < 1.0)
-        t_swing_other = (phase[swing_mask_other_leg] - 0.55) / 0.45
+        swing_mask_other_leg = is_other_leg & (phase >= 0.52) & (phase < 1.0)
+        t_swing_other = (phase[swing_mask_other_leg] - 0.52) / 0.48
 
         # Combine swing masks
         swing_mask_leg = swing_mask_starting_leg | swing_mask_other_leg
@@ -240,6 +240,143 @@ def track_foot_height(
     reward = -error
 
     return reward
+
+
+def track_foot_trajectory(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg,
+    sensor_cfg: SceneEntityCfg,
+    std: float,
+) -> torch.Tensor:
+    """Track the foot position in 3D using Raibert heuristic with yaw velocity and von Mises distribution.
+
+    Args:
+        env (ManagerBasedRLEnv): The simulation environment.
+        asset_cfg (SceneEntityCfg): Configuration for the robot asset.
+        sensor_cfg (SceneEntityCfg): Configuration for the contact sensor.
+        std (float): Standard deviation for the reward computation.
+
+    Returns:
+        torch.Tensor: The reward for tracking the foot trajectory.
+    """
+    # Extract the robot asset
+    asset: RigidObject = env.scene[asset_cfg.name]
+
+    # Get the foot positions in world frame [num_envs, num_feet, 3]
+    foot_xyz = asset.data.body_pos_w[:, asset_cfg.body_ids, :3]
+
+    # Retrieve contact sensor data
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]  # type: ignore
+    contacts = (
+        contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :]  # type: ignore
+        .norm(dim=-1)
+        .max(dim=1)[0]
+        > 1.0
+    )  # [num_envs, num_feet]
+    swing_mask = ~contacts  # True where foot is in swing phase
+
+    # Get the CoM position and velocity [n_envs, 3]
+    com_pos = asset.data.root_pos_w[:, :3]  # [n_envs, 3]
+    com_vel = asset.data.root_vel_w[:, :3]  # [n_envs, 3]
+
+    # Extract yaw velocity (angular velocity around z-axis)
+    ang_vel = asset.data.root_vel_w[:, 3:6]  # [n_envs, 3]
+    yaw_vel = ang_vel[:, 2]  # [n_envs]
+
+    # Expand CoM position, velocity, and yaw velocity to match foot dimensions
+    com_pos_expanded = com_pos.unsqueeze(1).expand(
+        -1, foot_xyz.shape[1], -1
+    )  # [n_envs, num_feet, 3]
+    com_vel_expanded = com_vel.unsqueeze(1).expand(
+        -1, foot_xyz.shape[1], -1
+    )  # [n_envs, num_feet, 3]
+    yaw_vel_expanded = yaw_vel.unsqueeze(1).expand(
+        -1, foot_xyz.shape[1]
+    )  # [n_envs, num_feet]
+
+    # Raibert heuristic parameters
+    k_p = 0.05  # Proportional gain for linear velocity
+    k_d = 0.1  # Gain for yaw velocity term (adjust as needed)
+
+    # Initialize foot target positions
+    foot_xyz_target = foot_xyz.clone()
+
+    # Compute the rotational adjustment terms
+    rotational_adjustment_x = -k_d * yaw_vel_expanded * com_pos_expanded[:, :, 1]
+    rotational_adjustment_y = k_d * yaw_vel_expanded * com_pos_expanded[:, :, 0]
+
+    # Compute desired foot positions in x-y plane using modified Raibert heuristic
+    foot_xyz_target[:, :, 0] = (
+        com_pos_expanded[:, :, 0]
+        + k_p * com_vel_expanded[:, :, 0]
+        + rotational_adjustment_x
+    )
+    foot_xyz_target[:, :, 1] = (
+        com_pos_expanded[:, :, 1]
+        + k_p * com_vel_expanded[:, :, 1]
+        + rotational_adjustment_y
+    )
+
+    # Parameters for von Mises distribution
+    h_max = 0.2  # Maximum foot height during swing
+    kappa = 5.0  # Concentration parameter for the von Mises distribution
+
+    # Total gait cycle duration from environment (for both legs)
+    T_total = env.phase_dt  # [scalar]
+
+    # Assuming equal swing and stance durations, swing duration is half of T_total
+    T_swing = T_total / 2.0  # [scalar]
+
+    # Current phase from environment [n_envs]
+    phase = env.get_phase()  # [n_envs]
+
+    # Expand phase to match foot dimensions [n_envs, num_feet]
+    phase_expanded = phase.unsqueeze(1).expand(
+        -1, foot_xyz.shape[1]
+    )  # [n_envs, num_feet]
+
+    # Define phase offsets for each foot [num_feet]
+    # For a biped robot with two legs, legs are 180 degrees out of phase
+    foot_phase_offsets = torch.tensor([0.0, 0.5], device=phase.device)  # [num_feet]
+    foot_phase_offsets = foot_phase_offsets.unsqueeze(0).expand_as(
+        phase_expanded
+    )  # [n_envs, num_feet]
+
+    # Adjust the phase for each foot
+    foot_phase = (phase_expanded + foot_phase_offsets) % 1.0  # [n_envs, num_feet]
+
+    # Determine if each foot is in swing phase based on the adjusted phase
+    # Assuming swing phase occurs when phase is in [0, 0.5)
+    swing_phase_mask = (foot_phase >= 0.0) & (foot_phase < 0.5)  # [n_envs, num_feet]
+
+    # Compute time within the swing phase for each foot
+    t_swing = foot_phase * T_total  # [n_envs, num_feet]
+
+    # Compute 'z_t' for all feet
+    z_t = foot_xyz[:, :, 2].clone()  # Initialize with current foot heights
+
+    # Compute 'z_t' using von Mises distribution for swing feet
+    swing_feet = swing_phase_mask
+    z_t_swing = h_max * (
+        1
+        - torch.exp(kappa * torch.cos(2 * torch.pi * t_swing[swing_feet] / T_swing))
+        / torch.exp(torch.tensor(kappa, device=t_swing.device))
+    )
+    z_t[swing_feet] = z_t_swing  # Update z_t for swing feet
+
+    # Update the target foot height using torch.where
+    foot_xyz_target[:, :, 2] = torch.where(swing_feet, z_t, foot_xyz[:, :, 2])
+
+    # Compute error between current foot position and target position
+    diff = foot_xyz - foot_xyz_target  # [n_envs, num_feet, 3]
+    error = torch.zeros_like(foot_xyz[:, :, 0])  # [n_envs, num_feet]
+    error[swing_feet] = torch.norm(diff[swing_feet], dim=-1)
+
+    # Compute the reward
+    reward = torch.zeros_like(error)
+    reward[swing_feet] = torch.exp(-error[swing_feet] / std)
+
+    return reward.sum(-1)
 
 
 def feet_distance_l1(
