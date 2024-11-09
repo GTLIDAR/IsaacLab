@@ -13,7 +13,6 @@ class TeacherObsCfg(ObsGroup):
     """Observations for policy group."""
 
     # observation terms (order preserved)
-    clock = ObsTerm(func=digit_mdp.clock, scale=1)
     base_lin_vel = ObsTerm(
         func=mdp.base_lin_vel,
     )
@@ -52,10 +51,6 @@ class TeacherObsCfg(ObsGroup):
         func=mdp.height_scan,
         params={"sensor_cfg": SceneEntityCfg("height_scanner")},
         clip=(-1.0, 1.0),
-    )
-
-    starting_leg = ObsTerm(
-        func=digit_mdp.starting_leg,
     )
 
     # pd_gain = ObsTerm(
@@ -100,7 +95,6 @@ class StudentObsCfg(ObsGroup):
     """Observations for student group."""
 
     # observation terms (order preserved)
-    clock = ObsTerm(func=digit_mdp.clock, scale=1)
     base_lin_vel = ObsTerm(
         func=mdp.base_lin_vel,
         scale=1,
@@ -208,10 +202,6 @@ class StudentObsCfg(ObsGroup):
         },
     )
     actions = ObsTerm(func=mdp.last_action)
-
-    starting_leg = ObsTerm(
-        func=digit_mdp.starting_leg,
-    )
 
     def __post_init__(self):
         self.enable_corruption = True

@@ -555,10 +555,6 @@ class DigitV3L2TFlatEnvCfg(DigitV3L2TRoughEnvCfg):
 
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None
-        # no height scan
-        self.scene.height_scanner = None  # type: ignore
-        self.observations.teacher.height_scan = None  # type: ignore
-        self.observations.student.height_scan = None  # type: ignore
 
         # no terrain curriculum
         self.curriculum.terrain_levels = None  # type: ignore
