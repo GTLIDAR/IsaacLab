@@ -21,7 +21,7 @@ EXTENSION_TOML_DATA = toml.load(
 
 # Minimum dependencies required prior to installation
 INSTALL_REQUIRES = [
-    # generic
+    # genericpython train.py --task Isaac-Velocity-Flat-Digit-V3-v0 --num_envs 4
     "numpy",
     "torch==2.4.0",
     "torchvision>=0.14.1",  # ensure compatibility with torch 1.13.1
@@ -52,6 +52,7 @@ EXTRAS_REQUIRE = {
     "hydra-core": ["hydra-core"],
     "rich": ["rich"],
     "tqdm": ["tqdm"],
+    "torchrl": ["torchrl==0.5"],
 }
 # Add the names with hyphens as aliases for convenience
 EXTRAS_REQUIRE["rl_games"] = EXTRAS_REQUIRE["rl-games"]
