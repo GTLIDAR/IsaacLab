@@ -56,6 +56,10 @@ class TeacherObsCfg(ObsGroup):
         clip=(-1.0, 1.0),
     )
 
+    starting_leg = ObsTerm(
+        func=digit_mdp.starting_leg,
+    )
+
     # clock = ObsTerm(
     #     func=digit_mdp.clock,
     # )
@@ -200,24 +204,24 @@ class TeacherObsCfg(ObsGroup):
     #     },
     # )
 
-    target_foot_trajectory = ObsTerm(
-        func=digit_mdp.get_foot_trajectory_observations,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                body_names=["left_toe_roll", "right_toe_roll"],
-                preserve_order=True,
-            ),
-            "sensor_cfg": SceneEntityCfg(
-                "contact_forces",
-                body_names=["left_toe_roll", "right_toe_roll"],
-                preserve_order=True,
-            ),
-        },
-    )
+    # target_foot_trajectory = ObsTerm(
+    #     func=digit_mdp.get_foot_trajectory_observations,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             body_names=["left_toe_roll", "right_toe_roll"],
+    #             preserve_order=True,
+    #         ),
+    #         "sensor_cfg": SceneEntityCfg(
+    #             "contact_forces",
+    #             body_names=["left_toe_roll", "right_toe_roll"],
+    #             preserve_order=True,
+    #         ),
+    #     },
+    # )
 
     def __post_init__(self):
-        self.enable_corruption = True
+        self.enable_corruption = False
         self.concatenate_terms = True
 
 
@@ -249,7 +253,7 @@ class StudentObsCfg(ObsGroup):
         params={"command_name": "base_velocity"},
     )
     joint_pos = ObsTerm(
-        func=mdp.joint_pos,
+        func=mdp.joint_pos_rel,
         scale=1,
         noise=Unoise(n_min=-0.2, n_max=0.2),
         params={
@@ -293,7 +297,7 @@ class StudentObsCfg(ObsGroup):
     )
 
     joint_vel = ObsTerm(
-        func=mdp.joint_vel,
+        func=mdp.joint_vel_rel,
         scale=1,
         noise=Unoise(n_min=-2, n_max=2),
         params={
@@ -336,6 +340,9 @@ class StudentObsCfg(ObsGroup):
         },
     )
     actions = ObsTerm(func=mdp.last_action)
+    starting_leg = ObsTerm(
+        func=digit_mdp.starting_leg,
+    )
 
     def __post_init__(self):
         self.enable_corruption = True

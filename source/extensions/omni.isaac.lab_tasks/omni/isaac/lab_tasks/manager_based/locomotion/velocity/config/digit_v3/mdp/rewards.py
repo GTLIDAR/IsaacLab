@@ -59,6 +59,32 @@ def reward_feet_contact_number(
     return torch.mean(reward, dim=1)
 
 
+def old_reward_feet_contact_number(
+    env, sensor_cfg: SceneEntityCfg, pos_rw: float, neg_rw: float
+) -> torch.Tensor:
+    """
+    Calculates a reward based on the number of feet contacts aligning with the gait phase.
+    Rewards or penalizes depending on whether the foot contact matches the expected gait phase.
+    """
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    contacts = (
+        contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :]
+        .norm(dim=-1)
+        .max(dim=1)[0]
+        > 1.0
+    )
+    # print("contact", contacts.shape, contacts)
+    phase = env.get_phase()
+    sin_pos = torch.sin(2 * torch.pi * phase)
+    stance_mask = torch.zeros((env.num_envs, 2), device=env.device)
+    stance_mask[:, 0] = sin_pos < 0
+    stance_mask[:, 1] = sin_pos >= 0
+    stance_mask[torch.abs(sin_pos) < 0.1] = 1
+
+    reward = torch.where(contacts == stance_mask, pos_rw, neg_rw)
+    return torch.mean(reward, dim=1)
+
+
 def foot_clearance_reward(
     env: ManagerBasedRLEnv,
     target_height: float,
@@ -141,7 +167,7 @@ def desired_height(phase, starting_foot):
 
     # Step length (L) and max height (H) for the swing phase
     L = 0.5  # Step length
-    H = 0.3  # Maximum height in the swing phase
+    H = 0.2  # Maximum height in the swing phase
 
     # Define control points for the swing phase Bézier curve
     control_points_swing = torch.tensor(
@@ -242,6 +268,50 @@ def track_foot_height(
     return reward
 
 
+def old_track_foot_height(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg,
+    sensor_cfg: SceneEntityCfg,
+    std: float,
+) -> torch.Tensor:
+    """"""
+
+    def height_target(t: torch.Tensor):
+        assert t.shape[0] == env.num_envs
+        a5, a4, a3, a2, a1, a0 = [9.6, 12.0, -18.8, 5.0, 0.1, 0.0]
+        # a5, a4, a3, a2, a1, a0 = [-40.9599, 81.919, -51.199, 10.24, 0.0, 0.0]
+        return a5 * t**5 + a4 * t**4 + a3 * t**3 + a2 * t**2 + a1 * t + a0
+
+    asset: RigidObject = env.scene[asset_cfg.name]
+    foot_z = asset.data.body_pos_w[:, asset_cfg.body_ids, 2]
+
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    contacts = (
+        contact_sensor.data.net_forces_w_history[:, :, sensor_cfg.body_ids, :]
+        .norm(dim=-1)
+        .max(dim=1)[0]
+        > 1.0
+    )
+
+    phase = env.get_phase()
+
+    sin_pos = torch.sin(2 * torch.pi * phase)
+    stance_mask = torch.zeros((env.num_envs, 2), device=env.device)
+    stance_mask[:, 0] = sin_pos < 0
+    stance_mask[:, 1] = sin_pos >= 0
+    stance_mask[torch.abs(sin_pos) < 0.1] = 1
+    swing_mask = 1 - stance_mask
+    filt_foot = torch.where(swing_mask == 1, foot_z, torch.zeros_like(foot_z))
+
+    phase_mod = torch.fmod(phase, 0.5)
+    feet_z_target = height_target(phase_mod)
+    feet_z_value = torch.sum(filt_foot, dim=1)
+
+    error = torch.square(feet_z_value - feet_z_target)
+    reward = torch.exp(-error / std**2)
+    return reward
+
+
 def track_foot_trajectory(
     env: ManagerBasedRLEnv,
     asset_cfg: SceneEntityCfg,
@@ -274,13 +344,14 @@ def track_foot_trajectory(
         > 1.0
     )  # [num_envs, num_feet]
     swing_mask = ~contacts  # True where foot is in swing phase
+    desired_com_vel = env.command_manager.get_command("base_velocity")  # [n_envs, 3]
 
     # Get the CoM position and velocity [n_envs, 3]
     com_pos = asset.data.root_pos_w[:, :3]  # [n_envs, 3]
     com_vel = asset.data.root_vel_w[:, :3]  # [n_envs, 3]
 
     # Extract yaw velocity (angular velocity around z-axis)
-    ang_vel = asset.data.root_vel_w[:, 3:6]  # [n_envs, 3]
+    ang_vel = desired_com_vel  # [n_envs, 3]
     yaw_vel = ang_vel[:, 2]  # [n_envs]
 
     # Expand CoM position, velocity, and yaw velocity to match foot dimensions
@@ -318,8 +389,8 @@ def track_foot_trajectory(
     )
 
     # Parameters for von Mises distribution
-    h_max = 0.2  # Maximum foot height during swing
-    kappa = 5.0  # Concentration parameter for the von Mises distribution
+    h_max = 0.25  # Maximum foot height during swing
+    kappa = 0.8  # Concentration parameter for the von Mises distribution
 
     # Total gait cycle duration from environment (for both legs)
     T_total = env.phase_dt  # [scalar]
@@ -370,13 +441,10 @@ def track_foot_trajectory(
     # Compute error between current foot position and target position
     diff = foot_xyz - foot_xyz_target  # [n_envs, num_feet, 3]
     error = torch.zeros_like(foot_xyz[:, :, 0])  # [n_envs, num_feet]
-    error[swing_feet] = torch.norm(diff[swing_feet], dim=-1)
+    error[swing_feet] = torch.linalg.norm(diff[swing_feet], ord=1, dim=-1)
+    error = error.sum(dim=-1)  # [n_envs]
 
-    # Compute the reward
-    reward = torch.zeros_like(error)
-    reward[swing_feet] = torch.exp(-error[swing_feet] / std)
-
-    return reward.sum(-1)
+    return -error
 
 
 def feet_distance_l1(
