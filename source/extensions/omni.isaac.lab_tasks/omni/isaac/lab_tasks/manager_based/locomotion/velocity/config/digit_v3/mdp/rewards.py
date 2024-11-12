@@ -167,7 +167,7 @@ def desired_height(phase, starting_foot):
 
     # Step length (L) and max height (H) for the swing phase
     L = 0.5  # Step length
-    H = 0.2  # Maximum height in the swing phase
+    H = 0.15  # Maximum height in the swing phase
 
     # Define control points for the swing phase Bézier curve
     control_points_swing = torch.tensor(
@@ -344,14 +344,15 @@ def track_foot_trajectory(
         > 1.0
     )  # [num_envs, num_feet]
     swing_mask = ~contacts  # True where foot is in swing phase
-    # desired_com_vel = env.command_manager.get_command("base_velocity")  # [n_envs, 3]
+    desired_com_vel = env.command_manager.get_command("base_velocity")  # [n_envs, 3]
 
     # Get the CoM position and velocity [n_envs, 3]
     com_pos = asset.data.root_pos_w[:, :3]  # [n_envs, 3]
     com_vel = asset.data.root_vel_w[:, :3]  # [n_envs, 3]
 
     # Extract yaw velocity (angular velocity around z-axis)
-    ang_vel = asset.data.root_vel_w[:, 3:6]  # [n_envs, 3]
+    # ang_vel = asset.data.root_vel_w[:, 3:6]  # [n_envs, 3]
+    ang_vel = desired_com_vel
     yaw_vel = ang_vel[:, 2]  # [n_envs]
 
     # Expand CoM position, velocity, and yaw velocity to match foot dimensions
@@ -389,7 +390,7 @@ def track_foot_trajectory(
     )
 
     # Parameters for von Mises distribution
-    h_max = 0.25  # Maximum foot height during swing
+    h_max = 0.2  # Maximum foot height during swing
     kappa = 0.8  # Concentration parameter for the von Mises distribution
 
     # Total gait cycle duration from environment (for both legs)

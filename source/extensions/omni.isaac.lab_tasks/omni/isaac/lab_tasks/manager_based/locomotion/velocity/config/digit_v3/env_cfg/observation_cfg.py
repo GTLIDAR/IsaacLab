@@ -16,26 +16,19 @@ class TeacherObsCfg(ObsGroup):
     clock = ObsTerm(
         func=digit_mdp.clock,
     )
-    base_lin_vel = ObsTerm(
-        func=mdp.base_lin_vel,
-    )
-    base_ang_vel = ObsTerm(
-        func=mdp.base_ang_vel,
-    )
+    base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
+    base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
     projected_gravity = ObsTerm(
-        func=mdp.projected_gravity,
+        func=mdp.projected_gravity, noise=Unoise(n_min=-0.1, n_max=0.1)
     )
     velocity_commands = ObsTerm(
         func=mdp.generated_commands,
         params={"command_name": "base_velocity"},
+        noise=Unoise(n_min=-0.1, n_max=0.1),
     )
-    joint_pos = ObsTerm(
-        func=mdp.joint_pos_rel,
-    )
+    joint_pos = ObsTerm(func=mdp.joint_pos, noise=Unoise(n_min=-0.1, n_max=0.1))
 
-    joint_vel = ObsTerm(
-        func=mdp.joint_vel_rel,
-    )
+    joint_vel = ObsTerm(func=mdp.joint_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
     actions = ObsTerm(func=mdp.last_action)
 
     root_state_w = ObsTerm(
@@ -56,13 +49,13 @@ class TeacherObsCfg(ObsGroup):
         clip=(-1.0, 1.0),
     )
 
-    starting_leg = ObsTerm(
-        func=digit_mdp.starting_leg,
-    )
-
-    # clock = ObsTerm(
-    #     func=digit_mdp.clock,
+    # starting_leg = ObsTerm(
+    #     func=digit_mdp.starting_leg,
     # )
+
+    # # clock = ObsTerm(
+    # #     func=digit_mdp.clock,
+    # # )
 
     # # observation terms (order preserved)
     # noisy_base_lin_vel = ObsTerm(
@@ -241,7 +234,7 @@ class StudentObsCfg(ObsGroup):
     base_ang_vel = ObsTerm(
         func=mdp.base_ang_vel,
         scale=1,
-        noise=Unoise(n_min=-0.3, n_max=0.3),
+        noise=Unoise(n_min=-0.2, n_max=0.2),
     )
     projected_gravity = ObsTerm(
         func=mdp.projected_gravity,
@@ -253,9 +246,9 @@ class StudentObsCfg(ObsGroup):
         params={"command_name": "base_velocity"},
     )
     joint_pos = ObsTerm(
-        func=mdp.joint_pos_rel,
+        func=mdp.joint_pos,
         scale=1,
-        noise=Unoise(n_min=-0.2, n_max=0.2),
+        noise=Unoise(n_min=-0.1, n_max=0.1),
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
@@ -297,9 +290,9 @@ class StudentObsCfg(ObsGroup):
     )
 
     joint_vel = ObsTerm(
-        func=mdp.joint_vel_rel,
+        func=mdp.joint_vel,
         scale=1,
-        noise=Unoise(n_min=-2, n_max=2),
+        noise=Unoise(n_min=-0.2, n_max=0.2),
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
@@ -340,9 +333,9 @@ class StudentObsCfg(ObsGroup):
         },
     )
     actions = ObsTerm(func=mdp.last_action)
-    starting_leg = ObsTerm(
-        func=digit_mdp.starting_leg,
-    )
+    # starting_leg = ObsTerm(
+    #     func=digit_mdp.starting_leg,
+    # )
 
     def __post_init__(self):
         self.enable_corruption = True

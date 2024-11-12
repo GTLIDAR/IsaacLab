@@ -119,7 +119,7 @@ def get_foot_trajectory_observations(
 
     # Parameters for von Mises distribution
     h_max = 0.2  # Maximum foot height during swing
-    kappa = 5.0  # Concentration parameter for the von Mises distribution
+    kappa = 0.8  # Concentration parameter for the von Mises distribution
 
     # Current phase from environment [n_envs]
     phase = env.get_phase()  # [n_envs]

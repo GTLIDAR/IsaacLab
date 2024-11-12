@@ -90,7 +90,7 @@ class L2TDigitV3ActionCfg:
             "right_shoulder_yaw": 1.0,
             "right_elbow": 1.0,
         },
-        use_default_offset=True,
+        use_default_offset=False,
         preserve_order=True,
     )
 
@@ -123,7 +123,7 @@ class L2TTerminationsCfg:
     base_too_low = DoneTerm(
         func=digit_mdp.root_height_below_minimum_adaptive,  # type: ignore
         params={
-            "minimum_height": 0.8,
+            "minimum_height": 0.5,
             "asset_cfg": SceneEntityCfg(
                 "robot",
                 body_names=[
@@ -190,18 +190,18 @@ class DigitV3RewardsCfg(RewardsCfg):
         params={"command_name": "base_velocity", "std": 0.5},
     )
 
-    feet_air_time = None
-    # feet_air_time = RewTerm(
-    #     func=mdp.feet_air_time_positive_biped,
-    #     weight=0.25,
-    #     params={
-    #         "command_name": "base_velocity",
-    #         "sensor_cfg": SceneEntityCfg(
-    #             "contact_forces", body_names=["left_toe_roll", "right_toe_roll"]
-    #         ),
-    #         "threshold": 0.3,
-    #     },
-    # )
+    # feet_air_time = None
+    feet_air_time = RewTerm(
+        func=mdp.feet_air_time_positive_biped,
+        weight=0.25,
+        params={
+            "command_name": "base_velocity",
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=["left_toe_roll", "right_toe_roll"]
+            ),
+            "threshold": 0.3,
+        },
+    )
 
     feet_slide = RewTerm(
         func=mdp.feet_slide,
@@ -227,11 +227,7 @@ class DigitV3RewardsCfg(RewardsCfg):
     joint_deviation_hip = RewTerm(
         func=mdp.joint_deviation_l1,  # type: ignore
         weight=-0.05,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot", joint_names=[".*_hip_yaw", ".*_hip_roll"]
-            )
-        },
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_.*"])},
     )
 
     joint_deviation_arms = RewTerm(
@@ -241,30 +237,28 @@ class DigitV3RewardsCfg(RewardsCfg):
             "asset_cfg": SceneEntityCfg(
                 "robot",
                 joint_names=[
-                    ".*_shoulder_pitch",
-                    ".*_shoulder_roll",
-                    ".*_shoulder_yaw",
+                    ".*_shoulder_.*",
                     ".*_elbow",
                 ],
             )
         },
     )
 
-    # joint_deviation_toes = RewTerm(
-    #     func=mdp.joint_deviation_l1,  # type: ignore
-    #     weight=-0.1,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             joint_names=[
-    #                 ".*_toe_A",
-    #                 ".*_toe_B",
-    #                 ".*_toe_pitch",
-    #                 ".*_toe_roll",
-    #             ],
-    #         )
-    #     },
-    # )
+    joint_deviation_toes = RewTerm(
+        func=mdp.joint_deviation_l1,  # type: ignore
+        weight=-0.1,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=[
+                    ".*_toe_A",
+                    ".*_toe_B",
+                    ".*_toe_pitch",
+                    ".*_toe_roll",
+                ],
+            )
+        },
+    )
 
     foot_contact = RewTerm(
         func=digit_mdp.old_reward_feet_contact_number,
@@ -276,12 +270,12 @@ class DigitV3RewardsCfg(RewardsCfg):
                 preserve_order=True,
             ),
             "pos_rw": 0.3,
-            "neg_rw": -0.0,
+            "neg_rw": -0.3,
         },
     )
 
     track_foot_height = RewTerm(
-        func=digit_mdp.old_track_foot_height,
+        func=digit_mdp.track_foot_height,
         weight=0.5,
         params={
             "std": 0.5,
@@ -327,19 +321,19 @@ class DigitV3RewardsCfg(RewardsCfg):
     #     },
     # )
 
-    # foot_distance = RewTerm(
-    #     func=digit_mdp.feet_distance_l1,
-    #     weight=-2.0,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             body_names=["left_toe_roll", "right_toe_roll"],
-    #             preserve_order=True,
-    #         ),
-    #         "min_dist": 0.2,
-    #         "max_dist": 1.0,
-    #     },
-    # )
+    foot_distance = RewTerm(
+        func=digit_mdp.feet_distance_l1,
+        weight=-2.0,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                body_names=["left_toe_roll", "right_toe_roll"],
+                preserve_order=True,
+            ),
+            "min_dist": 0.2,
+            "max_dist": 1.0,
+        },
+    )
 
 
 @configclass
@@ -391,8 +385,8 @@ class DigitV3EventCfg(EventCfg):
                     "right_toe_roll",
                 ],
             ),
-            "static_friction_range": (0.7, 1.3),
-            "dynamic_friction_range": (0.5, 1.8),
+            "static_friction_range": (0.5, 1.3),
+            "dynamic_friction_range": (0.3, 1.8),
             "restitution_range": (0.0, 0.0),
             "num_buckets": 64,
         },
@@ -446,7 +440,7 @@ class DigitV3EventCfg(EventCfg):
         mode="reset",
         params={
             "position_range": (-0.05, 0.05),
-            "velocity_range": (-0.05, 0.05),
+            "velocity_range": (-0.01, 0.01),
         },
     )
 
@@ -480,8 +474,8 @@ class DigitV3EventCfg(EventCfg):
                 ],
                 preserve_order=True,
             ),
-            "stiffness_distribution_params": (1.0, 1.5),
-            "damping_distribution_params": (1.0, 1.5),
+            "stiffness_distribution_params": (0.7, 1.5),
+            "damping_distribution_params": (0.7, 1.5),
             "operation": "scale",
             "distribution": "log_uniform",
         },
@@ -491,7 +485,7 @@ class DigitV3EventCfg(EventCfg):
     push_robot = EventTerm(
         func=mdp.push_by_setting_velocity,
         mode="interval",
-        interval_range_s=(1.0, 10.0),
+        interval_range_s=(10.0, 15.0),
         params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)}},
     )
 
@@ -523,15 +517,11 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # Rewards
         self.rewards.dof_acc_l2.params["asset_cfg"] = SceneEntityCfg(
             "robot",
+            joint_names=[
+                ".*_hip_.*",
+                ".*_knee",
+            ],
         )
-        # self.rewards.undesired_contacts.params["sensor_cfg"] = SceneEntityCfg(
-        #     "contact_forces",
-        #     body_names=[
-        #         ".*knee.*",
-        #         ".*tarsus.*",
-        #         ".*shin.*",
-        #     ],
-        # )
 
         self.rewards.undesired_contacts = None  # type: ignore
         self.rewards.flat_orientation_l2.weight = -1.0
@@ -598,8 +588,9 @@ class DigitV3L2TFlatEnvCfg_PLAY(DigitV3L2TFlatEnvCfg):
         self.scene.env_spacing = 2.5
         # disable randomization for play
         self.observations.teacher.enable_corruption = False
-        self.observations.student.enable_corruption = (
-            False  # remove random pushing event
-        )
+        # self.observations.student.enable_corruption = (
+        #     False  # remove random pushing event
+        # )
         self.events.base_external_force_torque = None  # type: ignore
         self.events.push_robot = None  # type: ignore
+        self.events.robot_joint_stiffness_and_damping = None  # type: ignore
