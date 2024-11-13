@@ -67,12 +67,15 @@ torch.backends.cudnn.benchmark = False
 def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: OnPolicyPPORunnerCfg):
     """Train with torchrl agent."""
     # override configurations with non-hydra CLI arguments
-    agent_cfg = cli_args.update_torchrl_cfg(agent_cfg, args_cli)
+    # print("aAAAAAAA")
+    agent_cfg = cli_args.update_torchrl_cfg_with_yaml(agent_cfg, args_cli)
+    # print("bbbbbbbbbb")
     env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
     agent_cfg.max_iterations = (
         args_cli.max_iterations if args_cli.max_iterations is not None else agent_cfg.max_iterations
     )
-
+    
+    # print(agent_cfg)
     # set the environment seed
     # note: certain randomizations occur in the environment initialization so we set the seed here
     env_cfg.seed = agent_cfg.seed
@@ -80,6 +83,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: OnPolicyPPORunnerCfg):
 
     # specify directory for logging experiments
     log_root_path = os.path.join("logs", "torchrl", agent_cfg.experiment_name)
+    print("aAAAAAAA")
     log_root_path = os.path.abspath(log_root_path)
     print(f"[INFO] Logging experiment in directory: {log_root_path}")
     # specify directory for logging runs: {time-stamp}_{run_name}

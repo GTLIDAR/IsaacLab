@@ -220,7 +220,8 @@ class OnPolicyPPORunner:
 
         # Construct the path to the config file
         cfg_file_path = os.path.join(self.log_dir, "env_cfg.yaml")
-
+        # print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+        # print(cfg_file_path)
         # Ensure the directory exists
         os.makedirs(self.log_dir, exist_ok=True)
 

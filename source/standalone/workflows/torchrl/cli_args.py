@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import argparse
 import random
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, Any, Type, Callable, List, Optional
+from torch import nn
+from dataclasses import dataclass
 
 if TYPE_CHECKING:
     from omni.isaac.lab_tasks.utils.wrappers.torchrl import OnPolicyPPORunnerCfg
-
 
 def add_torchrl_args(parser: argparse.ArgumentParser):
     """Add TorchRL arguments to the parser.
@@ -142,4 +143,153 @@ def update_torchrl_cfg(agent_cfg: OnPolicyPPORunnerCfg, args_cli: argparse.Names
     if agent_cfg.logger in {"wandb"} and args_cli.log_project_name:
         agent_cfg.wandb_project = args_cli.log_project_name
 
-    return agent_cfg
+@dataclass
+class ModuleMapping:
+    """Maps module names to their configuration classes."""
+    cfg_class: Type
+    network_keys: List[str]
+
+class ConfigurationError(Exception):
+    """Custom exception for configuration-related errors."""
+    pass
+
+class NNFromYAML:
+    """Builds nn models from YAML configurations."""
+    
+    def __init__(self, config: Dict[str, Any]):
+        """
+        Args:
+            config: Dictionary containing the model configuration.
+        
+        Raises:
+            ValueError: If config is None or empty.
+        """
+        if not config:
+            raise ValueError("Config cannot be None or empty")
+        self.config = config
+        self.SUPPORTED_MODELS = {"Sequential": self.load_sequential}
+
+    def build_model_from_config(self) -> nn.Module:
+        try:
+            model_type = self.config.get("type")
+            if not model_type:
+                raise ConfigurationError("Model type not specified in configuration")
+                
+            builder = self.SUPPORTED_MODELS.get(model_type)
+            if not builder:
+                raise ConfigurationError(f"Unsupported model type: {model_type}")
+                
+            return builder()
+        except Exception as e:
+            raise ConfigurationError(f"Error building model: {str(e)}")
+
+    def load_sequential(self):
+        try:
+            layers = []
+            layer_configs = self.config.get("layers", [])
+            
+            if not layer_configs:
+                raise ConfigurationError("No layers specified for Sequential model")
+                
+            for layer_config in layer_configs:
+                if not isinstance(layer_config, dict):
+                    raise ConfigurationError(f"Invalid layer configuration: {layer_config}")
+                    
+                layer_type = layer_config.get("type")
+                if not layer_type:
+                    raise ConfigurationError("Layer type not specified")
+                    
+                try:
+                    layer_class = getattr(nn, layer_type)
+                except AttributeError:
+                    raise ConfigurationError(f"Unknown layer type: {layer_type}")
+                
+                # Extract parameters excluding the type
+                parameters = {k: v for k, v in layer_config.items() if k != "type"}
+                layers.append(layer_class(**parameters))
+                
+            return nn.Sequential(*layers)
+        except Exception as e:
+            raise ConfigurationError(f"Error building Sequential model: {str(e)}")
+
+class DigitNN(nn.Module):
+    def __init__(self, config: Dict[str,Any]):
+        super().__init__()
+        try:
+            model_builder = NNFromYAML(config)
+            self.model = model_builder.build_model_from_config()
+        except Exception as e:
+            raise ConfigurationError(f"Failed to initialize DigitNN: {str(e)}")
+
+    def forward(self,x = None):
+        if x is None:
+            return self
+        return self.model(x)
+
+def update_torchrl_cfg_with_yaml(yaml_cfg: Dict[str, Any], args_cli: argparse.Namespace):
+    """Update configuration for torchrl agent based on inputs.
+    Args:
+        agent_cfg: The configuration dictionary from yaml.
+        args_cli: The command line arguments.
+    Returns:
+        The updated configuration for torchrl agent based on inputs.
+    """
+    from omni.isaac.lab_tasks.utils.wrappers.torchrl.torchrl_ppo_runner_cfg import (
+        ClipPPOLossCfg, CollectorCfg, ProbabilisticActorCfg, ValueOperatorCfg, OnPolicyPPORunnerCfg
+    )
+    if not yaml_cfg:
+        raise ValueError("yaml_cfg cannot be None or empty")
+
+    MODULE_MAPPINGS = {
+        'actor_module': ModuleMapping(
+            ProbabilisticActorCfg,
+            ['actor_network']
+        ),
+        'critic_module': ModuleMapping(
+            ValueOperatorCfg,
+            ['critic_network']
+        ),
+        'collector_module': ModuleMapping(
+            CollectorCfg,
+            ['actor_network']
+        ),
+        'loss_module': ModuleMapping(
+            ClipPPOLossCfg,
+            ['actor_network', 'value_network']
+        ),
+        'on_policy_runner': ModuleMapping(
+            OnPolicyPPORunnerCfg,
+            ['loss_module', 'collector_module']
+        )
+    }
+
+    try:
+        agent_cfg = {}
+
+        for network_type in ['actor_network', 'critic_network']:
+            if network_type in yaml_cfg:
+                agent_cfg[network_type] = DigitNN(yaml_cfg[network_type])
+
+        for module_name, mapping in MODULE_MAPPINGS.items():
+            if module_name in yaml_cfg:
+                module_cfg = {}
+                for key, value in yaml_cfg[module_name].items():
+                    if key in mapping.network_keys:
+                        if value not in agent_cfg:
+                            raise ConfigurationError(
+                                f"Referenced network '{value}' not found in configuration"
+                            )
+                        module_cfg[key] = agent_cfg[value]
+                    else:
+                        module_cfg[key] = value
+                agent_cfg[module_name] = mapping.cfg_class(**module_cfg)
+
+        if 'on_policy_runner' not in agent_cfg:
+            raise ConfigurationError("Missing required 'on_policy_runner' configuration")
+
+        return agent_cfg.popitem()[1]
+
+    except Exception as e:
+        raise ConfigurationError(f"Error updating torchrl configuration: {str(e)}")
+
+
