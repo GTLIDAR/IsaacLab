@@ -83,7 +83,7 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
     # Simulation loop
     while simulation_app.is_running():
         # Reset
-        if count % 500 == 0:
+        if count % 5000 == 0:
             # reset counter
             count = 0
             # reset the scene entities
@@ -123,7 +123,7 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
 def main():
     """Main function."""
     # Load kit helper
-    sim_cfg = sim_utils.SimulationCfg(device=args_cli.device)
+    sim_cfg = sim_utils.SimulationCfg(device=args_cli.device, dt=0.001)
     sim = SimulationContext(sim_cfg)
     # Set main camera
     sim.set_camera_view([2.5, 0.0, 4.0], [0.0, 0.0, 2.0])

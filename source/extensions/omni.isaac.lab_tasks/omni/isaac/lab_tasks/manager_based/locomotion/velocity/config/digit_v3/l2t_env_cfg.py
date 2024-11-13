@@ -123,7 +123,7 @@ class L2TTerminationsCfg:
     base_too_low = DoneTerm(
         func=digit_mdp.root_height_below_minimum_adaptive,  # type: ignore
         params={
-            "minimum_height": 0.5,
+            "minimum_height": 0.6,
             "asset_cfg": SceneEntityCfg(
                 "robot",
                 body_names=[
@@ -181,12 +181,12 @@ class DigitV3RewardsCfg(RewardsCfg):
     lin_vel_z_l2 = None
     track_lin_vel_xy_exp = RewTerm(
         func=mdp.track_lin_vel_xy_yaw_frame_exp,
-        weight=0.5,
+        weight=0.2,
         params={"command_name": "base_velocity", "std": 0.5},
     )
     track_ang_vel_z_exp = RewTerm(
         func=mdp.track_ang_vel_z_world_exp,
-        weight=0.5,
+        weight=0.2,
         params={"command_name": "base_velocity", "std": 0.5},
     )
 
@@ -227,7 +227,11 @@ class DigitV3RewardsCfg(RewardsCfg):
     joint_deviation_hip = RewTerm(
         func=mdp.joint_deviation_l1,  # type: ignore
         weight=-0.05,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_.*"])},
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot", joint_names=[".*_hip_yaw", ".*_hip_roll"]
+            )
+        },
     )
 
     joint_deviation_arms = RewTerm(
@@ -508,7 +512,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.sim.gravity = (0.0, 0.0, -9.806)
         self.sim.render_interval = self.decimation
         self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 2**26
-        self.sim.physx.gpu_total_aggregate_pairs_capacity = 2**22
+        self.sim.physx.gpu_total_aggregate_pairs_capacity = 2**23
 
         # Scene
         self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore
