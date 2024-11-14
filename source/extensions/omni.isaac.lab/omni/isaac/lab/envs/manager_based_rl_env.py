@@ -157,10 +157,13 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         """Get the phase of the environment."""
 
         if not hasattr(self, "episode_length_buf") or self.episode_length_buf is None:
-            return torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
+            return torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
 
         phase = (
-            torch.fmod(self.episode_length_buf * self.step_dt, self.phase_dt)
+            torch.fmod(
+                self.episode_length_buf.type(dtype=torch.float) * self.step_dt,
+                self.phase_dt,
+            )
             / self.phase_dt
         )
         return phase

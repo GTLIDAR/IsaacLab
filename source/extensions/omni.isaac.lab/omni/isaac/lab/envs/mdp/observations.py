@@ -255,7 +255,9 @@ def image(
 
     # depth image conversion
     if (data_type == "distance_to_camera") and convert_perspective_to_orthogonal:
-        images = math_utils.orthogonalize_perspective_depth(images, sensor.data.intrinsic_matrices)
+        images = math_utils.orthogonalize_perspective_depth(
+            images, sensor.data.intrinsic_matrices
+        )
 
     # rgb/depth image normalization
     if normalize:
