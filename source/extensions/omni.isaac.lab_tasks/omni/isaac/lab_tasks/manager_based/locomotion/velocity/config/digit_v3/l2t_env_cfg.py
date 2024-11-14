@@ -123,7 +123,7 @@ class L2TTerminationsCfg:
     base_too_low = DoneTerm(
         func=digit_mdp.root_height_below_minimum_adaptive,  # type: ignore
         params={
-            "minimum_height": 0.6,
+            "minimum_height": 0.8,
             "asset_cfg": SceneEntityCfg(
                 "robot",
                 body_names=[
@@ -334,7 +334,7 @@ class DigitV3RewardsCfg(RewardsCfg):
                 body_names=["left_toe_roll", "right_toe_roll"],
                 preserve_order=True,
             ),
-            "min_dist": 0.2,
+            "min_dist": 0.1,
             "max_dist": 1.0,
         },
     )
@@ -507,8 +507,8 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # post init of parent
         super().__post_init__()
         self.scene.env_spacing = 5.0
-        self.sim.dt = 0.005
-        self.decimation = 4
+        self.sim.dt = 0.001
+        self.decimation = 20
         self.sim.gravity = (0.0, 0.0, -9.806)
         self.sim.render_interval = self.decimation
         self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 2**26
