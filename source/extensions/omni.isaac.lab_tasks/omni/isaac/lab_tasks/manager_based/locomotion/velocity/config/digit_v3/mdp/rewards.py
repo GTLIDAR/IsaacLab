@@ -45,11 +45,7 @@ def reward_feet_contact_number(
     phase = env.get_phase()
     stance_mask, mask_2 = create_stance_mask(phase)
 
-    if torch.sum(contacts == stance_mask) > torch.sum(contacts == mask_2):
-        reward = torch.where(contacts == stance_mask, pos_rw, neg_rw)
-        return torch.mean(reward, dim=1)
-
-    reward = torch.where(contacts == mask_2, pos_rw, neg_rw)
+    reward = torch.where(contacts == stance_mask, pos_rw, neg_rw)
     return torch.mean(reward, dim=1)
 
 
@@ -120,10 +116,7 @@ def track_foot_height(
 
     stance_mask, mask_2 = create_stance_mask(phase)
 
-    if torch.sum(contacts == stance_mask) > torch.sum(contacts == mask_2):
-        swing_mask = 1 - stance_mask
-    else:
-        swing_mask = 1 - mask_2
+    swing_mask = 1 - stance_mask
 
     filt_foot = torch.where(swing_mask == 1, foot_z, torch.zeros_like(foot_z))
 
