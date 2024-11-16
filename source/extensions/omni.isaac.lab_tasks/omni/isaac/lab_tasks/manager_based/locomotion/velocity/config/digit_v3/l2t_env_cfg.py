@@ -73,14 +73,14 @@ class L2TDigitV3ActionCfg:
             "left_hip_yaw": 1.0,
             "left_hip_pitch": 1.0,
             "left_knee": 1.0,
-            "left_toe_A": 1.0,
-            "left_toe_B": 1.0,
+            "left_toe_A": 0.0,
+            "left_toe_B": 0.0,
             "right_hip_roll": 1.0,
             "right_hip_yaw": 1.0,
             "right_hip_pitch": 1.0,
             "right_knee": 1.0,
-            "right_toe_A": 1.0,
-            "right_toe_B": 1.0,
+            "right_toe_A": 0.0,
+            "right_toe_B": 0.0,
             "left_shoulder_roll": 1.0,
             "left_shoulder_pitch": 1.0,
             "left_shoulder_yaw": 1.0,
@@ -240,7 +240,7 @@ class DigitV3RewardsCfg(RewardsCfg):
 
     joint_deviation_arms = RewTerm(
         func=mdp.joint_deviation_l1,  # type: ignore
-        weight=-0.1,
+        weight=-0.3,
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
@@ -259,6 +259,8 @@ class DigitV3RewardsCfg(RewardsCfg):
             "asset_cfg": SceneEntityCfg(
                 "robot",
                 joint_names=[
+                    ".*_toe_A",
+                    ".*_toe_B",
                     ".*_toe_pitch",
                     ".*_toe_roll",
                 ],
@@ -312,10 +314,10 @@ class DigitV3RewardsCfg(RewardsCfg):
 
 @configclass
 class DigitV3EventCfg(EventCfg):
-    # reset
+    # startup
     physics_material = EventTerm(
         func=mdp.randomize_rigid_body_material,
-        mode="reset",
+        mode="startup",
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
@@ -359,8 +361,8 @@ class DigitV3EventCfg(EventCfg):
                     "right_toe_roll",
                 ],
             ),
-            "static_friction_range": (0.8, 0.8),
-            "dynamic_friction_range": (0.6, 0.6),
+            "static_friction_range": (0.3, 1.2),
+            "dynamic_friction_range": (0.3, 1.2),
             "restitution_range": (0.0, 0.0),
             "num_buckets": 64,
         },
@@ -413,7 +415,7 @@ class DigitV3EventCfg(EventCfg):
         func=mdp.reset_joints_by_offset,
         mode="reset",
         params={
-            "position_range": (-0.05, 0.05),
+            "position_range": (-0.1, 0.1),
             "velocity_range": (-0.01, 0.01),
         },
     )
@@ -469,8 +471,8 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # post init of parent
         super().__post_init__()
         self.scene.env_spacing = 5.0
-        self.sim.dt = 0.005
-        self.decimation = 4
+        self.sim.dt = 0.001
+        self.decimation = 20
         self.sim.gravity = (0.0, 0.0, -9.806)
         self.sim.render_interval = self.decimation
         self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 2**26
