@@ -203,7 +203,7 @@ class DigitV3RewardsCfg(RewardsCfg):
             "sensor_cfg": SceneEntityCfg(
                 "contact_forces", body_names=["left_toe_roll", "right_toe_roll"]
             ),
-            "threshold": 0.3,
+            "threshold": 0.34,
         },
     )
 
@@ -286,7 +286,7 @@ class DigitV3RewardsCfg(RewardsCfg):
         func=digit_mdp.track_foot_height,
         weight=0.5,
         params={
-            "std": 0.05,
+            "std": 0.5,
             "asset_cfg": SceneEntityCfg(
                 "robot",
                 body_names=["left_toe_roll", "right_toe_roll"],
@@ -304,7 +304,7 @@ class DigitV3RewardsCfg(RewardsCfg):
         func=digit_mdp.foot_clearance_reward,
         weight=0.5,
         params={
-            "target_height": 0.2,
+            "target_height": 0.25,
             "std": 0.5,
             "tanh_mult": 2.0,
             "asset_cfg": SceneEntityCfg("robot", body_names=".*_toe_roll"),
@@ -379,7 +379,7 @@ class DigitV3EventCfg(EventCfg):
                     "base",
                 ],
             ),
-            "mass_distribution_params": (0.5, 1.5),
+            "mass_distribution_params": (0.5, 3),
             "operation": "scale",
             "distribution": "uniform",
         },
@@ -389,7 +389,7 @@ class DigitV3EventCfg(EventCfg):
         func=mdp.randomize_physics_scene_gravity,
         mode="reset",
         params={
-            "gravity_distribution_params": ([0.0, 0.0, -0.1], [0.0, 0.0, 0.1]),
+            "gravity_distribution_params": ([0.0, 0.0, -0.2], [0.0, 0.0, 0.2]),
             "operation": "add",
             "distribution": "gaussian",
         },
@@ -450,8 +450,8 @@ class DigitV3EventCfg(EventCfg):
                 ],
                 preserve_order=True,
             ),
-            "stiffness_distribution_params": (0.7, 1.5),
-            "damping_distribution_params": (0.7, 1.5),
+            "stiffness_distribution_params": (0.5, 2.5),
+            "damping_distribution_params": (0.5, 2.5),
             "operation": "scale",
             "distribution": "log_uniform",
         },
@@ -518,7 +518,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
 
         # Commands
         self.commands.base_velocity.ranges.lin_vel_x = (-0.2, 1.0)
-        self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)
+        self.commands.base_velocity.ranges.lin_vel_y = (-0.3, 0.3)
         self.commands.base_velocity.ranges.ang_vel_z = (-0.5, 0.5)
         self.commands.base_velocity.heading_command = False
 
