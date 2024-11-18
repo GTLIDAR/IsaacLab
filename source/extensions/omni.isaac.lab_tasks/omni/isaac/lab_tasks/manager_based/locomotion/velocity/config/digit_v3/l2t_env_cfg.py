@@ -73,14 +73,14 @@ class L2TDigitV3ActionCfg:
             "left_hip_yaw": 1.0,
             "left_hip_pitch": 1.0,
             "left_knee": 1.0,
-            "left_toe_A": 0.0,
-            "left_toe_B": 0.0,
+            "left_toe_A": 1.0,
+            "left_toe_B": 1.0,
             "right_hip_roll": 1.0,
             "right_hip_yaw": 1.0,
             "right_hip_pitch": 1.0,
             "right_knee": 1.0,
-            "right_toe_A": 0.0,
-            "right_toe_B": 0.0,
+            "right_toe_A": 1.0,
+            "right_toe_B": 1.0,
             "left_shoulder_roll": 1.0,
             "left_shoulder_pitch": 1.0,
             "left_shoulder_yaw": 1.0,
@@ -132,43 +132,6 @@ class L2TTerminationsCfg:
             ),
         },
     )
-
-    # bad_orientation = DoneTerm(
-    #     func=mdp.bad_orientation,  # type: ignore
-    #     params={"limit_angle": 0.7},
-    # )
-
-    # arm_deviation = DoneTerm(
-    #     func=digit_mdp.arm_deviation_too_much,  # type: ignore
-    #     params={
-    #         "threshold": 1.0,
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             joint_names=[
-    #                 ".*_shoulder_pitch",
-    #                 ".*_shoulder_roll",
-    #                 ".*_shoulder_yaw",
-    #                 ".*_elbow",
-    #             ],
-    #         ),
-    #     },
-    # )
-
-    # joint_pos_out_of_limit = DoneTerm(
-    #     func=mdp.joint_pos_out_of_limit,  # type: ignore
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             joint_names=[
-    #                 ".*_hip_.*",
-    #                 ".*_knee",
-    #                 ".*_toe.*",
-    #                 ".*_shoulder.*",
-    #                 ".*_elbow",
-    #             ],
-    #         ),
-    #     },
-    # )
 
 
 @configclass
@@ -361,9 +324,9 @@ class DigitV3EventCfg(EventCfg):
                     "right_toe_roll",
                 ],
             ),
-            "static_friction_range": (0.3, 1.2),
-            "dynamic_friction_range": (0.3, 1.2),
-            "restitution_range": (0.0, 0.0),
+            "static_friction_range": (0.3, 2.0),
+            "dynamic_friction_range": (0.3, 2.0),
+            "restitution_range": (0.0, 0.4),
             "num_buckets": 64,
         },
     )
@@ -379,7 +342,7 @@ class DigitV3EventCfg(EventCfg):
                     "base",
                 ],
             ),
-            "mass_distribution_params": (0.5, 3),
+            "mass_distribution_params": (0.5, 1.5),
             "operation": "scale",
             "distribution": "uniform",
         },
@@ -389,9 +352,9 @@ class DigitV3EventCfg(EventCfg):
         func=mdp.randomize_physics_scene_gravity,
         mode="reset",
         params={
-            "gravity_distribution_params": ([0.0, 0.0, -0.2], [0.0, 0.0, 0.2]),
+            "gravity_distribution_params": ([0.0, 0.0, 0.0], [0.0, 0.0, 0.67]),
             "operation": "add",
-            "distribution": "gaussian",
+            "distribution": "uniform",
         },
     )
 
@@ -415,8 +378,8 @@ class DigitV3EventCfg(EventCfg):
         func=mdp.reset_joints_by_offset,
         mode="reset",
         params={
-            "position_range": (-0.1, 0.1),
-            "velocity_range": (-0.01, 0.01),
+            "position_range": (-0.035, 0.035),
+            "velocity_range": (-0.00, 0.00),
         },
     )
 
@@ -450,8 +413,8 @@ class DigitV3EventCfg(EventCfg):
                 ],
                 preserve_order=True,
             ),
-            "stiffness_distribution_params": (0.5, 2.5),
-            "damping_distribution_params": (0.5, 2.5),
+            "stiffness_distribution_params": (0.9, 1.1),
+            "damping_distribution_params": (0.3, 4.0),
             "operation": "scale",
             "distribution": "log_uniform",
         },
@@ -517,9 +480,9 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.dof_acc_l2.weight = -1.25e-7
 
         # Commands
-        self.commands.base_velocity.ranges.lin_vel_x = (-0.2, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_x = (-0.3, 1.0)
         self.commands.base_velocity.ranges.lin_vel_y = (-0.3, 0.3)
-        self.commands.base_velocity.ranges.ang_vel_z = (-0.5, 0.5)
+        self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
         self.commands.base_velocity.heading_command = False
 
 
