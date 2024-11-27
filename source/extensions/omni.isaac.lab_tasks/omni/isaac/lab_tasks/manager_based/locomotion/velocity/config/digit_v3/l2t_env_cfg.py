@@ -201,6 +201,13 @@ class DigitV3RewardsCfg(RewardsCfg):
         },
     )
 
+    # slightly penalize deviation from default leg pitch
+    joint_deviation_hip_pitch = RewTerm(
+        func=mdp.joint_deviation_l1,  # type: ignore
+        weight=-0.01,
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_pitch"])},
+    )
+
     joint_deviation_arms = RewTerm(
         func=mdp.joint_deviation_l1,  # type: ignore
         weight=-0.3,
@@ -208,8 +215,22 @@ class DigitV3RewardsCfg(RewardsCfg):
             "asset_cfg": SceneEntityCfg(
                 "robot",
                 joint_names=[
-                    ".*_shoulder_.*",
+                    ".*_shoulder_yaw",
+                    ".*_shoulder_roll",
                     ".*_elbow",
+                ],
+            )
+        },
+    )
+
+    joint_deviation_arm_pitch = RewTerm(
+        func=mdp.joint_deviation_l1,  # type: ignore
+        weight=-0.1,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=[
+                    ".*_shoulder_pitch",
                 ],
             )
         },
@@ -475,7 +496,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.feet_slide.weight = -1.0
         self.rewards.joint_deviation_hip.weight = -5.0
         self.rewards.flat_orientation_l2.weight = -10.0
-        self.rewards.dof_torques_l2.weight = -1.0e-5
+        self.rewards.dof_torques_l2.weight = -2.0e-5
         self.rewards.action_rate_l2.weight = -0.005
         self.rewards.dof_acc_l2.weight = -1.25e-7
 
