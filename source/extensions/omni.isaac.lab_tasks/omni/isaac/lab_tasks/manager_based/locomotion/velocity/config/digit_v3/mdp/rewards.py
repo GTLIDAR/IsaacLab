@@ -64,8 +64,8 @@ def foot_clearance_reward(
     standing_position_com_z = asset.data.default_root_state[:, 2]
     standing_height = com_z - standing_position_com_z
     standing_position_toe_roll_z = (
-        0.0626 + 0.1
-    )  # recorded from the default position, 0.1 compensation for walking
+        0.0626  # recorded from the default position, 0.1 compensation for walking
+    )
     offset = (standing_height + standing_position_toe_roll_z).unsqueeze(-1)
 
     foot_z_target_error = torch.square(
@@ -112,8 +112,8 @@ def track_foot_height(
     standing_position_com_z = asset.data.default_root_state[:, 2]
     standing_height = com_z - standing_position_com_z
     standing_position_toe_roll_z = (
-        0.0626 + 0.1
-    )  # recorded from the default position, 0.1 compensation for walking
+        0.0626  # recorded from the default position, 0.1 compensation for walking
+    )
     offset = standing_height + standing_position_toe_roll_z
 
     phase = env.get_phase()

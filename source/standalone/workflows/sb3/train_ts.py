@@ -1,3 +1,8 @@
+# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
 """Script to train RL agent with Stable Baselines3.
 
 Since Stable-Baselines3 does not support buffers living on GPU directly,
@@ -78,63 +83,42 @@ simulation_app = app_launcher.app
 import gymnasium as gym
 import numpy as np
 import os
-import random
 from datetime import datetime
 
-# import torch
-from rlopt.agent.torch.ppo.ppo import PPO
 
-# from rlopt.agent.torch.l2t.recurrent_l2t import RecurrentL2T
-from rlopt.common.torch.buffer import RolloutBuffer as RLOptRolloutBuffer
-
-# from rlopt.common.torch.buffer import DictRolloutBuffer as RLOptDictRolloutBuffer
-
-# from rlopt.common.torch.buffer import RLOptDictRecurrentReplayBuffer
-from stable_baselines3.common.callbacks import CheckpointCallback  # , CallbackList
+from rlopt.agent.torch.tsl.teacher_student_learning import TeacherStudentLearning
+from rlopt.common.torch.buffer import RLOptDictRecurrentReplayBuffer
+from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.vec_env import VecNormalize
 
-# import wandb
-# from wandb.integration.sb3 import WandbCallback
+import wandb
+from wandb.integration.sb3 import WandbCallback
 
 
 from omni.isaac.lab.envs import (
-    DirectMARLEnv,
-    DirectMARLEnvCfg,
     DirectRLEnvCfg,
     ManagerBasedRLEnvCfg,
-    multi_agent_to_single_agent,
 )
 from omni.isaac.lab.utils.dict import print_dict
 from omni.isaac.lab.utils.io import dump_pickle, dump_yaml
-
-# from omni.isaac.lab.utils import class_to_dict
+from omni.isaac.lab.utils import class_to_dict
 
 
 import omni.isaac.lab_tasks  # noqa: F401
-
-# from omni.isaac.lab_tasks.utils import (
-#     load_cfg_from_registry,
-#     parse_env_cfg,
-#     get_checkpoint_path,
-# )
+from omni.isaac.lab_tasks.utils import (
+    get_checkpoint_path,
+)
 from omni.isaac.lab_tasks.utils.hydra import hydra_task_config
 from omni.isaac.lab_tasks.utils.wrappers.sb3 import (
     process_sb3_cfg,
-    Sb3VecEnvGPUWrapper,
-    # L2tSb3VecEnvGPUWrapper,
+    L2tSb3VecEnvGPUWrapper,
 )
 
 
 @hydra_task_config(args_cli.task, "sb3_cfg_entry_point")
-def main(
-    env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: dict
-):
+def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg: dict):
     """Train with stable-baselines agent."""
-    # randomly sample a seed if seed = -1
-    if args_cli.seed == -1:
-        args_cli.seed = random.randint(0, 10000)
-
     # override configurations with non-hydra CLI arguments
     env_cfg.scene.num_envs = (
         args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
@@ -151,14 +135,26 @@ def main(
     # set the environment seed
     # note: certain randomizations occur in the environment initialization so we set the seed here
     env_cfg.seed = agent_cfg["seed"]
-    env_cfg.sim.device = (
-        args_cli.device if args_cli.device is not None else env_cfg.sim.device
-    )
 
+    if args_cli.resume_training:
+        # directory for logging into
+        log_root_path = os.path.join("logs", "sb3", args_cli.task)
+        log_root_path = os.path.abspath(log_root_path)
+        # check checkpoint is valid
+        if args_cli.checkpoint is None:
+            if args_cli.use_last_checkpoint:
+                checkpoint = "model_.*.zip"
+            else:
+                checkpoint = "model.zip"
+            checkpoint_path = get_checkpoint_path(log_root_path, ".*", checkpoint)
+        else:
+            checkpoint_path = args_cli.checkpoint
+
+    log_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    note = "_" + args_cli.note if args_cli.note else ""
+    log_time_note = log_time + note
     # directory for logging into
-    log_dir = os.path.join(
-        "logs", "sb3", args_cli.task, datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    )
+    log_dir = os.path.join("logs", "sb3", args_cli.task, log_time_note)
     # dump the configuration into log-directory
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
@@ -178,7 +174,7 @@ def main(
     # wrap for video recording
     if args_cli.video:
         video_kwargs = {
-            "video_folder": os.path.join(log_dir, "videos", "train"),
+            "video_folder": os.path.join(log_dir, "videos"),
             "step_trigger": lambda step: step % args_cli.video_interval == 0,
             "video_length": args_cli.video_length,
             "disable_logger": True,
@@ -186,13 +182,8 @@ def main(
         print("[INFO] Recording videos during training.")
         print_dict(video_kwargs, nesting=4)
         env = gym.wrappers.RecordVideo(env, **video_kwargs)  # type: ignore
-
-    # convert to single-agent instance if required by the RL algorithm
-    if isinstance(env.unwrapped, DirectMARLEnv):
-        env = multi_agent_to_single_agent(env)  # type: ignore
-
     # wrap around environment for stable baselines
-    env = Sb3VecEnvGPUWrapper(env)  # type: ignore
+    env = L2tSb3VecEnvGPUWrapper(env)  # type: ignore
     # set the seed
     env.seed(seed=agent_cfg["seed"])
 
@@ -209,27 +200,49 @@ def main(
             clip_reward=np.inf,
         )
 
+    wandb.tensorboard.patch(root_logdir=log_dir)  # type: ignore
+
+    # initialize wandb and make callback
+    run = wandb.init(
+        project="L2T Digit TS flat" if "flat" in args_cli.task else "L2T Digit TS",
+        entity="rl-digit",
+        name=log_time_note,
+        config=agent_cfg | class_to_dict(env_cfg),
+        sync_tensorboard=True,
+        monitor_gym=True if args_cli.video else False,
+        save_code=False,
+    )
+    wandb_callback = WandbCallback()
+
     # create agent from stable baselines
-    agent = PPO(
+    agent = TeacherStudentLearning(
         policy_arch,
         env,
-        verbose=0,
-        rollout_buffer_class=RLOptRolloutBuffer,
+        verbose=1,
+        rollout_buffer_class=RLOptDictRecurrentReplayBuffer,
         **agent_cfg
     )
+
+    # load the model if required
+    if args_cli.resume_training:
+        agent.set_parameters(checkpoint_path)
+
     # configure the logger
-    new_logger = configure(log_dir, ["stdout", "tensorboard"])
+    new_logger = configure(log_dir, ["tensorboard"])
     agent.set_logger(new_logger)
 
     # callbacks for agent
     checkpoint_callback = CheckpointCallback(
-        save_freq=1000, save_path=log_dir, name_prefix="model", verbose=2
+        save_freq=1000, save_path=log_dir, name_prefix="model", verbose=0
     )
+
+    # chain the callbacks
+    callback_list = CallbackList([checkpoint_callback, wandb_callback])
 
     # train the agent
     agent.learn(
         total_timesteps=n_timesteps,
-        callback=checkpoint_callback,
+        callback=callback_list,
         progress_bar=True,
     )
 
@@ -239,8 +252,12 @@ def main(
     # close the simulator
     env.close()
 
+    # finish wandb
+    run.finish()  # type: ignore
+
 
 if __name__ == "__main__":
     # run the main function
     main()  # type: ignore
+    # close sim app
     simulation_app.close()
