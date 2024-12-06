@@ -215,8 +215,7 @@ class DigitV3RewardsCfg(RewardsCfg):
             "asset_cfg": SceneEntityCfg(
                 "robot",
                 joint_names=[
-                    ".*_shoulder_yaw",
-                    ".*_shoulder_roll",
+                    ".*_shoulder_.*",
                     ".*_elbow",
                 ],
             )
@@ -496,7 +495,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.feet_slide.weight = -1.0
         self.rewards.joint_deviation_hip.weight = -5.0
         self.rewards.flat_orientation_l2.weight = -10.0
-        self.rewards.dof_torques_l2.weight = -2.0e-5
+        self.rewards.dof_torques_l2.weight = -1.0e-5
         self.rewards.action_rate_l2.weight = -0.005
         self.rewards.dof_acc_l2.weight = -1.25e-7
 
