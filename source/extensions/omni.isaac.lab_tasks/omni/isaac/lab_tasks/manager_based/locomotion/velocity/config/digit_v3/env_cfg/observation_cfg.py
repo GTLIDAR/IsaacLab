@@ -23,7 +23,6 @@ class TeacherObsCfg(ObsGroup):
     velocity_commands = ObsTerm(
         func=mdp.generated_commands,
         params={"command_name": "base_velocity"},
-        noise=Unoise(n_min=-0.1, n_max=0.1),
     )
     joint_pos = ObsTerm(func=mdp.joint_pos)
 

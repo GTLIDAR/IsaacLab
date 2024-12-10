@@ -57,9 +57,9 @@ class DigitV3EventCfg(EventCfg):
                     "right_toe_roll",
                 ],
             ),
-            "static_friction_range": (0.7, 1.3),
-            "dynamic_friction_range": (0.5, 1.8),
-            "restitution_range": (0.0, 0.0),
+            "static_friction_range": (0.3, 2.0),
+            "dynamic_friction_range": (0.3, 2.0),
+            "restitution_range": (0.0, 0.4),
             "num_buckets": 64,
         },
     )
@@ -85,9 +85,9 @@ class DigitV3EventCfg(EventCfg):
         func=mdp.randomize_physics_scene_gravity,
         mode="reset",
         params={
-            "gravity_distribution_params": ([0.0, 0.0, -0.1], [0.0, 0.0, 0.1]),
+            "gravity_distribution_params": ([0.0, 0.0, 0.0], [0.0, 0.0, 0.67]),
             "operation": "add",
-            "distribution": "gaussian",
+            "distribution": "uniform",
         },
     )
 
@@ -107,21 +107,12 @@ class DigitV3EventCfg(EventCfg):
         },
     )
 
-    reset_robot_joints_offset = EventTerm(
-        func=mdp.reset_joints_by_offset,
-        mode="reset",
-        params={
-            "position_range": (-0.01, 0.01),
-            "velocity_range": (-0.0, 0.0),
-        },
-    )
-
     reset_robot_joints = EventTerm(
         func=mdp.reset_joints_by_offset,
         mode="reset",
         params={
-            "position_range": (-0.12, 0.12),
-            "velocity_range": (-0.01, 0.01),
+            "position_range": (-0.035, 0.035),
+            "velocity_range": (-0.00, 0.00),
         },
     )
 
@@ -155,8 +146,8 @@ class DigitV3EventCfg(EventCfg):
                 ],
                 preserve_order=True,
             ),
-            "stiffness_distribution_params": (0.8, 1.2),
-            "damping_distribution_params": (0.8, 1.2),
+            "stiffness_distribution_params": (0.9, 1.1),
+            "damping_distribution_params": (0.9, 1.1),
             "operation": "scale",
             "distribution": "log_uniform",
         },

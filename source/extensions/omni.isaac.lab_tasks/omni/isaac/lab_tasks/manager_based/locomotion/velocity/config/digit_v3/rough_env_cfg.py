@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 import torch
-
+import math
 
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
@@ -13,8 +13,9 @@ from omni.isaac.lab.managers import ObservationTermCfg as ObsTerm
 from omni.isaac.lab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 from omni.isaac.lab.utils.noise import AdditiveGaussianNoiseCfg as Gnoise
 from omni.isaac.lab.utils import configclass
+from .env_cfg.observation_cfg import TeacherObsCfg, StudentObsCfg
 
-import omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.digit_v3.mdp as digit_v3_mdp
+import omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.digit_v3.mdp as digit_mdp
 import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
     LocomotionVelocityRoughEnvCfg,
@@ -23,6 +24,27 @@ from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg imp
 from .env_cfg import DigitV3RewardsCfg, DigitV3EventCfg
 
 from omni.isaac.lab_assets.digit import DIGITV3_CFG  # isort: skip
+
+
+@configclass
+class CommandsCfg:
+    """Command specifications for the MDP."""
+
+    base_velocity = mdp.UniformVelocityCommandCfg(
+        asset_name="robot",
+        resampling_time_range=(10.0, 10.0),
+        rel_standing_envs=0.02,
+        rel_heading_envs=1.0,
+        heading_command=True,
+        heading_control_stiffness=0.5,
+        debug_vis=True,
+        ranges=mdp.UniformVelocityCommandCfg.Ranges(
+            lin_vel_x=(-1.0, 1.0),
+            lin_vel_y=(-1.0, 1.0),
+            ang_vel_z=(-1.0, 1.0),
+            heading=(-math.pi, math.pi),
+        ),
+    )
 
 
 @configclass
@@ -35,14 +57,22 @@ class DigitV3TerminationsCfg:
         params={
             "sensor_cfg": SceneEntityCfg(
                 "contact_forces",
-                body_names=[
-                    ".*base",
-                    ".*hip.*",
-                    ".*knee",
-                    ".*elbow",
-                ],
+                body_names=[".*base", ".*hip.*", ".*knee", ".*elbow"],
             ),
             "threshold": 1.0,
+        },
+    )
+
+    base_too_low = DoneTerm(
+        func=digit_mdp.root_height_below_minimum_adaptive,  # type: ignore
+        params={
+            "minimum_height": 0.4,
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                body_names=[
+                    ".*toe_roll.*",
+                ],
+            ),
         },
     )
 
@@ -75,8 +105,29 @@ class DigitV3ActionCfg:
             "right_shoulder_yaw",
             "right_elbow",
         ],
-        # scale=0.5,
-        use_default_offset=False,
+        scale={
+            "left_hip_roll": 1.0,
+            "left_hip_yaw": 1.0,
+            "left_hip_pitch": 1.0,
+            "left_knee": 1.0,
+            "left_toe_A": 0.0,
+            "left_toe_B": 0.0,
+            "right_hip_roll": 1.0,
+            "right_hip_yaw": 1.0,
+            "right_hip_pitch": 1.0,
+            "right_knee": 1.0,
+            "right_toe_A": 0.0,
+            "right_toe_B": 0.0,
+            "left_shoulder_roll": 1.0,
+            "left_shoulder_pitch": 1.0,
+            "left_shoulder_yaw": 1.0,
+            "left_elbow": 1.0,
+            "right_shoulder_roll": 1.0,
+            "right_shoulder_pitch": 1.0,
+            "right_shoulder_yaw": 1.0,
+            "right_elbow": 1.0,
+        },
+        use_default_offset=True,
         preserve_order=True,
     )
 
@@ -90,20 +141,22 @@ class DigitV3ObservationsCfg:
         """Observations for policy group."""
 
         # observation terms (order preserved)
-        clock = ObsTerm(func=digit_v3_mdp.clock, scale=1)
+        clock = ObsTerm(
+            func=digit_mdp.clock,
+        )
         base_lin_vel = ObsTerm(
             func=mdp.base_lin_vel,
             scale=1,
-            noise=Gnoise(mean=0.0, std=0.15, operation="add"),
+            noise=Gnoise(mean=0.0, std=0.15),
         )
         base_ang_vel = ObsTerm(
             func=mdp.base_ang_vel,
             scale=1,
-            noise=Gnoise(mean=0.0, std=0.15, operation="add"),
+            noise=Gnoise(mean=0.0, std=0.15),
         )
         projected_gravity = ObsTerm(
             func=mdp.projected_gravity,
-            noise=Unoise(n_min=-0.075, n_max=0.075),
+            noise=Gnoise(mean=0.0, std=0.075),
         )
         velocity_commands = ObsTerm(
             func=mdp.generated_commands,
@@ -113,7 +166,7 @@ class DigitV3ObservationsCfg:
         joint_pos = ObsTerm(
             func=mdp.joint_pos,
             scale=1,
-            noise=Gnoise(mean=0.0, std=0.1, operation="add"),
+            noise=Gnoise(mean=0.0, std=0.175),
             params={
                 "asset_cfg": SceneEntityCfg(
                     "robot",
@@ -157,7 +210,7 @@ class DigitV3ObservationsCfg:
         joint_vel = ObsTerm(
             func=mdp.joint_vel,
             scale=1,
-            noise=Gnoise(mean=0.0, std=0.1, operation="add"),
+            noise=Gnoise(mean=0.0, std=0.175),
             params={
                 "asset_cfg": SceneEntityCfg(
                     "robot",
@@ -209,11 +262,8 @@ class DigitV3ObservationsCfg:
 
 @configclass
 class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
-    # Basic settings
     observations: DigitV3ObservationsCfg = DigitV3ObservationsCfg()
     actions: DigitV3ActionCfg = DigitV3ActionCfg()
-
-    # MDP settings
     rewards: DigitV3RewardsCfg = DigitV3RewardsCfg()
     terminations: DigitV3TerminationsCfg = DigitV3TerminationsCfg()
     events: DigitV3EventCfg = DigitV3EventCfg()
@@ -221,53 +271,57 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
-        self.sim.dt = 0.001  # 0.001
-        # self.sim.render_interval = 20
+        self.scene.env_spacing = 5.0
+        self.sim.dt = 0.001
         self.decimation = 20
         self.sim.gravity = (0.0, 0.0, -9.806)
         self.sim.render_interval = self.decimation
+        self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 2**26
+        self.sim.physx.gpu_total_aggregate_pairs_capacity = 2**22
 
         # Scene
         self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base"
-
+        self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
+            "robot",
+            joint_names=[
+                ".*_hip_.*",
+                ".*_knee",
+                ".*_toe.*",
+                ".*_shoulder.*",
+                ".*_elbow",
+            ],
+        )
         # Rewards
         self.rewards.dof_acc_l2.params["asset_cfg"] = SceneEntityCfg(
-            "robot", joint_names=[".*_hip.*", ".*_knee"]
-        )
-
-        self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
-            "robot", joint_names=[".*_hip_.*", ".*_knee"]  # ".*toe_roll", ".*toe_pitch"
+            "robot",
+            joint_names=[
+                ".*_hip_.*",
+                ".*_knee",
+                ".*_shoulder.*",
+                ".*_elbow",
+            ],
         )
 
         self.rewards.undesired_contacts = None  # type: ignore
-
-        # self.rewards.track_lin_vel_xy_exp.weight = 2.0
-        # self.rewards.track_ang_vel_z_exp.weight = 2.0
-        # self.rewards.alive.weight = 0.01
-        # self.rewards.lin_vel_z_l2.weight = -0.2
-        # self.rewards.ang_vel_xy_l2.weight = -0.1
-        # self.rewards.dof_torques_l2.weight = -1.5e-7
-        # self.rewards.dof_acc_l2.weight = -1.25e-7
-        # self.rewards.action_rate_l2.weight = -0.005
-
-        # self.rewards.feet_air_time.weight = 1.0
-        # self.rewards.flat_orientation_l2.weight = -5.0
-
-        # self.rewards.dof_pos_limits.weight = -0.1
-        # self.rewards.termination_penalty.weight = -200.0
-        # self.rewards.feet_slide.weight = -0.25
-        # self.rewards.joint_deviation_hip.weight = -0.1
-        # self.rewards.joint_deviation_arms.weight = -0.2
-        # self.rewards.joint_deviation_torso.weight = -0.1
+        # self.rewards.alive.weight = 0.0
+        self.rewards.track_lin_vel_xy_exp.weight = 0.5
+        self.rewards.track_ang_vel_z_exp.weight = 1.0
+        self.rewards.ang_vel_xy_l2.weight = -0.1
+        self.rewards.dof_pos_limits.weight = -0.5
+        self.rewards.termination_penalty.weight = -200
+        self.rewards.feet_slide.weight = -1.0
+        self.rewards.joint_deviation_hip.weight = -5.0
+        self.rewards.flat_orientation_l2.weight = -10.0
+        self.rewards.dof_torques_l2.weight = -1.0e-5
+        self.rewards.action_rate_l2.weight = -0.005
+        self.rewards.dof_acc_l2.weight = -1.25e-7
 
         # Commands
-        self.commands.base_velocity.ranges.lin_vel_x = (-0.1, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_x = (-0.3, 1.0)
         self.commands.base_velocity.ranges.lin_vel_y = (-0.3, 0.3)
         self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
-        # self.commands.base_velocity.ranges.lin_vel_x = (0.5, 0.5)
-        # self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)
-        # self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
+        self.commands.base_velocity.heading_command = False
 
 
 @configclass
