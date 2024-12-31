@@ -131,6 +131,8 @@ from omni.isaac.lab_tasks.utils.wrappers.sb3 import (
     L2tSb3VecEnvGPUWrapper,
 )
 
+torch.set_float32_matmul_precision("high")
+
 
 @hydra_task_config(args_cli.task, "sb3_cfg_entry_point")
 def main(
@@ -460,6 +462,7 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
         sync_tensorboard=True,
         monitor_gym=True if args_cli.video else False,
         save_code=False,
+        # mode="offline",
     )
     wandb_callback = WandbCallback()
 
@@ -477,7 +480,7 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
         agent.set_parameters(checkpoint_path)
 
     # configure the logger
-    new_logger = configure(log_dir, ["tensorboard"])
+    new_logger = configure(log_dir, ["tensorboard", "stdout"])
     agent.set_logger(new_logger)
 
     # callbacks for agent

@@ -26,7 +26,7 @@ class CommandsCfg:
     base_velocity = mdp.UniformVelocityCommandCfg(
         asset_name="robot",
         resampling_time_range=(10.0, 10.0),
-        rel_standing_envs=0.02,
+        rel_standing_envs=0.1,
         rel_heading_envs=1.0,
         heading_command=True,
         heading_control_stiffness=0.5,
@@ -297,6 +297,7 @@ class DigitV3RewardsCfg(RewardsCfg):
 
 @configclass
 class DigitV3EventCfg(EventCfg):
+
     # startup
     physics_material = EventTerm(
         func=mdp.randomize_rigid_body_material,
@@ -344,8 +345,8 @@ class DigitV3EventCfg(EventCfg):
                     "right_toe_roll",
                 ],
             ),
-            "static_friction_range": (0.3, 2.0),
-            "dynamic_friction_range": (0.3, 2.0),
+            "static_friction_range": (0.6, 1.5),
+            "dynamic_friction_range": (0.4, 1.5),
             "restitution_range": (0.0, 0.4),
             "num_buckets": 64,
         },
@@ -544,7 +545,7 @@ class DigitV3L2TFlatEnvCfg(DigitV3L2TRoughEnvCfg):
 
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None
-        self.scene.height_scanner = None
+        self.scene.height_scanner = None  # type: ignore
 
         # no terrain curriculum
         self.curriculum.terrain_levels = None  # type: ignore

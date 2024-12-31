@@ -18,15 +18,20 @@ class TeacherObsCfg(ObsGroup):
         func=digit_mdp.clock,
     )
     base_lin_vel = ObsTerm(func=mdp.base_lin_vel)
+
     base_ang_vel = ObsTerm(func=mdp.base_ang_vel)
+
     projected_gravity = ObsTerm(func=mdp.projected_gravity)
+
     velocity_commands = ObsTerm(
         func=mdp.generated_commands,
         params={"command_name": "base_velocity"},
     )
+
     joint_pos = ObsTerm(func=mdp.joint_pos)
 
     joint_vel = ObsTerm(func=mdp.joint_vel)
+
     actions = ObsTerm(func=mdp.last_action)
 
     root_state_w = ObsTerm(func=digit_mdp.root_state_w)
@@ -34,6 +39,17 @@ class TeacherObsCfg(ObsGroup):
     root_lin_vel = ObsTerm(func=mdp.root_lin_vel_w)
 
     root_ang_vel = ObsTerm(func=mdp.root_ang_vel_w)
+
+    root_pos = ObsTerm(func=mdp.root_pos_w)
+
+    root_quat = ObsTerm(func=mdp.root_quat_w)
+
+    env_params = ObsTerm(
+        func=digit_mdp.get_environment_parameters,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+        },
+    )
 
     # student specific observations
     student_base_lin_vel = ObsTerm(
