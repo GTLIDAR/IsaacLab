@@ -97,7 +97,8 @@ def feet_slide(
         > 1.0
     )
     asset = env.scene[asset_cfg.name]
-    body_vel = asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :2]
+
+    body_vel = asset.data.body_com_lin_vel_w[:, asset_cfg.body_ids, :2]
     reward = torch.sum(body_vel.norm(dim=-1) * contacts, dim=1)
     return reward
 
@@ -112,7 +113,7 @@ def track_lin_vel_xy_yaw_frame_exp(
     # extract the used quantities (to enable type-hinting)
     asset = env.scene[asset_cfg.name]
     vel_yaw = quat_rotate_inverse(
-        yaw_quat(asset.data.root_quat_w), asset.data.root_lin_vel_w[:, :3]
+        yaw_quat(asset.data.root_link_quat_w), asset.data.root_com_lin_vel_w[:, :3]
     )
     lin_vel_error = torch.sum(
         torch.square(
@@ -134,6 +135,6 @@ def track_ang_vel_z_world_exp(
     asset = env.scene[asset_cfg.name]
     ang_vel_error = torch.square(
         env.command_manager.get_command(command_name)[:, 2]
-        - asset.data.root_ang_vel_w[:, 2]
+        - asset.data.root_com_ang_vel_w[:, 2]
     )
     return torch.exp(-ang_vel_error / std**2)
