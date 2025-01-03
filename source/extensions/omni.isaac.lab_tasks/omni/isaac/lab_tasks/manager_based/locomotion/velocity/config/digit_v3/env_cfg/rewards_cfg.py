@@ -77,13 +77,6 @@ class DigitV3RewardsCfg(RewardsCfg):
         },
     )
 
-    # # slightly penalize deviation from default leg pitch
-    # joint_deviation_hip_pitch = RewTerm(
-    #     func=mdp.joint_deviation_l1,  # type: ignore
-    #     weight=-0.01,
-    #     params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_pitch"])},
-    # )
-
     joint_deviation_arms = RewTerm(
         func=mdp.joint_deviation_l1,  # type: ignore
         weight=-0.3,
@@ -97,19 +90,6 @@ class DigitV3RewardsCfg(RewardsCfg):
             )
         },
     )
-
-    # joint_deviation_arm_pitch = RewTerm(
-    #     func=mdp.joint_deviation_l1,  # type: ignore
-    #     weight=-0.1,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             joint_names=[
-    #                 ".*_shoulder_pitch",
-    #             ],
-    #         )
-    #     },
-    # )
 
     joint_deviation_toes = RewTerm(
         func=mdp.joint_deviation_l1,  # type: ignore

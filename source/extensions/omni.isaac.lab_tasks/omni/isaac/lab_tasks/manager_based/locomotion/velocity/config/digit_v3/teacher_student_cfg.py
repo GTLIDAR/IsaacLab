@@ -5,12 +5,13 @@ from .env_cfg.observation_cfg import TeacherObsCfg, StudentObsCfg
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
     LocomotionVelocityRoughEnvCfg,
 )
-from .l2t_env_cfg import (
+from .env_cfg import (
+    StudentObsCfg,
+    DigitV3CommandsCfg,
+    DigitV3TerminationsCfg,
     DigitV3RewardsCfg,
-    L2TTerminationsCfg,
-    L2TDigitV3ActionCfg,
+    DigitV3ActionCfg,
     DigitV3EventCfg,
-    CommandsCfg,
 )
 
 ##
@@ -39,11 +40,11 @@ class StudentObservationsCfg:
 @configclass
 class DigitV3TeacherRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     rewards: DigitV3RewardsCfg = DigitV3RewardsCfg()
-    terminations: L2TTerminationsCfg = L2TTerminationsCfg()
-    actions: L2TDigitV3ActionCfg = L2TDigitV3ActionCfg()
+    terminations: DigitV3TerminationsCfg = DigitV3TerminationsCfg()
+    actions: DigitV3ActionCfg = DigitV3ActionCfg()
     observations: TeacherObservationsCfg = TeacherObservationsCfg()
     events: DigitV3EventCfg = DigitV3EventCfg()
-    commands: CommandsCfg = CommandsCfg()
+    commands: DigitV3CommandsCfg = DigitV3CommandsCfg()
 
     def __post_init__(self):
         # post init of parent

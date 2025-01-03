@@ -3,6 +3,7 @@ from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.utils import configclass
 
 import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
+import omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.digit_v3.mdp as digit_mdp
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
     EventCfg,
 )
@@ -10,6 +11,7 @@ from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg imp
 
 @configclass
 class DigitV3EventCfg(EventCfg):
+
     # startup
     physics_material = EventTerm(
         func=mdp.randomize_rigid_body_material,
@@ -57,27 +59,10 @@ class DigitV3EventCfg(EventCfg):
                     "right_toe_roll",
                 ],
             ),
-            "static_friction_range": (0.3, 2.0),
-            "dynamic_friction_range": (0.3, 2.0),
+            "static_friction_range": (0.6, 1.5),
+            "dynamic_friction_range": (0.4, 1.5),
             "restitution_range": (0.0, 0.4),
             "num_buckets": 64,
-        },
-    )
-
-    # reset
-    add_base_mass = EventTerm(
-        func=mdp.randomize_rigid_body_mass,
-        mode="reset",
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                body_names=[
-                    "base",
-                ],
-            ),
-            "mass_distribution_params": (0.5, 1.5),
-            "operation": "scale",
-            "distribution": "uniform",
         },
     )
 
@@ -116,39 +101,39 @@ class DigitV3EventCfg(EventCfg):
         },
     )
 
-    robot_joint_stiffness_and_damping = EventTerm(
-        func=mdp.randomize_actuator_gains,
-        mode="reset",
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                joint_names=[
-                    "left_hip_roll",
-                    "left_hip_yaw",
-                    "left_hip_pitch",
-                    "left_knee",
-                    "left_toe_A",
-                    "left_toe_B",
-                    "right_hip_roll",
-                    "right_hip_yaw",
-                    "right_hip_pitch",
-                    "right_knee",
-                    "right_toe_A",
-                    "right_toe_B",
-                    "left_shoulder_roll",
-                    "left_shoulder_pitch",
-                    "left_shoulder_yaw",
-                    "left_elbow",
-                    "right_shoulder_roll",
-                    "right_shoulder_pitch",
-                    "right_shoulder_yaw",
-                    "right_elbow",
-                ],
-                preserve_order=True,
-            ),
-            "stiffness_distribution_params": (0.9, 1.1),
-            "damping_distribution_params": (0.9, 1.1),
-            "operation": "scale",
-            "distribution": "log_uniform",
-        },
-    )
+    # robot_joint_stiffness_and_damping = EventTerm(
+    #     func=digit_mdp.randomize_actuator_gains,
+    #     mode="reset",
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             joint_names=[
+    #                 "left_hip_roll",
+    #                 "left_hip_yaw",
+    #                 "left_hip_pitch",
+    #                 "left_knee",
+    #                 "left_toe_A",
+    #                 "left_toe_B",
+    #                 "right_hip_roll",
+    #                 "right_hip_yaw",
+    #                 "right_hip_pitch",
+    #                 "right_knee",
+    #                 "right_toe_A",
+    #                 "right_toe_B",
+    #                 "left_shoulder_roll",
+    #                 "left_shoulder_pitch",
+    #                 "left_shoulder_yaw",
+    #                 "left_elbow",
+    #                 "right_shoulder_roll",
+    #                 "right_shoulder_pitch",
+    #                 "right_shoulder_yaw",
+    #                 "right_elbow",
+    #             ],
+    #             preserve_order=True,
+    #         ),
+    #         "stiffness_distribution_params": (0.9, 1.1),
+    #         "damping_distribution_params": (0.9, 1.1),
+    #         "operation": "scale",
+    #         "distribution": "log_uniform",
+    #     },
+    # )

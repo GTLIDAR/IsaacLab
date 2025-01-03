@@ -10,3 +10,5 @@ from .terminations import (
     root_height_below_minimum_adaptive,
     arm_deviation_too_much,
 )
+
+from .events import randomize_actuator_gains
