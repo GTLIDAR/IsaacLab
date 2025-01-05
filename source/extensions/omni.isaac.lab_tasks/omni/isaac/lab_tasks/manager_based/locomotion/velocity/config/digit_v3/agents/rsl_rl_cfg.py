@@ -14,10 +14,10 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
 
 @configclass
 class DigitV3RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 24
-    max_iterations = 10000
+    num_steps_per_env = 12
+    max_iterations = 6000
     save_interval = 50
-    experiment_name = "digit_v3_rough"
+    experiment_name = "digit_v3_rough_recurrent"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
         class_name="ActorCriticRecurrent",
@@ -40,9 +40,8 @@ class DigitV3RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         desired_kl=0.01,
         max_grad_norm=1.0,
     )
-    logger = "tensorboard"
-
-    # load_run = "2024-08-21_21-11-05-ok-2-rnn"
+    logger = "wandb"
+    wandb_project = "RSL RL"
 
 
 @configclass
