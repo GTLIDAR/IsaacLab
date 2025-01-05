@@ -17,7 +17,7 @@ class DigitV3RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 12
     max_iterations = 6000
     save_interval = 600
-    experiment_name = "digit_v3_rough_recurrent"
+    experiment_name = "rsl_digit_v3_rough_recurrent"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
         class_name="ActorCriticRecurrent",
@@ -41,7 +41,7 @@ class DigitV3RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         max_grad_norm=1.0,
     )
     logger = "wandb"
-    wandb_project = "RSL RL"
+    wandb_project = "L2T Digit TS"
 
 
 @configclass
