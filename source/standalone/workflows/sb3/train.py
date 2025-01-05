@@ -496,7 +496,7 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
 
     # callbacks for agent
     checkpoint_callback = CheckpointCallback(
-        save_freq=1000, save_path=log_dir, name_prefix="model", verbose=0
+        save_freq=600, save_path=log_dir, name_prefix="model", verbose=0
     )
 
     # chain the callbacks
