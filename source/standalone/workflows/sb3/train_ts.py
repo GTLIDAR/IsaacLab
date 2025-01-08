@@ -84,7 +84,7 @@ import gymnasium as gym
 import numpy as np
 import os
 from datetime import datetime
-
+import random
 
 from rlopt.agent.torch.tsl.teacher_student_learning import TeacherStudentLearning
 from rlopt.common.torch.buffer import RLOptDictRecurrentReplayBuffer
@@ -97,8 +97,11 @@ from wandb.integration.sb3 import WandbCallback
 
 
 from omni.isaac.lab.envs import (
+    DirectMARLEnv,
+    DirectMARLEnvCfg,
     DirectRLEnvCfg,
     ManagerBasedRLEnvCfg,
+    multi_agent_to_single_agent,
 )
 from omni.isaac.lab.utils.dict import print_dict
 from omni.isaac.lab.utils.io import dump_pickle, dump_yaml
@@ -119,6 +122,10 @@ from omni.isaac.lab_tasks.utils.wrappers.sb3 import (
 @hydra_task_config(args_cli.task, "sb3_cfg_entry_point")
 def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg: dict):
     """Train with stable-baselines agent."""
+    # randomly sample a seed if seed = -1
+    if args_cli.seed == -1:
+        args_cli.seed = random.randint(0, 10000)
+
     # override configurations with non-hydra CLI arguments
     env_cfg.scene.num_envs = (
         args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
@@ -135,6 +142,9 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg: dict):
     # set the environment seed
     # note: certain randomizations occur in the environment initialization so we set the seed here
     env_cfg.seed = agent_cfg["seed"]
+    env_cfg.sim.device = (
+        args_cli.device if args_cli.device is not None else env_cfg.sim.device
+    )
 
     if args_cli.resume_training:
         # directory for logging into
@@ -174,7 +184,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg: dict):
     # wrap for video recording
     if args_cli.video:
         video_kwargs = {
-            "video_folder": os.path.join(log_dir, "videos"),
+            "video_folder": os.path.join(log_dir, "videos", "train"),
             "step_trigger": lambda step: step % args_cli.video_interval == 0,
             "video_length": args_cli.video_length,
             "disable_logger": True,
@@ -182,6 +192,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg: dict):
         print("[INFO] Recording videos during training.")
         print_dict(video_kwargs, nesting=4)
         env = gym.wrappers.RecordVideo(env, **video_kwargs)  # type: ignore
+    # convert to single-agent instance if required by the RL algorithm
+    if isinstance(env.unwrapped, DirectMARLEnv):
+        env = multi_agent_to_single_agent(env)
+
     # wrap around environment for stable baselines
     env = L2tSb3VecEnvGPUWrapper(env)  # type: ignore
     # set the seed
@@ -200,17 +214,18 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg: dict):
             clip_reward=np.inf,
         )
 
-    wandb.tensorboard.patch(root_logdir=log_dir)  # type: ignore
+    wandb.tensorboard.patch(root_logdir=log_dir)
 
     # initialize wandb and make callback
     run = wandb.init(
-        project="L2T Digit TS flat" if "flat" in args_cli.task else "L2T Digit TS",
+        project="L2T Digit TS",
         entity="rl-digit",
         name=log_time_note,
         config=agent_cfg | class_to_dict(env_cfg),
         sync_tensorboard=True,
         monitor_gym=True if args_cli.video else False,
         save_code=False,
+        # mode="offline",
     )
     wandb_callback = WandbCallback()
 
@@ -228,12 +243,12 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg: dict):
         agent.set_parameters(checkpoint_path)
 
     # configure the logger
-    new_logger = configure(log_dir, ["tensorboard"])
+    new_logger = configure(log_dir, ["tensorboard", "stdout"])
     agent.set_logger(new_logger)
 
     # callbacks for agent
     checkpoint_callback = CheckpointCallback(
-        save_freq=1000, save_path=log_dir, name_prefix="model", verbose=0
+        save_freq=600, save_path=log_dir, name_prefix="model", verbose=0
     )
 
     # chain the callbacks

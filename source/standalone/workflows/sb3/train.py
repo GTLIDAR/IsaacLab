@@ -100,11 +100,6 @@ from stable_baselines3.common.vec_env import VecNormalize
 import wandb
 from wandb.integration.sb3 import WandbCallback
 
-
-import wandb
-from wandb.integration.sb3 import WandbCallback
-
-
 from omni.isaac.lab.envs import (
     DirectMARLEnv,
     DirectMARLEnvCfg,
