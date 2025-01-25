@@ -59,10 +59,10 @@ class DigitV3EventCfg(EventCfg):
                     "right_toe_roll",
                 ],
             ),
-            "static_friction_range": (0.6, 1.5),
-            "dynamic_friction_range": (0.4, 1.5),
-            "restitution_range": (0.0, 0.4),
-            "num_buckets": 64,
+            "static_friction_range": (0.3, 1.2),
+            "dynamic_friction_range": (0.3, 1.2),
+            "restitution_range": (0.0, 0.1),
+            "num_buckets": 32,
         },
     )
 
@@ -70,7 +70,7 @@ class DigitV3EventCfg(EventCfg):
         func=mdp.randomize_physics_scene_gravity,
         mode="reset",
         params={
-            "gravity_distribution_params": ([0.0, 0.0, 0.0], [0.0, 0.0, 0.67]),
+            "gravity_distribution_params": ([0.0, 0.0, -0.2], [0.0, 0.0, 0.2]),
             "operation": "add",
             "distribution": "uniform",
         },

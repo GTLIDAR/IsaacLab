@@ -14,6 +14,7 @@ from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg imp
 
 from .env_cfg import (
     StudentObsCfg,
+    TeacherObsCfg,
     DigitV3CommandsCfg,
     DigitV3TerminationsCfg,
     DigitV3RewardsCfg,
@@ -30,7 +31,7 @@ class DigitV3ObservationsCfg:
     """Observation specifications for the MDP."""
 
     # observation groups
-    policy: StudentObsCfg = StudentObsCfg()
+    policy: TeacherObsCfg = TeacherObsCfg()
 
 
 @configclass

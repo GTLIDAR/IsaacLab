@@ -45,8 +45,8 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.decimation = 20
         self.sim.gravity = (0.0, 0.0, -9.806)
         self.sim.render_interval = self.decimation
-        self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 2**26
-        self.sim.physx.gpu_total_aggregate_pairs_capacity = 2**22
+        # self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 2**26
+        # self.sim.physx.gpu_total_aggregate_pairs_capacity = 2**22
 
         # Scene
         self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore

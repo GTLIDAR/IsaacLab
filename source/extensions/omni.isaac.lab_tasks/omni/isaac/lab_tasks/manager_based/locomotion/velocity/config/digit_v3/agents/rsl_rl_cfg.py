@@ -15,7 +15,7 @@ from omni.isaac.lab_tasks.utils.wrappers.rsl_rl import (
 @configclass
 class DigitV3RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 12
-    max_iterations = 6000
+    max_iterations = 10500
     save_interval = 600
     experiment_name = "rsl_digit_v3_rough_recurrent"
     empirical_normalization = False
