@@ -87,12 +87,12 @@ import random
 from datetime import datetime
 
 import torch
-from rlopt.agent.torch.ppo.ppo import PPO
-from rlopt.agent.torch.l2t.l2t import L2T
-from rlopt.agent.torch.l2t.recurrent_l2t import RecurrentL2T
-from rlopt.common.torch.buffer import RolloutBuffer as RLOptRolloutBuffer
-from rlopt.common.torch.buffer import DictRolloutBuffer as RLOptDictRolloutBuffer
-from rlopt.common.torch.buffer import RLOptDictRecurrentReplayBuffer
+from rlopt.agent import PPO, L2T, RecurrentL2T
+from rlopt.common import (
+    RolloutBuffer,
+    DictRolloutBuffer,
+    RLOptDictRecurrentReplayBuffer,
+)
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.vec_env import VecNormalize
@@ -120,7 +120,6 @@ from omni.isaac.lab_tasks.utils import (
 )
 from omni.isaac.lab_tasks.utils.hydra import hydra_task_config
 from omni.isaac.lab_tasks.utils.wrappers.sb3 import (
-    Sb3VecEnvWrapper,
     process_sb3_cfg,
     Sb3VecEnvGPUWrapper,
     L2tSb3VecEnvGPUWrapper,
@@ -192,7 +191,7 @@ def main(
 
     # convert to single-agent instance if required by the RL algorithm
     if isinstance(env.unwrapped, DirectMARLEnv):
-        env = multi_agent_to_single_agent(env)
+        env = multi_agent_to_single_agent(env)  # type: ignore
 
     # wrap around environment for stable baselines
     env = Sb3VecEnvGPUWrapper(env)  # type: ignore
@@ -214,11 +213,7 @@ def main(
 
     # create agent from stable baselines
     agent = PPO(
-        policy_arch,
-        env,
-        verbose=0,
-        rollout_buffer_class=RLOptRolloutBuffer,
-        **agent_cfg
+        policy_arch, env, verbose=0, rollout_buffer_class=RolloutBuffer, **agent_cfg
     )
     # configure the logger
     new_logger = configure(log_dir, ["stdout", "tensorboard"])
@@ -313,7 +308,7 @@ def train_l2t():
             clip_reward=np.inf,
         )
 
-    wandb.tensorboard.patch(root_logdir=log_dir)
+    wandb.tensorboard.patch(root_logdir=log_dir)  # type: ignore
     # initialize wandb and make callback
     run = wandb.init(
         project="l2t_digit",
@@ -327,11 +322,7 @@ def train_l2t():
 
     # create agent from stable baselines
     agent = L2T(
-        policy_arch,
-        env,
-        verbose=1,
-        rollout_buffer_class=RLOptDictRolloutBuffer,
-        **agent_cfg
+        policy_arch, env, verbose=1, rollout_buffer_class=DictRolloutBuffer, **agent_cfg
     )
     # configure the logger
     new_logger = configure(log_dir, ["tensorboard"])
@@ -437,7 +428,7 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
         env = gym.wrappers.RecordVideo(env, **video_kwargs)  # type: ignore
     # convert to single-agent instance if required by the RL algorithm
     if isinstance(env.unwrapped, DirectMARLEnv):
-        env = multi_agent_to_single_agent(env)
+        env = multi_agent_to_single_agent(env)  # type: ignore
 
     # wrap around environment for stable baselines
     env = L2tSb3VecEnvGPUWrapper(env)  # type: ignore
@@ -457,7 +448,7 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
             clip_reward=np.inf,
         )
 
-    wandb.tensorboard.patch(root_logdir=log_dir)
+    wandb.tensorboard.patch(root_logdir=log_dir)  # type: ignore
 
     # initialize wandb and make callback
     run = wandb.init(
@@ -518,6 +509,6 @@ if __name__ == "__main__":
     # run the main function
     # main()
     # train_l2t()
-    train_recurrentl2t()
+    train_recurrentl2t()  # type: ignore
     # close sim app
     simulation_app.close()
