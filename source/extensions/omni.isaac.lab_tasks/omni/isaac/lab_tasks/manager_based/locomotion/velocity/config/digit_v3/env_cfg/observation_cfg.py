@@ -28,9 +28,9 @@ class TeacherObsCfg(ObsGroup):
         params={"command_name": "base_velocity"},
     )
 
-    joint_pos = ObsTerm(func=mdp.joint_pos_rel)
+    joint_pos = ObsTerm(func=mdp.joint_pos)
 
-    joint_vel = ObsTerm(func=mdp.joint_vel_rel)
+    joint_vel = ObsTerm(func=mdp.joint_vel)
 
     actions = ObsTerm(func=mdp.last_action)
 
