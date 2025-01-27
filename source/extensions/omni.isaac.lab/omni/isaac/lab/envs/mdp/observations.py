@@ -36,7 +36,7 @@ def base_pos_z(
     """Root height in the simulation world frame."""
     # extract the used quantities (to enable type-hinting)
     asset: Articulation = env.scene[asset_cfg.name]
-    return asset.data.root_link_pos_w[:, 2].unsqueeze(-1)
+    return asset.data.root_pos_w[:, 2].unsqueeze(-1)
 
 
 def base_lin_vel(
@@ -45,7 +45,7 @@ def base_lin_vel(
     """Root linear velocity in the asset's root frame."""
     # extract the used quantities (to enable type-hinting)
     asset: RigidObject = env.scene[asset_cfg.name]
-    return asset.data.root_com_lin_vel_b
+    return asset.data.root_lin_vel_b
 
 
 def base_ang_vel(
@@ -54,7 +54,7 @@ def base_ang_vel(
     """Root angular velocity in the asset's root frame."""
     # extract the used quantities (to enable type-hinting)
     asset: RigidObject = env.scene[asset_cfg.name]
-    return asset.data.root_com_ang_vel_b
+    return asset.data.root_ang_vel_b
 
 
 def projected_gravity(
@@ -72,7 +72,7 @@ def root_pos_w(
     """Asset root position in the environment frame."""
     # extract the used quantities (to enable type-hinting)
     asset: RigidObject = env.scene[asset_cfg.name]
-    return asset.data.root_link_pos_w - env.scene.env_origins
+    return asset.data.root_pos_w - env.scene.env_origins
 
 
 def root_quat_w(
@@ -89,7 +89,7 @@ def root_quat_w(
     # extract the used quantities (to enable type-hinting)
     asset: RigidObject = env.scene[asset_cfg.name]
 
-    quat = asset.data.root_link_quat_w
+    quat = asset.data.root_quat_w
     # make the quaternion real-part positive if configured
     return math_utils.quat_unique(quat) if make_quat_unique else quat
 
@@ -100,7 +100,7 @@ def root_lin_vel_w(
     """Asset root linear velocity in the environment frame."""
     # extract the used quantities (to enable type-hinting)
     asset: RigidObject = env.scene[asset_cfg.name]
-    return asset.data.root_com_lin_vel_w
+    return asset.data.root_lin_vel_w
 
 
 def root_ang_vel_w(
@@ -109,7 +109,7 @@ def root_ang_vel_w(
     """Asset root angular velocity in the environment frame."""
     # extract the used quantities (to enable type-hinting)
     asset: RigidObject = env.scene[asset_cfg.name]
-    return asset.data.root_com_ang_vel_w
+    return asset.data.root_ang_vel_w
 
 
 """
