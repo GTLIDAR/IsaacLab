@@ -69,9 +69,9 @@ import torch
 from datetime import datetime
 
 # from stable_baselines3 import PPO
-from rlopt.agent.torch.ppo.ppo import PPO
-from rlopt.agent.torch.l2t.l2t import L2T
-from rlopt.agent.torch.l2t.recurrent_l2t import RecurrentL2T
+from rlopt.agent import PPO
+from rlopt.agent import L2T
+from rlopt.agent import RecurrentL2T
 from stable_baselines3.common.vec_env import VecNormalize
 
 from omni.isaac.lab.utils.dict import print_dict
