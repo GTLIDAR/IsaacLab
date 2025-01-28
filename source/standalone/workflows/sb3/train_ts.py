@@ -86,8 +86,8 @@ import os
 from datetime import datetime
 import random
 
-from rlopt.agent.torch.tsl.teacher_student_learning import TeacherStudentLearning
-from rlopt.common.torch.buffer import RLOptDictRecurrentReplayBuffer
+from rlopt.agent import TeacherStudentLearning
+from rlopt.common.buffer import RLOptDictRecurrentReplayBuffer
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.vec_env import VecNormalize
@@ -96,7 +96,7 @@ import wandb
 from wandb.integration.sb3 import WandbCallback
 
 
-from omni.isaac.lab.envs import (
+from omni.isaac.lab.envs import (  # type: ignore
     DirectMARLEnv,
     DirectMARLEnvCfg,
     DirectRLEnvCfg,
@@ -194,7 +194,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg: dict):
         env = gym.wrappers.RecordVideo(env, **video_kwargs)  # type: ignore
     # convert to single-agent instance if required by the RL algorithm
     if isinstance(env.unwrapped, DirectMARLEnv):
-        env = multi_agent_to_single_agent(env)
+        env = multi_agent_to_single_agent(env)  # type: ignore
 
     # wrap around environment for stable baselines
     env = L2tSb3VecEnvGPUWrapper(env)  # type: ignore
@@ -214,7 +214,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg: dict):
             clip_reward=np.inf,
         )
 
-    wandb.tensorboard.patch(root_logdir=log_dir)
+    wandb.tensorboard.patch(root_logdir=log_dir)  # type: ignore
 
     # initialize wandb and make callback
     run = wandb.init(
