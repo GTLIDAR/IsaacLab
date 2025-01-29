@@ -478,7 +478,7 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
         agent.set_parameters(checkpoint_path)
 
     # configure the logger
-    new_logger = configure(log_dir, ["tensorboard", "stdout"])
+    new_logger = configure(log_dir, ["tensorboard"])
     agent.set_logger(new_logger)
 
     # callbacks for agent
