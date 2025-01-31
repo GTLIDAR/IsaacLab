@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -175,7 +175,8 @@ class TestFrameTransformer(unittest.TestCase):
                 joint_vel = scene.articulations["robot"].data.default_joint_vel
                 # -- set root state
                 # -- robot
-                scene.articulations["robot"].write_root_state_to_sim(root_state)
+                scene.articulations["robot"].write_root_pose_to_sim(root_state[:, :7])
+                scene.articulations["robot"].write_root_velocity_to_sim(root_state[:, 7:])
                 scene.articulations["robot"].write_joint_state_to_sim(joint_pos, joint_vel)
                 # reset buffers
                 scene.reset()
@@ -275,7 +276,8 @@ class TestFrameTransformer(unittest.TestCase):
                 joint_vel = scene.articulations["robot"].data.default_joint_vel
                 # -- set root state
                 # -- robot
-                scene.articulations["robot"].write_root_state_to_sim(root_state)
+                scene.articulations["robot"].write_root_pose_to_sim(root_state[:, :7])
+                scene.articulations["robot"].write_root_velocity_to_sim(root_state[:, 7:])
                 scene.articulations["robot"].write_joint_state_to_sim(joint_pos, joint_vel)
                 # reset buffers
                 scene.reset()
@@ -356,7 +358,8 @@ class TestFrameTransformer(unittest.TestCase):
                 joint_vel = scene.articulations["robot"].data.default_joint_vel
                 # -- set root state
                 # -- robot
-                scene.articulations["robot"].write_root_state_to_sim(root_state)
+                scene.articulations["robot"].write_root_pose_to_sim(root_state[:, :7])
+                scene.articulations["robot"].write_root_velocity_to_sim(root_state[:, 7:])
                 scene.articulations["robot"].write_joint_state_to_sim(joint_pos, joint_vel)
                 # reset buffers
                 scene.reset()
@@ -447,7 +450,8 @@ class TestFrameTransformer(unittest.TestCase):
                 root_state[:, :3] += scene.env_origins
                 # -- set root state
                 # -- cube
-                scene["cube"].write_root_state_to_sim(root_state)
+                scene["cube"].write_root_pose_to_sim(root_state[:, :7])
+                scene["cube"].write_root_velocity_to_sim(root_state[:, 7:])
                 # reset buffers
                 scene.reset()
 
@@ -534,7 +538,8 @@ class TestFrameTransformer(unittest.TestCase):
                 joint_vel = scene.articulations["robot"].data.default_joint_vel
                 # -- set root state
                 # -- robot
-                scene.articulations["robot"].write_root_state_to_sim(root_state)
+                scene.articulations["robot"].write_root_pose_to_sim(root_state[:, :7])
+                scene.articulations["robot"].write_root_velocity_to_sim(root_state[:, 7:])
                 scene.articulations["robot"].write_joint_state_to_sim(joint_pos, joint_vel)
                 # reset buffers
                 scene.reset()
@@ -578,6 +583,25 @@ class TestFrameTransformer(unittest.TestCase):
 
                 torch.testing.assert_close(bodies_pos_source_tf[:, index], body_pos_b)
                 torch.testing.assert_close(bodies_quat_source_tf[:, index], body_quat_b)
+
+    def test_sensor_print(self):
+        """Test sensor print is working correctly."""
+        # Spawn things into stage
+        scene_cfg = MySceneCfg(num_envs=2, env_spacing=5.0, lazy_sensor_update=False)
+        scene_cfg.frame_transformer = FrameTransformerCfg(
+            prim_path="{ENV_REGEX_NS}/Robot/base",
+            target_frames=[
+                FrameTransformerCfg.FrameCfg(
+                    prim_path="{ENV_REGEX_NS}/Robot/.*",
+                ),
+            ],
+        )
+        scene = InteractiveScene(scene_cfg)
+
+        # Play the simulator
+        self.sim.reset()
+        # print info
+        print(scene.sensors["frame_transformer"])
 
 
 if __name__ == "__main__":

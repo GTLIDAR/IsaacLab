@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -293,6 +293,27 @@ class TestContactSensor(unittest.TestCase):
                         torch.testing.assert_close(
                             contact_sensor_2.data.force_matrix_w[:, :, 0], contact_sensor.data.force_matrix_w[:, :, 0]
                         )
+
+    def test_sensor_print(self):
+        """Test sensor print is working correctly."""
+        with build_simulation_context(device="cuda:0", dt=self.sim_dt, add_lighting=False) as sim:
+            # Spawn things into stage
+            scene_cfg = ContactSensorSceneCfg(num_envs=1, env_spacing=1.0, lazy_sensor_update=False)
+            scene_cfg.terrain = FLAT_TERRAIN_CFG.replace(prim_path="/World/ground")
+            scene_cfg.shape = CUBE_CFG
+            scene_cfg.contact_sensor = ContactSensorCfg(
+                prim_path=scene_cfg.shape.prim_path,
+                track_pose=True,
+                debug_vis=False,
+                update_period=0.0,
+                track_air_time=True,
+                history_length=3,
+            )
+            scene = InteractiveScene(scene_cfg)
+            # Play the simulator
+            sim.reset()
+            # print info
+            print(scene.sensors["contact_sensor"])
 
     """
     Internal helpers.

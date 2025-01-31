@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -103,7 +103,8 @@ def run_simulator(sim: sim_utils.SimulationContext, entities: dict[str, RigidObj
                 radius=0.1, h_range=(0.25, 0.5), size=cone_object.num_instances, device=cone_object.device
             )
             # write root state to simulation
-            cone_object.write_root_state_to_sim(root_state)
+            cone_object.write_root_pose_to_sim(root_state[:, :7])
+            cone_object.write_root_velocity_to_sim(root_state[:, 7:])
             # reset buffers
             cone_object.reset()
             print("----------------------------------------")

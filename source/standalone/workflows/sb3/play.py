@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -69,11 +69,12 @@ import torch
 from datetime import datetime
 
 # from stable_baselines3 import PPO
-from rlopt.agent.torch.ppo.ppo import PPO
-from rlopt.agent.torch.l2t.l2t import L2T
-from rlopt.agent.torch.l2t.recurrent_l2t import RecurrentL2T
+from rlopt.agent import PPO
+from rlopt.agent import L2T
+from rlopt.agent import RecurrentL2T
 from stable_baselines3.common.vec_env import VecNormalize
 
+from omni.isaac.lab.envs import DirectMARLEnv, multi_agent_to_single_agent
 from omni.isaac.lab.utils.dict import print_dict
 
 import omni.isaac.lab_tasks  # noqa: F401
@@ -176,9 +177,12 @@ def main_l2t_student():
     )
 
     # create isaac environment
-    env = gym.make(
-        args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None
-    )
+    env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
+
+    # convert to single-agent instance if required by the RL algorithm
+    if isinstance(env.unwrapped, DirectMARLEnv):
+        env = multi_agent_to_single_agent(env)
+
     # wrap for video recording
     if args_cli.video:
         video_kwargs = {
@@ -415,6 +419,7 @@ def main_recurrentl2t_student():
     # reset environment
     obs = env.reset()
     timestep = 0
+    i = 0
     # simulate environment
     while simulation_app.is_running():
         # run everything in inference mode
@@ -437,6 +442,9 @@ def main_recurrentl2t_student():
                 _last_episode_starts.clone().to(agent.device).type(torch.float32)
             )
         print("step:", timestep)
+        # i += 1
+        # if i == 10:
+        #     break
         if args_cli.video:
             timestep += 1
             # Exit the play loop after recording one video

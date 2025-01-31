@@ -1,77 +1,22 @@
 from omni.isaac.lab.managers import SceneEntityCfg
 from omni.isaac.lab.utils import configclass
+from .env_cfg import (
+    TeacherObsCfg,
+    StudentObsCfg,
+    DigitV3CommandsCfg,
+    DigitV3TerminationsCfg,
+    DigitV3RewardsCfg,
+    DigitV3ActionCfg,
+    DigitV3EventCfg,
+)
 from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
     LocomotionVelocityRoughEnvCfg,
 )
-
-from .rough_env_cfg import (
-    DigitV3RewardsCfg,
-    DigitV3TerminationsCfg,
-    # DigitV3ActionCfg,
-    DigitV3EventCfg,
-)
-from .env_cfg.observation_cfg import TeacherObsCfg, StudentObsCfg
-import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
 
 ##
 # Pre-defined configs
 ##
 from omni.isaac.lab_assets.digit import DIGITV3_CFG  # isort: skip
-import math
-
-
-@configclass
-class CommandsCfg:
-    """Command specifications for the MDP."""
-
-    base_velocity = mdp.UniformVelocityCommandCfg(
-        asset_name="robot",
-        resampling_time_range=(10.0, 10.0),
-        rel_standing_envs=0.02,
-        rel_heading_envs=1.0,
-        heading_command=True,
-        heading_control_stiffness=0.5,
-        debug_vis=True,
-        ranges=mdp.UniformVelocityCommandCfg.Ranges(
-            lin_vel_x=(-1.0, 1.0),
-            lin_vel_y=(-1.0, 1.0),
-            ang_vel_z=(-1.0, 1.0),
-            heading=(-math.pi, math.pi),
-        ),
-    )
-
-
-@configclass
-class L2TDigitV3ActionCfg:
-    """Action terms for the MDP."""
-
-    joint_pos = mdp.JointPositionActionCfg(  # type: ignore
-        asset_name="robot",
-        joint_names=[
-            "left_hip_roll",
-            "left_hip_yaw",
-            "left_hip_pitch",
-            "left_knee",
-            "left_toe_A",
-            "left_toe_B",
-            "right_hip_roll",
-            "right_hip_yaw",
-            "right_hip_pitch",
-            "right_knee",
-            "right_toe_A",
-            "right_toe_B",
-            "left_shoulder_roll",
-            "left_shoulder_pitch",
-            "left_shoulder_yaw",
-            "left_elbow",
-            "right_shoulder_roll",
-            "right_shoulder_pitch",
-            "right_shoulder_yaw",
-            "right_elbow",
-        ],
-        use_default_offset=True,
-        preserve_order=True,
-    )
 
 
 @configclass
@@ -87,17 +32,17 @@ class L2TObservationsCfg:
 class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     rewards: DigitV3RewardsCfg = DigitV3RewardsCfg()
     terminations: DigitV3TerminationsCfg = DigitV3TerminationsCfg()
-    actions: L2TDigitV3ActionCfg = L2TDigitV3ActionCfg()
+    actions: DigitV3ActionCfg = DigitV3ActionCfg()
     observations: L2TObservationsCfg = L2TObservationsCfg()
     events: DigitV3EventCfg = DigitV3EventCfg()
-    commands: CommandsCfg = CommandsCfg()
+    commands: DigitV3CommandsCfg = DigitV3CommandsCfg()
 
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
         self.scene.env_spacing = 5.0
-        self.sim.dt = 0.005
-        self.decimation = 4
+        self.sim.dt = 0.001
+        self.decimation = 20
         self.sim.gravity = (0.0, 0.0, -9.806)
         self.sim.render_interval = self.decimation
         self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 2**26
@@ -122,14 +67,13 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
             joint_names=[
                 ".*_hip_.*",
                 ".*_knee",
-                ".*_toe.*",
                 ".*_shoulder.*",
                 ".*_elbow",
             ],
         )
-        # Rewards
+
         self.rewards.undesired_contacts = None  # type: ignore
-        self.rewards.alive.weight = 0.0
+        # self.rewards.alive.weight = 0.0
         self.rewards.track_lin_vel_xy_exp.weight = 0.5
         self.rewards.track_ang_vel_z_exp.weight = 1.0
         self.rewards.ang_vel_xy_l2.weight = -0.1
@@ -138,16 +82,14 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.feet_slide.weight = -1.0
         self.rewards.joint_deviation_hip.weight = -5.0
         self.rewards.flat_orientation_l2.weight = -10.0
-        self.rewards.dof_torques_l2.weight = -1.0e-6
-        self.rewards.action_rate_l2.weight = -0.002
-        self.rewards.dof_acc_l2.weight = 0
-        # self.rewards.joint_deviation_toes.weight = -0.5
-        # self.rewards.joint_deviation_arms.weight = -0.5
+        self.rewards.dof_torques_l2.weight = -1.0e-5
+        self.rewards.action_rate_l2.weight = -0.005
+        self.rewards.dof_acc_l2.weight = -1.25e-7
 
         # Commands
-        self.commands.base_velocity.ranges.lin_vel_x = (-0.0, 1.0)
-        self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)
-        self.commands.base_velocity.ranges.ang_vel_z = (-0.0, 0.0)
+        self.commands.base_velocity.ranges.lin_vel_x = (-0.3, 1.2)
+        self.commands.base_velocity.ranges.lin_vel_y = (-0.3, 0.3)
+        self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
         self.commands.base_velocity.heading_command = False
 
 
@@ -189,13 +131,11 @@ class DigitV3L2TFlatEnvCfg(DigitV3L2TRoughEnvCfg):
 
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None
-        # no height scan
         self.scene.height_scanner = None  # type: ignore
-        self.observations.teacher.height_scan = None  # type: ignore
-        self.observations.student.height_scan = None  # type: ignore
 
         # no terrain curriculum
         self.curriculum.terrain_levels = None  # type: ignore
+        self.observations.teacher.height_scan = None  # type: ignore
 
 
 class DigitV3L2TFlatEnvCfg_PLAY(DigitV3L2TFlatEnvCfg):
@@ -208,8 +148,9 @@ class DigitV3L2TFlatEnvCfg_PLAY(DigitV3L2TFlatEnvCfg):
         self.scene.env_spacing = 2.5
         # disable randomization for play
         self.observations.teacher.enable_corruption = False
-        self.observations.student.enable_corruption = (
-            False  # remove random pushing event
-        )
+        # self.observations.student.enable_corruption = (
+        #     False  # remove random pushing event
+        # )
         self.events.base_external_force_torque = None  # type: ignore
         self.events.push_robot = None  # type: ignore
+        self.events.robot_joint_stiffness_and_damping = None  # type: ignore

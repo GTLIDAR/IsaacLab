@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -19,8 +19,8 @@ from omni.isaac.lab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_
 from omni.isaac.lab.utils.math import quat_conjugate, quat_from_angle_axis, quat_mul, sample_uniform, saturate
 
 if TYPE_CHECKING:
-    from omni.isaac.lab_tasks.direct.allegro_hand import AllegroHandEnvCfg
-    from omni.isaac.lab_tasks.direct.shadow_hand import ShadowHandEnvCfg
+    from omni.isaac.lab_tasks.direct.allegro_hand.allegro_hand_env_cfg import AllegroHandEnvCfg
+    from omni.isaac.lab_tasks.direct.shadow_hand.shadow_hand_env_cfg import ShadowHandEnvCfg
 
 
 class InHandManipulationEnv(DirectRLEnv):
@@ -84,7 +84,7 @@ class InHandManipulationEnv(DirectRLEnv):
         spawn_ground_plane(prim_path="/World/ground", cfg=GroundPlaneCfg())
         # clone and replicate (no need to filter for this environment)
         self.scene.clone_environments(copy_from_source=False)
-        # add articultion to scene - we must register to scene to randomize with EventManager
+        # add articulation to scene - we must register to scene to randomize with EventManager
         self.scene.articulations["robot"] = self.hand
         self.scene.rigid_objects["object"] = self.object
         # add lights
@@ -221,7 +221,8 @@ class InHandManipulationEnv(DirectRLEnv):
         )
 
         object_default_state[:, 7:] = torch.zeros_like(self.object.data.default_root_state[env_ids, 7:])
-        self.object.write_root_state_to_sim(object_default_state, env_ids)
+        self.object.write_root_pose_to_sim(object_default_state[:, :7], env_ids)
+        self.object.write_root_velocity_to_sim(object_default_state[:, 7:], env_ids)
 
         # reset hand
         delta_max = self.hand_dof_upper_limits[env_ids] - self.hand.data.default_joint_pos[env_ids]

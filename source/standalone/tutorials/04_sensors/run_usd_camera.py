@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -228,8 +228,9 @@ def run_simulator(sim: sim_utils.SimulationContext, scene_entities: dict):
         if args_cli.save:
             # Save images from camera at camera_index
             # note: BasicWriter only supports saving data in numpy format, so we need to convert the data to numpy.
-            # tensordict allows easy indexing of tensors in the dictionary
-            single_cam_data = convert_dict_to_backend(camera.data.output[camera_index], backend="numpy")
+            single_cam_data = convert_dict_to_backend(
+                {k: v[camera_index] for k, v in camera.data.output.items()}, backend="numpy"
+            )
 
             # Extract the other information
             single_cam_info = camera.data.info[camera_index]
@@ -251,7 +252,7 @@ def run_simulator(sim: sim_utils.SimulationContext, scene_entities: dict):
             # Derive pointcloud from camera at camera_index
             pointcloud = create_pointcloud_from_depth(
                 intrinsic_matrix=camera.data.intrinsic_matrices[camera_index],
-                depth=camera.data.output[camera_index]["distance_to_image_plane"],
+                depth=camera.data.output["distance_to_image_plane"][camera_index],
                 position=camera.data.pos_w[camera_index],
                 orientation=camera.data.quat_w_ros[camera_index],
                 device=sim.device,

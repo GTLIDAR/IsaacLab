@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -33,7 +33,7 @@ parser.add_argument(
 parser.add_argument(
     "--video_interval",
     type=int,
-    default=2000,
+    default=10000,
     help="Interval between video recordings (in steps).",
 )
 parser.add_argument(
@@ -87,23 +87,18 @@ import random
 from datetime import datetime
 
 import torch
-from rlopt.agent.torch.ppo.ppo import PPO
-from rlopt.agent.torch.l2t.l2t import L2T
-from rlopt.agent.torch.l2t.recurrent_l2t import RecurrentL2T
-from rlopt.common.torch.buffer import RolloutBuffer as RLOptRolloutBuffer
-from rlopt.common.torch.buffer import DictRolloutBuffer as RLOptDictRolloutBuffer
-from rlopt.common.torch.buffer import RLOptDictRecurrentReplayBuffer
+from rlopt.agent import PPO, L2T, RecurrentL2T
+from rlopt.common import (
+    RolloutBuffer,
+    DictRolloutBuffer,
+    RLOptDictRecurrentReplayBuffer,
+)
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.vec_env import VecNormalize
 
 import wandb
 from wandb.integration.sb3 import WandbCallback
-
-
-import wandb
-from wandb.integration.sb3 import WandbCallback
-
 
 from omni.isaac.lab.envs import (
     DirectMARLEnv,
@@ -125,11 +120,12 @@ from omni.isaac.lab_tasks.utils import (
 )
 from omni.isaac.lab_tasks.utils.hydra import hydra_task_config
 from omni.isaac.lab_tasks.utils.wrappers.sb3 import (
-    Sb3VecEnvWrapper,
     process_sb3_cfg,
     Sb3VecEnvGPUWrapper,
     L2tSb3VecEnvGPUWrapper,
 )
+
+torch.set_float32_matmul_precision("high")
 
 
 @hydra_task_config(args_cli.task, "sb3_cfg_entry_point")
@@ -181,6 +177,11 @@ def main(
     env = gym.make(
         args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None
     )
+
+    # convert to single-agent instance if required by the RL algorithm
+    if isinstance(env.unwrapped, DirectMARLEnv):
+        env = multi_agent_to_single_agent(env)
+
     # wrap for video recording
     if args_cli.video:
         video_kwargs = {
@@ -192,10 +193,6 @@ def main(
         print("[INFO] Recording videos during training.")
         print_dict(video_kwargs, nesting=4)
         env = gym.wrappers.RecordVideo(env, **video_kwargs)  # type: ignore
-
-    # convert to single-agent instance if required by the RL algorithm
-    if isinstance(env.unwrapped, DirectMARLEnv):
-        env = multi_agent_to_single_agent(env)
 
     # wrap around environment for stable baselines
     env = Sb3VecEnvGPUWrapper(env)  # type: ignore
@@ -217,11 +214,7 @@ def main(
 
     # create agent from stable baselines
     agent = PPO(
-        policy_arch,
-        env,
-        verbose=0,
-        rollout_buffer_class=RLOptRolloutBuffer,
-        **agent_cfg
+        policy_arch, env, verbose=0, rollout_buffer_class=RolloutBuffer, **agent_cfg
     )
     # configure the logger
     new_logger = configure(log_dir, ["stdout", "tensorboard"])
@@ -316,7 +309,7 @@ def train_l2t():
             clip_reward=np.inf,
         )
 
-    wandb.tensorboard.patch(root_logdir=log_dir)
+    wandb.tensorboard.patch(root_logdir=log_dir)  # type: ignore
     # initialize wandb and make callback
     run = wandb.init(
         project="l2t_digit",
@@ -330,11 +323,7 @@ def train_l2t():
 
     # create agent from stable baselines
     agent = L2T(
-        policy_arch,
-        env,
-        verbose=1,
-        rollout_buffer_class=RLOptDictRolloutBuffer,
-        **agent_cfg
+        policy_arch, env, verbose=1, rollout_buffer_class=DictRolloutBuffer, **agent_cfg
     )
     # configure the logger
     new_logger = configure(log_dir, ["tensorboard"])
@@ -368,6 +357,10 @@ def train_l2t():
 @hydra_task_config(args_cli.task, "sb3_cfg_entry_point")
 def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg: dict):
     """Train with stable-baselines agent."""
+    # randomly sample a seed if seed = -1
+    if args_cli.seed == -1:
+        args_cli.seed = random.randint(0, 10000)
+
     # override configurations with non-hydra CLI arguments
     env_cfg.scene.num_envs = (
         args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
@@ -384,6 +377,9 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
     # set the environment seed
     # note: certain randomizations occur in the environment initialization so we set the seed here
     env_cfg.seed = agent_cfg["seed"]
+    env_cfg.sim.device = (
+        args_cli.device if args_cli.device is not None else env_cfg.sim.device
+    )
 
     if args_cli.resume_training:
         # directory for logging into
@@ -423,7 +419,7 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
     # wrap for video recording
     if args_cli.video:
         video_kwargs = {
-            "video_folder": os.path.join(log_dir, "videos"),
+            "video_folder": os.path.join(log_dir, "videos", "train"),
             "step_trigger": lambda step: step % args_cli.video_interval == 0,
             "video_length": args_cli.video_length,
             "disable_logger": True,
@@ -431,6 +427,10 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
         print("[INFO] Recording videos during training.")
         print_dict(video_kwargs, nesting=4)
         env = gym.wrappers.RecordVideo(env, **video_kwargs)  # type: ignore
+    # convert to single-agent instance if required by the RL algorithm
+    if isinstance(env.unwrapped, DirectMARLEnv):
+        env = multi_agent_to_single_agent(env)  # type: ignore
+
     # wrap around environment for stable baselines
     env = L2tSb3VecEnvGPUWrapper(env)  # type: ignore
     # set the seed
@@ -449,17 +449,18 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
             clip_reward=np.inf,
         )
 
-    wandb.tensorboard.patch(root_logdir=log_dir)
+    wandb.tensorboard.patch(root_logdir=log_dir)  # type: ignore
 
     # initialize wandb and make callback
     run = wandb.init(
-        project="L2T Digit flat",
+        project="L2T Digit flat" if "flat" in args_cli.task else "L2T Digit",
         entity="rl-digit",
         name=log_time_note,
         config=agent_cfg | class_to_dict(env_cfg),
         sync_tensorboard=True,
-        monitor_gym=False,
+        monitor_gym=True if args_cli.video else False,
         save_code=False,
+        # mode="offline",
     )
     wandb_callback = WandbCallback()
 
@@ -482,7 +483,7 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
 
     # callbacks for agent
     checkpoint_callback = CheckpointCallback(
-        save_freq=1000, save_path=log_dir, name_prefix="model", verbose=0
+        save_freq=600, save_path=log_dir, name_prefix="model", verbose=0
     )
 
     # chain the callbacks
@@ -509,6 +510,6 @@ if __name__ == "__main__":
     # run the main function
     # main()
     # train_l2t()
-    train_recurrentl2t()
+    train_recurrentl2t()  # type: ignore
     # close sim app
     simulation_app.close()

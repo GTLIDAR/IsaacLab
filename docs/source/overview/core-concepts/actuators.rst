@@ -34,7 +34,7 @@ maximum effort:
 
 .. math::
 
-    \tau_{j, computed} & = k_p * (q - q_{des}) + k_d * (\dot{q} - \dot{q}_{des}) + \tau_{ff} \\
+    \tau_{j, computed} & = k_p * (q_{des} - q) + k_d * (\dot{q}_{des} - \dot{q}) + \tau_{ff} \\
     \tau_{j, applied} & = clip(\tau_{computed}, -\tau_{j, max}, \tau_{j, max})
 
 
@@ -74,4 +74,4 @@ The following figure shows the actuator groups for a legged mobile manipulator:
 .. seealso::
 
     We provide implementations for various explicit actuator models. These are detailed in
-    `omni.isaac.lab.actuators <../api/lab/omni.isaac.lab.actuators.html>`_ sub-package.
+    `omni.isaac.lab.actuators <../../api/lab/omni.isaac.lab.actuators.html>`_ sub-package.

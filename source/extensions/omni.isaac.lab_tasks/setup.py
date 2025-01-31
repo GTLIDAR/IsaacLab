@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -48,7 +48,6 @@ EXTRAS_REQUIRE = {
     "rsl-rl": ["rsl-rl@git+https://github.com/leggedrobotics/rsl_rl.git"],
     "robomimic": [],
     "sb3-contrib": ["sb3-contrib"],
-    "rlopt": ["rlopt@git+https://github.com/FeiyangWuPK/RLOpt.git"],
     "hydra-core": ["hydra-core"],
     "rich": ["rich"],
     "tqdm": ["tqdm"],

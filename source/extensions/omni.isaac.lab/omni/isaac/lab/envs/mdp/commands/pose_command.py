@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -151,5 +151,5 @@ class UniformPoseCommand(CommandTerm):
         # -- goal pose
         self.goal_pose_visualizer.visualize(self.pose_command_w[:, :3], self.pose_command_w[:, 3:])
         # -- current body pose
-        body_pose_w = self.robot.data.body_state_w[:, self.body_idx]
-        self.current_pose_visualizer.visualize(body_pose_w[:, :3], body_pose_w[:, 3:7])
+        body_link_state_w = self.robot.data.body_state_w[:, self.body_idx]
+        self.current_pose_visualizer.visualize(body_link_state_w[:, :3], body_link_state_w[:, 3:7])

@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -28,9 +28,9 @@ class FrankaCabinetEnvCfg(DirectRLEnvCfg):
     # env
     episode_length_s = 8.3333  # 500 timesteps
     decimation = 2
-    num_actions = 9
-    num_observations = 23
-    num_states = 0
+    action_space = 9
+    observation_space = 23
+    state_space = 0
 
     # simulation
     sim: SimulationCfg = SimulationCfg(

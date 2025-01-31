@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -7,8 +7,9 @@
 # Please check above link for license information.
 
 # Base image
+ARG ISAACSIM_BASE_IMAGE_ARG
 ARG ISAACSIM_VERSION_ARG
-FROM nvcr.io/nvidia/isaac-sim:${ISAACSIM_VERSION_ARG} AS base
+FROM ${ISAACSIM_BASE_IMAGE_ARG}:${ISAACSIM_VERSION_ARG} AS base
 ENV ISAACSIM_VERSION=${ISAACSIM_VERSION_ARG}
 
 # Set default RUN shell to bash
