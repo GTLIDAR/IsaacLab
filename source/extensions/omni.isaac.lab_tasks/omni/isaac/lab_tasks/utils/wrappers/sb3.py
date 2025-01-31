@@ -63,7 +63,8 @@ def process_sb3_cfg(cfg: dict) -> dict:
         https://github.com/DLR-RM/rl-baselines3-zoo/blob/0e5eb145faefa33e7d79c7f8c179788574b20da5/utils/exp_manager.py#L358
     """
 
-    def update_dict(hyperparams: dict[str, Any]) -> dict[str, Any]:
+    def update_dict(hyperparams: dict[str, Any]) -> dict[str, Any]: 
+        
         for key, value in hyperparams.items():
             if isinstance(value, dict):
                 update_dict(value)
@@ -95,7 +96,8 @@ def process_sb3_cfg(cfg: dict) -> dict:
                         hyperparams[key] = constant_fn(float(value))
                     else:
                         raise ValueError(f"Invalid value for {key}: {hyperparams[key]}")
-
+        # print("aaaaaaaaaaaaaa")
+        # print(hyperparams)
         return hyperparams
 
     # parse agent configuration and convert to classes

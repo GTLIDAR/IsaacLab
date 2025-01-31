@@ -1,0 +1,91 @@
+actor_network:
+  type: Sequential
+  layers:
+    - type: Linear
+      in_features: 94
+      out_features: 256
+      bias: True
+    - type: ReLU
+    - type: Linear
+      in_features: 256
+      out_features: 256
+      bias: True
+    - type: ReLU
+    - type: Linear
+      in_features: 256
+      out_features: 128
+      bias: True
+    - type: ReLU
+    - type: Linear
+      in_features: 128
+      out_features: 40 #20*2
+      bias: Truecd.
+
+critic_network:
+  type: Sequential
+  layers:
+    - type: Linear
+      in_features: 94
+      out_features: 512
+      bias: True
+    - type: ReLU
+    - type: Linear
+      in_features: 512
+      out_features: 256
+      bias: True
+    - type: ReLU
+    - type: Linear
+      in_features: 256
+      out_features: 128
+      bias: True
+    - type: ReLU
+    - type: Linear
+      in_features: 128
+      out_features: 1
+      bias: True
+
+actor_module:
+  actor_network: 'actor_network'
+  # distribution: 
+  init_noise_std: 1.0
+  in_keys: ["policy"]
+  out_keys: ["loc", "scale"]
+
+critic_module:
+  critic_network: 'critic_network'
+  in_keys: ["policy"]
+  out_keys: ["state_value"]
+
+collector_module:
+  actor_network: 'actor_module'
+  split_trajs: false
+
+loss_module:
+  actor_network: 'actor_module'
+  value_network: 'critic_module'
+  value_key: "state_value"
+  desired_kl: 0.01
+  value_loss_coef: 0.5
+  clip_param: 0.2
+  entropy_coef: 0.01
+  entropy_bonus: true
+  loss_critic_type: "l2"
+  normalize_advantage: true
+  learning_rate: 0.001
+  gamma: 0.99
+  lam: 0.95
+  max_grad_norm: 1.0
+
+on_policy_runner:
+  loss_module: 'loss_module'
+  collector_module: 'collector_module'
+  seed: 42
+  num_steps_per_env: 24
+  num_epochs: 5
+  num_mini_batches: 4
+  lr_schedule: "adaptive"
+  max_iterations: 12000
+  save_interval: 50
+  logger: "wandb"
+  experiment_name: "digit_flat"
+  wandb_project: "digit_flat"

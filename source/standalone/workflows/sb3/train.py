@@ -362,6 +362,8 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
         args_cli.seed = random.randint(0, 10000)
 
     # override configurations with non-hydra CLI arguments
+    # print("bbbbbbbbbbbbbbb")
+    # print(agent_cfg)
     env_cfg.scene.num_envs = (
         args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
     )
@@ -374,6 +376,7 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
             args_cli.max_iterations * agent_cfg["n_steps"] * env_cfg.scene.num_envs
         )
 
+    
     # set the environment seed
     # note: certain randomizations occur in the environment initialization so we set the seed here
     env_cfg.seed = agent_cfg["seed"]
@@ -401,13 +404,19 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
     # directory for logging into
     log_dir = os.path.join("logs", "sb3", args_cli.task, log_time_note)
     # dump the configuration into log-directory
+    # print("bbbbbbbbbbbbbbb")
+    # print(agent_cfg)
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
     dump_pickle(os.path.join(log_dir, "params", "env.pkl"), env_cfg)
     dump_pickle(os.path.join(log_dir, "params", "agent.pkl"), agent_cfg)
-
+    
     # post-process agent configuration
     agent_cfg = process_sb3_cfg(agent_cfg)  # type: ignore
+
+    print("bbbbbbbbbbbbbbb")
+    print(type(**agent_cfg))
+    print("bbbbbbbbbbbbbbb")
     # read configurations about the agent-training
     policy_arch = agent_cfg.pop("policy")
     n_timesteps = agent_cfg.pop("n_timesteps")
@@ -463,7 +472,6 @@ def train_recurrentl2t(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg, agent_cfg
         # mode="offline",
     )
     wandb_callback = WandbCallback()
-
     # create agent from stable baselines
     agent = RecurrentL2T(
         policy_arch,
