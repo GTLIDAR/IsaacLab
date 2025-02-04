@@ -13,19 +13,21 @@ from . import agents, flat_env_cfg, rough_env_cfg, l2t_env_cfg
 
 gym.register(
     id="Isaac-Velocity-Flat-Digit-V3-v0",
-    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": flat_env_cfg.DigitV3FlatEnvCfg,
         "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.DigitV3FlatPPORunnerCfg,
         "skrl_cfg_entry_point": f"{agents.__name__}:skrl_flat_ppo_cfg.yaml",
         "sb3_cfg_entry_point": f"{agents.__name__}:sb3_ppo_cfg.yaml",
+        # "torchrl_cfg_entry_point": f"{agents.__name__}.torchrl_ppo_cfg:DigitFlatPPORunnerCfg",
+        "torchrl_cfg_entry_point": f"{agents.__name__}:torchrl_ppo_cfg.yaml",
     },
 )
 
 gym.register(
     id="Isaac-Velocity-Flat-Digit-V3-Play-v0",
-    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": flat_env_cfg.DigitV3FlatEnvCfg_PLAY,
@@ -36,7 +38,7 @@ gym.register(
 
 gym.register(
     id="Isaac-Velocity-Rough-Digit-V3-v0",
-    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": rough_env_cfg.DigitV3RoughEnvCfg,
@@ -48,7 +50,7 @@ gym.register(
 
 gym.register(
     id="Isaac-Velocity-Rough-Digit-V3-Play-v0",
-    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": rough_env_cfg.DigitV3RoughEnvCfg_PLAY,
@@ -60,7 +62,7 @@ gym.register(
 
 gym.register(
     id="Isaac-Velocity-Flat-Digit-V3-L2T-v0",
-    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": l2t_env_cfg.DigitV3L2TFlatEnvCfg,
@@ -72,7 +74,7 @@ gym.register(
 
 gym.register(
     id="Isaac-Velocity-Flat-Digit-V3-Play-L2T-v0",
-    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": l2t_env_cfg.DigitV3L2TFlatEnvCfg_PLAY,
@@ -84,7 +86,7 @@ gym.register(
 
 gym.register(
     id="Isaac-Velocity-Rough-Digit-V3-L2T-v0",
-    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": l2t_env_cfg.DigitV3L2TRoughEnvCfg,
@@ -96,7 +98,7 @@ gym.register(
 
 gym.register(
     id="Isaac-Velocity-Rough-Digit-V3-Play-L2T-v0",
-    entry_point="omni.isaac.lab.envs:ManagerBasedRLEnv",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": l2t_env_cfg.DigitV3L2TRoughEnvCfg_PLAY,

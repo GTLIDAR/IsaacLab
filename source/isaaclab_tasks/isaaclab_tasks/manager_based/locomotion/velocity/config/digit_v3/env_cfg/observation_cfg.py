@@ -1,12 +1,12 @@
-from omni.isaac.lab.managers import SceneEntityCfg
-from omni.isaac.lab.managers import ObservationGroupCfg as ObsGroup
-from omni.isaac.lab.managers import ObservationTermCfg as ObsTerm
-from omni.isaac.lab.utils.noise import UniformNoiseCfg as Unoise
-from omni.isaac.lab.utils.noise import GaussianNoiseCfg as Gnoise
-from omni.isaac.lab.utils import configclass
+from isaaclab.managers import SceneEntityCfg
+from isaaclab.managers import ObservationGroupCfg as ObsGroup
+from isaaclab.managers import ObservationTermCfg as ObsTerm
+from isaaclab.utils.noise import UniformNoiseCfg as Unoise
+from isaaclab.utils.noise import GaussianNoiseCfg as Gnoise
+from isaaclab.utils import configclass
 
-import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
-import omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.digit_v3.mdp as digit_mdp
+import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
+import isaaclab_tasks.manager_based.locomotion.velocity.config.digit_v3.mdp as digit_mdp
 
 
 @configclass

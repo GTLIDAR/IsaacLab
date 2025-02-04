@@ -1,12 +1,11 @@
-from omni.isaac.lab.managers import SceneEntityCfg
-from omni.isaac.lab.utils import configclass
+from isaaclab.managers import SceneEntityCfg
+from isaaclab.utils import configclass
 
 from .env_cfg.observation_cfg import TeacherObsCfg, StudentObsCfg
-from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
+from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
     LocomotionVelocityRoughEnvCfg,
 )
 from .env_cfg import (
-    StudentObsCfg,
     DigitV3CommandsCfg,
     DigitV3TerminationsCfg,
     DigitV3RewardsCfg,
@@ -17,7 +16,7 @@ from .env_cfg import (
 ##
 # Pre-defined configs
 ##
-from omni.isaac.lab_assets.digit import DIGITV3_CFG  # isort: skip
+from isaaclab_assets.digit import DIGITV3_CFG  # isort: skip
 
 
 @configclass

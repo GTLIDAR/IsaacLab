@@ -3,12 +3,12 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-from omni.isaac.lab.managers import SceneEntityCfg
+from isaaclab.managers import SceneEntityCfg
 
-from omni.isaac.lab.utils import configclass
+from isaaclab.utils import configclass
 
 
-from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
+from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
     LocomotionVelocityRoughEnvCfg,
 )
 
@@ -23,7 +23,7 @@ from .env_cfg import (
 )
 
 
-from omni.isaac.lab_assets.digit import DIGITV3_CFG  # isort: skip
+from isaaclab_assets.robots.digit import DIGITV3_CFG  # isort: skip
 
 
 @configclass

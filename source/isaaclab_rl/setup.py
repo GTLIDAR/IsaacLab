@@ -51,7 +51,6 @@ EXTRAS_REQUIRE = {
 # Add the names with hyphens as aliases for convenience
 EXTRAS_REQUIRE["rl_games"] = EXTRAS_REQUIRE["rl-games"]
 EXTRAS_REQUIRE["rsl_rl"] = EXTRAS_REQUIRE["rsl-rl"]
-EXTRAS_REQUIRE["sb3_contrib"] = EXTRAS_REQUIRE["sb3-contrib"]
 
 # Cumulation of all extra-requires
 EXTRAS_REQUIRE["all"] = list(itertools.chain.from_iterable(EXTRAS_REQUIRE.values()))

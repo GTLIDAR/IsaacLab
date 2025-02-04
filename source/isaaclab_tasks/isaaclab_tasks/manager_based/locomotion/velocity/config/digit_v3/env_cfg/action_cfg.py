@@ -1,5 +1,5 @@
-from omni.isaac.lab.utils import configclass
-import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
+from isaaclab.utils import configclass
+import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
 
 
 @configclass

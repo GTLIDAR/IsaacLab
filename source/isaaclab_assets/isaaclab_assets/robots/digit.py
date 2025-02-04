@@ -10,14 +10,12 @@ The following configurations are available:
 * :obj:`DIGITV4_CFG`: Agility Cassie robot with simple PD controller for the legs
 """
 
-import omni.isaac.lab.sim as sim_utils
-from omni.isaac.lab.actuators import ImplicitActuatorCfg
-
-from omni.isaac.lab.actuators import DelayedPDActuatorCfg, IdealPDActuatorCfg
-from omni.isaac.lab.assets.articulation import ArticulationCfg
+import isaaclab.sim as sim_utils
+from isaaclab.actuators import ImplicitActuatorCfg
+from isaaclab.assets.articulation import ArticulationCfg
 
 # from omni.isaac.lab.utils.assets import ISAACLAB_NUCLEUS_DIR
-from omni.isaac.lab_assets import ISAACLAB_ASSETS_DATA_DIR
+from isaaclab_assets import ISAACLAB_ASSETS_DATA_DIR
 
 ##
 # Configuration

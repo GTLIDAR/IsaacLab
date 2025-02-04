@@ -4,13 +4,13 @@ import torch
 from typing import TYPE_CHECKING, Literal
 
 
-from omni.isaac.lab.actuators import ImplicitActuator
-from omni.isaac.lab.assets import Articulation
-from omni.isaac.lab.managers import SceneEntityCfg
-from omni.isaac.lab.envs.mdp.events import _randomize_prop_by_op  # type: ignore
+from isaaclab.actuators import ImplicitActuator
+from isaaclab.assets import Articulation
+from isaaclab.managers import SceneEntityCfg
+from isaaclab.envs.mdp.events import _randomize_prop_by_op  # type: ignore
 
 if TYPE_CHECKING:
-    from omni.isaac.lab.envs import ManagerBasedEnv
+    from isaaclab.envs import ManagerBasedEnv
 
 
 def randomize_actuator_gains(

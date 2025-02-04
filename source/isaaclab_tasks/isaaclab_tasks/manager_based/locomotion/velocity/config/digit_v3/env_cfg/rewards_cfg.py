@@ -1,11 +1,11 @@
-from omni.isaac.lab.managers import SceneEntityCfg
-from omni.isaac.lab.managers import RewardTermCfg as RewTerm
+from isaaclab.managers import SceneEntityCfg
+from isaaclab.managers import RewardTermCfg as RewTerm
 
-from omni.isaac.lab.utils import configclass
+from isaaclab.utils import configclass
 
-import omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.digit_v3.mdp as digit_mdp
-import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
-from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
+import isaaclab_tasks.manager_based.locomotion.velocity.config.digit_v3.mdp as digit_mdp
+import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
+from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
     RewardsCfg,
 )
 

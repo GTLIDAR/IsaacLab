@@ -1,13 +1,13 @@
-from omni.isaac.lab.managers import EventTermCfg as EventTerm
-from omni.isaac.lab.managers import SceneEntityCfg
-from omni.isaac.lab.utils import configclass
+from isaaclab.managers import EventTermCfg as EventTerm
+from isaaclab.managers import SceneEntityCfg
+from isaaclab.utils import configclass
 
-import omni.isaac.lab_tasks.manager_based.locomotion.velocity.mdp as mdp
-import omni.isaac.lab_tasks.manager_based.locomotion.velocity.config.digit_v3.mdp as digit_mdp
-from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
+import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
+import isaaclab_tasks.manager_based.locomotion.velocity.config.digit_v3.mdp as digit_mdp
+from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
     TerminationsCfg,
 )
-from omni.isaac.lab.managers import TerminationTermCfg as DoneTerm
+from isaaclab.managers import TerminationTermCfg as DoneTerm
 
 
 @configclass

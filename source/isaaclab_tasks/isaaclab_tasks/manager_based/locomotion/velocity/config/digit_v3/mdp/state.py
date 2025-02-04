@@ -1,8 +1,8 @@
 import torch
-from omni.isaac.lab.assets.articulation.articulation import Articulation
-from omni.isaac.lab.envs import ManagerBasedRLEnv
-from omni.isaac.lab.managers import SceneEntityCfg
-from omni.isaac.lab.sensors import ContactSensor
+from isaaclab.assets.articulation.articulation import Articulation
+from isaaclab.envs import ManagerBasedRLEnv
+from isaaclab.managers import SceneEntityCfg
+from isaaclab.sensors import ContactSensor
 
 
 # applied torque
