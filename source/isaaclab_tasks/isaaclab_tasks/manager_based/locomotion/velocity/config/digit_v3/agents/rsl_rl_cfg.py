@@ -15,12 +15,12 @@ from isaaclab_rl.rsl_rl import (
 @configclass
 class DigitV3RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 12
-    max_iterations = 10500
+    max_iterations = 6100
     save_interval = 600
-    experiment_name = "rsl_digit_v3_rough_recurrent"
+    experiment_name = "rsl_digit_v3_rough"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
-        class_name="ActorCriticRecurrent",
+        class_name="ActorCritic",
         init_noise_std=1.0,
         actor_hidden_dims=[512, 256, 128],
         critic_hidden_dims=[512, 256, 128],
@@ -41,7 +41,7 @@ class DigitV3RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
         max_grad_norm=1.0,
     )
     logger = "tensorboard"
-    # wandb_project = "RSL RL Teacher-Student"
+    wandb_project = "RSL RL Teacher-Student"
 
     # load_run = "2024-08-21_21-11-05-ok-2-rnn"
 
