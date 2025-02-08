@@ -29,17 +29,31 @@ from torchrl.record.loggers.wandb import WandbLogger
 from torchrl.trainers import Trainer
 from torchrl.trainers.trainers import LOGGER_METHODS
 
-from omni.isaac.lab.envs import ManagerBasedRLEnv
+from isaaclab.envs import ManagerBasedRLEnv
 
 
 class TorchRLEnvWrapper(GymWrapper):
-    def __init__(self, env: ManagerBasedRLEnv, categorical_action_encoding=False, **kwargs):
-        super().__init__(env, categorical_action_encoding=categorical_action_encoding, **kwargs)
-        self._ep_len_buf = torch.zeros(env.unwrapped.num_envs, device=env.unwrapped.device)
-        self._ep_reward_buf = torch.zeros(env.unwrapped.num_envs, device=env.unwrapped.device)
-        self._curr_ep_len = torch.zeros(env.unwrapped.num_envs, device=env.unwrapped.device)
-        self._curr_reward_sum = torch.zeros(env.unwrapped.num_envs, device=env.unwrapped.device)
-        self._env_reset_mask = torch.zeros(env.unwrapped.num_envs, device=env.unwrapped.device, dtype=torch.bool)
+    def __init__(
+        self, env: ManagerBasedRLEnv, categorical_action_encoding=False, **kwargs
+    ):
+        super().__init__(
+            env, categorical_action_encoding=categorical_action_encoding, **kwargs
+        )
+        self._ep_len_buf = torch.zeros(
+            env.unwrapped.num_envs, device=env.unwrapped.device
+        )
+        self._ep_reward_buf = torch.zeros(
+            env.unwrapped.num_envs, device=env.unwrapped.device
+        )
+        self._curr_ep_len = torch.zeros(
+            env.unwrapped.num_envs, device=env.unwrapped.device
+        )
+        self._curr_reward_sum = torch.zeros(
+            env.unwrapped.num_envs, device=env.unwrapped.device
+        )
+        self._env_reset_mask = torch.zeros(
+            env.unwrapped.num_envs, device=env.unwrapped.device, dtype=torch.bool
+        )
 
     def maybe_reset(self, tensordict: TensorDictBase) -> TensorDictBase:
         """Checks the done keys of the input tensordict. Unlike the base GymWrapper implementation, we do not
@@ -94,7 +108,9 @@ class TorchRLEnvWrapper(GymWrapper):
             # tensordict could already have a "next" key
             # this could be done more efficiently by not excluding but just passing
             # the necessary keys
-            next_tensordict.update(next_preset.exclude(*next_tensordict.keys(True, True)))
+            next_tensordict.update(
+                next_preset.exclude(*next_tensordict.keys(True, True))
+            )
         tensordict.set("next", next_tensordict)
         # Information from the "extras" dict of dicts passed from IsaacLab contains reward and metrics information.
         # The _data postfix is added to distinguish the field containing the actual values from the dummy {key} field
@@ -102,6 +118,8 @@ class TorchRLEnvWrapper(GymWrapper):
         # to the top level tensordict.
         # TODO: Find a more elegant solution to enable rewards and metrics logging. "
         for key in self.env.unwrapped.extras:
+            if key in "log":
+                continue
             tensordict[f"{key}_data"] = tensordict["next"][f"{key}_data"]
         return tensordict
 
@@ -146,7 +164,8 @@ class TorchRLEnvWrapper(GymWrapper):
                 # check if any value has to be recast to something else. If not, we can safely
                 # build the tensordict without running checks
                 self.validated = all(
-                    val is tensordict_out.get(key) for key, val in TensorDict(obs_dict, []).items(True, True)
+                    val is tensordict_out.get(key)
+                    for key, val in TensorDict(obs_dict, []).items(True, True)
                 )
         else:
             tensordict_out = TensorDict._new_unsafe(
@@ -158,11 +177,19 @@ class TorchRLEnvWrapper(GymWrapper):
 
         self._curr_ep_len += 1
         self._curr_reward_sum += reward
-        done_envs = tensordict_out["done"] | tensordict_out["terminated"] | tensordict_out["truncated"]
+        done_envs = (
+            tensordict_out["done"]
+            | tensordict_out["terminated"]
+            | tensordict_out["truncated"]
+        )
         new_ids = (done_envs > 0).nonzero(as_tuple=False)
 
-        self._ep_len_buf = torch.where(~self._env_reset_mask, self._curr_ep_len.clone(), self._ep_len_buf)
-        self._ep_reward_buf = torch.where(~self._env_reset_mask, self._curr_reward_sum.clone(), self._ep_reward_buf)
+        self._ep_len_buf = torch.where(
+            ~self._env_reset_mask, self._curr_ep_len.clone(), self._ep_len_buf
+        )
+        self._ep_reward_buf = torch.where(
+            ~self._env_reset_mask, self._curr_reward_sum.clone(), self._ep_reward_buf
+        )
         if len(new_ids) > 0:
             self._env_reset_mask[new_ids] = True
             self._ep_len_buf[new_ids] = self._curr_ep_len[new_ids].clone()
@@ -189,9 +216,13 @@ class TorchRLEnvWrapper(GymWrapper):
 
 
 class InfoDictReaderWrapper(default_info_dict_reader):
-    def __call__(self, info_dict: dict[str, Any], tensordict: TensorDictBase) -> TensorDictBase:
+    def __call__(
+        self, info_dict: dict[str, Any], tensordict: TensorDictBase
+    ) -> TensorDictBase:
         if not isinstance(info_dict, (dict, TensorDictBase)) and len(self.keys):
-            warnings.warn(f"Found an info_dict of type {type(info_dict)} but expected type or subtype `dict`.")
+            warnings.warn(
+                f"Found an info_dict of type {type(info_dict)} but expected type or subtype `dict`."
+            )
         keys = self.keys
         if keys is None:
             keys = info_dict.keys()
@@ -201,7 +232,9 @@ class InfoDictReaderWrapper(default_info_dict_reader):
         # create an info_spec only if there is none
         info_spec = None if self.info_spec is not None else CompositeSpec()
 
-        def add_value_to_tensordict(tensordict: TensorDict, key: str, value: torch.Tensor):
+        def add_value_to_tensordict(
+            tensordict: TensorDict, key: str, value: torch.Tensor
+        ):
             if value.dtype == np.dtype("O"):
                 value = np.stack(value)
             # if value.shape != tensordict.shape:
@@ -209,7 +242,9 @@ class InfoDictReaderWrapper(default_info_dict_reader):
             tensordict.set(key, value)
             if info_spec is not None:
                 value = tensordict.get(key)
-                info_spec[key] = UnboundedContinuousTensorSpec(value.shape, device=value.device, dtype=value.dtype)
+                info_spec[key] = UnboundedContinuousTensorSpec(
+                    value.shape, device=value.device, dtype=value.dtype
+                )
 
         def _traverse_dict(tensordict: TensorDict, key, val):
             """
@@ -217,7 +252,9 @@ class InfoDictReaderWrapper(default_info_dict_reader):
             and add non-dict leaf values to the info tensordict while preserving structure.
             """
             if isinstance(val, dict):
-                nested_tensordict = TensorDict(batch_size=tensordict.shape, device=tensordict.device)
+                nested_tensordict = TensorDict(
+                    batch_size=tensordict.shape, device=tensordict.device
+                )
                 for k, v in val.items():
                     _traverse_dict(nested_tensordict, k, v)
                 tensordict.set(key, nested_tensordict)
@@ -233,7 +270,9 @@ class InfoDictReaderWrapper(default_info_dict_reader):
                     # This is done because sampling throughput is reduced
                     # if the tensordict key set does not match the expected.
                     tensordict.set(key, torch.tensor(0).expand(tensordict.shape))
-                    nested_tensordict = TensorDict(batch_size=tensordict.shape, device=tensordict.device)
+                    nested_tensordict = TensorDict(
+                        batch_size=tensordict.shape, device=tensordict.device
+                    )
                     key = key + "_data"
                     for k, v in val.items():
                         v = torch.as_tensor(v, device=tensordict.device)
@@ -275,7 +314,9 @@ class SyncDataCollectorWrapper(SyncDataCollector):
             end_time = time.perf_counter()
             rollout_time = end_time - start_time
             # Add rollout time to tensordict
-            tensordict_out.set("rollout_time", torch.tensor(rollout_time).expand(tensordict_out.shape))
+            tensordict_out.set(
+                "rollout_time", torch.tensor(rollout_time).expand(tensordict_out.shape)
+            )
             self._frames += tensordict_out.numel()
             if self._frames >= total_frames:
                 self.env.close()
@@ -289,11 +330,15 @@ class SyncDataCollectorWrapper(SyncDataCollector):
                 def is_private(key):
                     if isinstance(key, str) and key.startswith("_"):
                         return True
-                    if isinstance(key, tuple) and any(_key.startswith("_") for _key in key):
+                    if isinstance(key, tuple) and any(
+                        _key.startswith("_") for _key in key
+                    ):
                         return True
                     return False
 
-                excluded_keys = [key for key in tensordict_out.keys(True) if is_private(key)]
+                excluded_keys = [
+                    key for key in tensordict_out.keys(True) if is_private(key)
+                ]
                 tensordict_out = tensordict_out.exclude(*excluded_keys, inplace=True)
             if self.return_same_td:
                 # This is used with multiprocessed collectors to use the buffers
@@ -400,11 +445,17 @@ class ClipPPOLossWrapper(ClipPPOLoss):
         td_out = TensorDict({"loss_objective": -gain.mean()}, batch_size=[])
         td_out.set("clip_fraction", clip_fraction)
 
-        with self.actor_network_params.to_module(self.actor_network) if self.functional else contextlib.nullcontext():
+        with (
+            self.actor_network_params.to_module(self.actor_network)
+            if self.functional
+            else contextlib.nullcontext()
+        ):
             current_dist = self.actor_network.get_dist(tensordict)
             td_out.set("action_noise", current_dist.scale.mean())
         try:
-            kl = torch.distributions.kl.kl_divergence(previous_dist, current_dist).mean()
+            kl = torch.distributions.kl.kl_divergence(
+                previous_dist, current_dist
+            ).mean()
         except NotImplementedError:
             x = previous_dist.sample(1)
             kl = (previous_dist.log_prob(x) - current_dist.log_prob(x)).mean(0)
@@ -424,7 +475,9 @@ class ClipPPOLossWrapper(ClipPPOLoss):
         td_out.set("ESS", _reduce(ess, self.reduction) / batch)
         td_out = td_out.named_apply(
             lambda name, value: (
-                _reduce(value, reduction=self.reduction).squeeze(-1) if name.startswith("loss_") else value
+                _reduce(value, reduction=self.reduction).squeeze(-1)
+                if name.startswith("loss_")
+                else value
             ),
             batch_size=[],
         )
@@ -487,7 +540,11 @@ class TrainerWrapper(Trainer):
         n_transitions_per_env = batch.shape[1]
         batch_size = n_envs * n_transitions_per_env
         mini_batch_size = batch_size // self.num_mini_batches
-        indices = torch.randperm(self.num_mini_batches * mini_batch_size, requires_grad=False, device=batch.device)
+        indices = torch.randperm(
+            self.num_mini_batches * mini_batch_size,
+            requires_grad=False,
+            device=batch.device,
+        )
         flat_batch = batch.flatten(0, 1)
 
         for _ in range(self.optim_steps_per_batch):
@@ -510,7 +567,10 @@ class TrainerWrapper(Trainer):
                         self.learning_rate = min(1e-2, self.learning_rate * 1.5)
                     for param_group in self.optimizer.param_groups:
                         param_group["lr"] = self.learning_rate
-                batch.set("learning_rate", torch.tensor(self.learning_rate).expand(batch.shape))
+                batch.set(
+                    "learning_rate",
+                    torch.tensor(self.learning_rate).expand(batch.shape),
+                )
                 self._post_loss_hook(sub_batch)
                 losses_detached = self._optimizer_hook(losses_td)
                 # Update average_losses after each mini-batch
@@ -535,9 +595,22 @@ class TrainerWrapper(Trainer):
 
 class WandbLoggerWrapper(WandbLogger):
     def __init__(
-        self, exp_name: str, offline: bool = False, save_dir: str = None, id: str = None, project: str = None, **kwargs
+        self,
+        exp_name: str,
+        offline: bool = False,
+        save_dir: str = None,
+        id: str = None,
+        project: str = None,
+        **kwargs,
     ):
-        super().__init__(exp_name=exp_name, offline=offline, save_dir=save_dir, id=id, project=project, **kwargs)
+        super().__init__(
+            exp_name=exp_name,
+            offline=offline,
+            save_dir=save_dir,
+            id=id,
+            project=project,
+            **kwargs,
+        )
 
     def log_model(self, model_path, iter):
         import wandb

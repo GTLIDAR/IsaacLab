@@ -32,6 +32,7 @@ class DigitV3ObservationsCfg:
 
     # observation groups
     policy: TeacherObsCfg = TeacherObsCfg()
+    observation: TeacherObsCfg = TeacherObsCfg()
 
 
 @configclass

@@ -55,15 +55,23 @@ class NormalWrapper(Normal):
             self._validate_sample(value)
         # compute the variance
         var = self.scale**2
-        log_scale = math.log(self.scale) if isinstance(self.scale, Real) else self.scale.log()
-        log_prob = -((value - self.loc) ** 2) / (2 * var) - log_scale - math.log(math.sqrt(2 * math.pi))
+        log_scale = (
+            math.log(self.scale) if isinstance(self.scale, Real) else self.scale.log()
+        )
+        log_prob = (
+            -((value - self.loc) ** 2) / (2 * var)
+            - log_scale
+            - math.log(math.sqrt(2 * math.pi))
+        )
         return torch.sum(log_prob, dim=-1)
 
 
 class OnPolicyPPORunner:
     """On-policy runner for training and evaluation."""
 
-    def __init__(self, env: GymEnv, train_cfg: OnPolicyPPORunnerCfg, log_dir=None, device="cpu"):
+    def __init__(
+        self, env: GymEnv, train_cfg: OnPolicyPPORunnerCfg, log_dir=None, device="cpu"
+    ):
         self.cfg = train_cfg
         self.log_dir = log_dir
         self.loss_module_cfg = train_cfg.loss_module
@@ -85,7 +93,9 @@ class OnPolicyPPORunner:
         actor_td = TensorDictModule(
             nn.Sequential(
                 actor_network,
-                NormalParamExtractor(scale_mapping=f"biased_softplus_{self.actor_network_cfg.init_noise_std}"),
+                NormalParamExtractor(
+                    scale_mapping=f"biased_softplus_{self.actor_network_cfg.init_noise_std}"
+                ),
             ),
             in_keys=self.actor_network_cfg.in_keys,
             out_keys=["loc", "scale"],
@@ -111,7 +121,8 @@ class OnPolicyPPORunner:
         # register info dict for logging rewards from IsaacLab extras dict
         keys = self.env.unwrapped.extras
         info_spec = CompositeSpec(
-            {key: UnboundedContinuousTensorSpec([self.num_envs]) for key in keys}, shape=[self.num_envs]
+            {key: UnboundedContinuousTensorSpec([self.num_envs]) for key in keys},
+            shape=[self.num_envs],
         )
         self.env.set_info_dict_reader(InfoDictReaderWrapper(spec=info_spec))
 
@@ -137,7 +148,9 @@ class OnPolicyPPORunner:
             average_gae=True,
         )
 
-        total_frames = self.cfg.num_steps_per_env * self.num_envs * self.cfg.max_iterations
+        total_frames = (
+            self.cfg.num_steps_per_env * self.num_envs * self.cfg.max_iterations
+        )
         frames_per_batch = self.cfg.num_steps_per_env * self.num_envs
 
         self.collector = SyncDataCollectorWrapper(
@@ -151,7 +164,9 @@ class OnPolicyPPORunner:
             device=self.device,
         )
 
-        optimizer = torch.optim.Adam(self.loss_module.parameters(), lr=self.loss_module_cfg.learning_rate)
+        optimizer = torch.optim.Adam(
+            self.loss_module.parameters(), lr=self.loss_module_cfg.learning_rate
+        )
         self.logger_module = None
         if not eval_mode:
             if self.cfg.logger == "wandb":
@@ -162,7 +177,9 @@ class OnPolicyPPORunner:
                 )
                 self.logger_module.log_config(self.env.unwrapped.cfg)
             elif self.cfg.logger == "tensorboard":
-                self.logger_module = TensorboardLogger(exp_name=self.cfg.experiment_name, log_dir=self.log_dir)
+                self.logger_module = TensorboardLogger(
+                    exp_name=self.cfg.experiment_name, log_dir=self.log_dir
+                )
 
         policy_save_interval = self.cfg.save_trainer_interval * (frames_per_batch - 1)
 
@@ -182,7 +199,9 @@ class OnPolicyPPORunner:
             lr_schedule=self.cfg.lr_schedule,
             save_trainer_file=f"{self.log_dir}/model.pt",
         )
-        self.trainer_module.register_module(module_name="advantage_module", module=self.advantage_module)
+        self.trainer_module.register_module(
+            module_name="advantage_module", module=self.advantage_module
+        )
         self.trainer_module.register_op("batch_process", self.compute_advantages)
         self.trainer_module.register_op("batch_process", self.bootstrap_reward)
 
@@ -195,7 +214,9 @@ class OnPolicyPPORunner:
 
         # upload video to wandb
         if hasattr(self.env, "video_recorder") and self.cfg.logger == "wandb":
-            self.trainer_module.register_op("post_steps_log", self.upload_training_video, log_name="Video", fps=30)
+            self.trainer_module.register_op(
+                "post_steps_log", self.upload_training_video, log_name="Video", fps=30
+            )
 
         return self.trainer_module
 
@@ -203,7 +224,8 @@ class OnPolicyPPORunner:
         trainer_module = self._create_trainer()
         if init_at_random_ep_len:
             self.env.unwrapped.episode_length_buf = torch.randint_like(
-                self.env.unwrapped.episode_length_buf, high=int(self.env.unwrapped.max_episode_length)
+                self.env.unwrapped.episode_length_buf,
+                high=int(self.env.unwrapped.max_episode_length),
             )
 
         trainer_module.train()
@@ -234,7 +256,9 @@ class OnPolicyPPORunner:
     def bootstrap_reward(self, batch):
         gamma = self.advantage_module.gamma
         if batch["next"]["truncated"].any():
-            batch["next"]["reward"] += gamma * batch["next"]["state_value"] * batch["next"]["truncated"]
+            batch["next"]["reward"] += (
+                gamma * batch["next"]["state_value"] * batch["next"]["truncated"]
+            )
 
     def compute_advantages(self, batch):
         self.advantage_module(batch)
@@ -248,9 +272,17 @@ class OnPolicyPPORunner:
         optim_time_end = time.perf_counter()
         optim_time = optim_time_end - self.pre_optim_time_start
         collection_time = batch["rollout_time"][0, 0].item()
-        fps = int(self.cfg.num_steps_per_env * self.env.unwrapped.num_envs / (collection_time + optim_time))
+        fps = int(
+            self.cfg.num_steps_per_env
+            * self.env.unwrapped.num_envs
+            / (collection_time + optim_time)
+        )
         learning_rate = batch["learning_rate"].mean().item()
-        log_dict = {"Perf/learning_time": optim_time, "Perf/total_fps": fps, "Loss/learning_rate": learning_rate}
+        log_dict = {
+            "Perf/learning_time": optim_time,
+            "Perf/total_fps": fps,
+            "Loss/learning_rate": learning_rate,
+        }
         return log_dict
 
     def log_collection_time(self, batch):
@@ -284,20 +316,29 @@ class OnPolicyPPORunner:
         """
         log_dir = pathlib.Path(self.log_dir)
         # exclude any files inside the wandb logs folder
-        video_files = [file for file in log_dir.rglob("*.mp4") if "wandb" not in file.parts]
+        video_files = [
+            file for file in log_dir.rglob("*.mp4") if "wandb" not in file.parts
+        ]
         for video_file in video_files:
             file_path = str(video_file)
             file_size_kb = os.stat(file_path).st_size / 1024
             mod_time = os.path.getmtime(file_path)
 
             if file_path not in self.saved_video_files:
-                self.saved_video_files[file_path] = {"mod_time": mod_time, "added": False}
+                self.saved_video_files[file_path] = {
+                    "mod_time": mod_time,
+                    "added": False,
+                }
             else:
                 video_info = self.saved_video_files[file_path]
                 current_time = time.time()
 
                 # Check if file hasn't been modified in the last 20 seconds and is larger than 100KB
-                if not video_info["added"] and (current_time - mod_time > 20) and file_size_kb > 100:
+                if (
+                    not video_info["added"]
+                    and (current_time - mod_time > 20)
+                    and file_size_kb > 100
+                ):
                     print(f"[Wandb] Uploading {os.path.basename(file_path)}.")
                     wandb.log({log_name: wandb.Video(file_path, fps=fps)})
                     video_info["added"] = True
