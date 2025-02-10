@@ -414,7 +414,7 @@ def student_only(
 
 if __name__ == "__main__":
     # run the main function
-    # main()  # type: ignore
-    student_only()  # type: ignore
+    main()  # type: ignore
+    # student_only()  # type: ignore
     # close sim app
     simulation_app.close()
