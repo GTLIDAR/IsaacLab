@@ -88,10 +88,7 @@ import random
 from datetime import datetime
 
 from isaaclab_rl.sb3 import (
-    Sb3VecEnvWrapper,
     process_sb3_cfg,
-    L2tSb3VecEnvGPUWrapper,
-    Sb3VecEnvGPUWrapper,
 )
 from isaaclab_rl.torchrl import TorchRLEnvWrapper
 
@@ -101,23 +98,15 @@ from isaaclab.envs import (
     DirectMARLEnvCfg,
     DirectRLEnvCfg,
     ManagerBasedRLEnvCfg,
-    multi_agent_to_single_agent,
 )
 from isaaclab.utils.dict import print_dict
 from isaaclab.utils.io import dump_pickle, dump_yaml
 
-import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils.hydra import hydra_task_config
-from isaaclab.utils import class_to_dict
-from isaaclab_tasks.utils import get_checkpoint_path
 
-import wandb
-from wandb.integration.sb3 import WandbCallback
 
 from omegaconf import OmegaConf
 
-from rlopt.agent import RecurrentL2T, RecurrentStudent
-from rlopt.common import RLOptDictRecurrentReplayBuffer
 from rlopt.envs.gymlike import make_isaaclab_gym_env
 from rlopt.agent.ppo import PPO
 
@@ -175,6 +164,7 @@ def main(
     env = make_isaaclab_gym_env(
         env=env,
     )
+
     # set the seed
     env.seed(seed=agent_cfg["seed"])
 
@@ -191,19 +181,6 @@ def main(
             clip_reward=np.inf,
         )
 
-    wandb.tensorboard.patch(root_logdir=log_dir)
-
-    # initialize wandb and make callback
-    run = wandb.init(
-        project="L2T Digit flat" if "flat" in args_cli.task else "L2T Digit",
-        entity="rl-digit",
-        name=log_time_note,
-        config=agent_cfg | class_to_dict(env_cfg),
-        sync_tensorboard=True,
-        monitor_gym=True if args_cli.video else False,
-        save_code=False,
-        mode="offline",
-    )
     # create agent from stable baselines
     agent = PPO(
         env=env,
@@ -214,9 +191,6 @@ def main(
 
     # close the simulator
     env.close()
-
-    # finish wandb
-    run.finish()  # type: ignore
 
 
 if __name__ == "__main__":

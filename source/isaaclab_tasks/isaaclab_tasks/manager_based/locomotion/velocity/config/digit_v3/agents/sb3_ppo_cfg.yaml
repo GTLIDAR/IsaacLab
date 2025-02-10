@@ -26,13 +26,13 @@
 # task and env
 env:
   env_name: Isaac-Velocity-Rough-Digit-V3-v0
-  device:
+  device: "cuda:0"
   num_envs:
 
 # collector
 collector:
   num_collectors: 1
-  frames_per_batch: 10
+  frames_per_batch: 49152
   total_frames: 1_000_000_000
 
 # logger
@@ -50,12 +50,12 @@ optim:
   lr: !!float 3e-4
   weight_decay: 0.0
   anneal_lr: True
-  device:
+  device: "cuda:0"
 
 # loss
 loss:
   gamma: 0.99
-  mini_batch_size: 64
+  mini_batch_size: 9830
   epochs: 10
   gae_lambda: 0.95
   clip_epsilon: 0.2
@@ -66,7 +66,7 @@ loss:
 
 # torch compile
 compile:
-  compile: False
+  compile: True
   compile_mode: default
   cudagraphs: False
 
