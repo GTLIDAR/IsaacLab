@@ -20,10 +20,14 @@ class DigitV3FlatEnvCfg(DigitV3RoughEnvCfg):
         self.scene.num_envs = 50
         self.scene.env_spacing = 2.5
         # disable randomization for play
-        self.observations.policy.enable_corruption = False
+        # self.observations.policy.enable_corruption = False
         # self.observations.student.enable_corruption = (
         #     False  # remove random pushing event
         # )
+        # no terrain curriculum
+        self.curriculum.terrain_levels = None  # type: ignore
+        self.observations.policy.height_scan = None  # type: ignore
+
         self.events.base_external_force_torque = None  # type: ignore
         self.events.push_robot = None  # type: ignore
         self.events.robot_joint_stiffness_and_damping = None  # type: ignore
@@ -42,7 +46,9 @@ class DigitV3FlatEnvCfg_PLAY(DigitV3FlatEnvCfg):
         # remove random pushing event
         self.events.base_external_force_torque = None  # type: ignore
         self.events.push_robot = None  # type: ignore
-
+        # no terrain curriculum
+        self.curriculum.terrain_levels = None  # type: ignore
+        self.observations.teacher.height_scan = None  # type: ignore
         self.commands.base_velocity.ranges.lin_vel_x = (0.5, 0.5)
         self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)
         self.commands.base_velocity.ranges.ang_vel_z = (0.0, 0.0)
