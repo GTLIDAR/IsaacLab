@@ -39,6 +39,18 @@ parser.add_argument(
     help="When no checkpoint provided, use the last saved model. Otherwise use the best saved model.",
 )
 parser.add_argument("--real-time", action="store_true", default=False, help="Run in real-time, if possible.")
+parser.add_argument(
+    "--video",
+    action="store_true",
+    default=False,
+    help="Record video while playing the checkpoint.",
+)
+parser.add_argument(
+    "--l2t",
+    action="store_true",
+    default=False,
+    help="Use L2T model for playing.",
+)
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
 # parse the arguments
@@ -60,7 +72,7 @@ import time
 import torch
 from datetime import datetime
 
-from isaaclab_rl.sb3 import Sb3VecEnvWrapper, process_sb3_cfg
+from isaaclab_rl.sb3 import Sb3VecEnvWrapper, process_sb3_cfg, L2tSb3VecEnvGPUWrapper
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import VecNormalize
 
@@ -70,7 +82,7 @@ from isaaclab.utils.pretrained_checkpoint import get_published_pretrained_checkp
 
 import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils.parse_cfg import get_checkpoint_path, load_cfg_from_registry, parse_env_cfg
-
+from rlopt.agent import L2T, RecurrentL2T
 
 def main():
     """Play with stable-baselines agent."""

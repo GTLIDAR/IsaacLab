@@ -88,7 +88,7 @@ submit_job() {
             ;;
     esac
 
-    ssh $CLUSTER_LOGIN "cd $CLUSTER_ISAACLAB_DIR && bash $CLUSTER_ISAACLAB_DIR/docker/cluster/$job_script_file \"$CLUSTER_ISAACLAB_DIR\" \"isaac-lab-$profile\" ${@}"
+    ssh $CLUSTER_LOGIN "bash -lc 'cd $CLUSTER_ISAACLAB_DIR && bash $CLUSTER_ISAACLAB_DIR/docker/cluster/$job_script_file \"$CLUSTER_ISAACLAB_DIR\" \"isaac-lab-$profile\" ${@}'"
 }
 
 #==
@@ -166,7 +166,7 @@ case $command in
         # NOTE: we create the singularity image as non-root user to allow for more flexibility. If this causes
         # issues, remove the --fakeroot flag and open an issue on the IsaacLab repository.
         cd /$SCRIPT_DIR/exports
-        APPTAINER_NOHTTPS=1 apptainer build --sandbox --fakeroot isaac-lab-$profile.sif docker-daemon://isaac-lab-$profile:latest
+        APPTAINER_NOHTTPS=1 apptainer build --sandbox isaac-lab-$profile.sif docker-daemon://isaac-lab-$profile:latest
         # tar image (faster to send single file as opposed to directory with many files)
         tar -cvf /$SCRIPT_DIR/exports/isaac-lab-$profile.tar isaac-lab-$profile.sif
         # make sure target directory exists
@@ -197,7 +197,7 @@ case $command in
         ssh $CLUSTER_LOGIN "mkdir -p $CLUSTER_ISAACLAB_DIR"
         # Sync Isaac Lab code
         echo "[INFO] Syncing Isaac Lab code..."
-        rsync -rh  --exclude="*.git*" --filter=':- .dockerignore'  /$SCRIPT_DIR/../.. $CLUSTER_LOGIN:$CLUSTER_ISAACLAB_DIR
+        rsync -rh --exclude="*.git*" --exclude="wandb" --filter=':- .dockerignore' /$SCRIPT_DIR/../.. $CLUSTER_LOGIN:$CLUSTER_ISAACLAB_DIR
         # execute job script
         echo "[INFO] Executing job script..."
         # check whether the second argument is a profile or a job argument

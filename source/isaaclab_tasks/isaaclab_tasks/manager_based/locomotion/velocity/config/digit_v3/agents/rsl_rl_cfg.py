@@ -51,7 +51,7 @@ class DigitV3FlatPPORunnerCfg(DigitV3RoughPPORunnerCfg):
     def __post_init__(self):
         super().__post_init__()
 
-        self.max_iterations = 12000
+        self.max_iterations = 6100
         self.experiment_name = "digit_v3_flat"
         self.policy.actor_hidden_dims = [256, 256, 128]
         self.policy.critic_hidden_dims = [256, 256, 128]
