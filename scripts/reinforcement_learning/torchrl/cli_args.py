@@ -14,7 +14,8 @@ from torch import nn
 from dataclasses import dataclass
 
 if TYPE_CHECKING:
-    from omni.isaac.lab_tasks.utils.wrappers.torchrl import OnPolicyPPORunnerCfg
+    from isaac_lab_tasks.utils.wrappers.torchrl import OnPolicyPPORunnerCfg
+
 
 def add_torchrl_args(parser: argparse.ArgumentParser):
     """Add TorchRL arguments to the parser.
@@ -30,7 +31,9 @@ def add_torchrl_args(parser: argparse.ArgumentParser):
         parser: The parser to add the arguments to.
     """
     # create a new argument group
-    arg_group = parser.add_argument_group("torchrl", description="Arguments for RSL-RL agent.")
+    arg_group = parser.add_argument_group(
+        "torchrl", description="Arguments for RSL-RL agent."
+    )
     # -- experiment arguments
     arg_group.add_argument(
         "--experiment_name",
@@ -79,7 +82,9 @@ def add_torchrl_args(parser: argparse.ArgumentParser):
     )
 
 
-def parse_torchrl_cfg(task_name: str, args_cli: argparse.Namespace) -> OnPolicyPPORunnerCfg:
+def parse_torchrl_cfg(
+    task_name: str, args_cli: argparse.Namespace
+) -> OnPolicyPPORunnerCfg:
     """Parse configuration for RSL-RL agent based on inputs.
     Args:
         task_name: The name of the environment.
@@ -90,7 +95,9 @@ def parse_torchrl_cfg(task_name: str, args_cli: argparse.Namespace) -> OnPolicyP
     from omni.isaac.lab_tasks.utils.parse_cfg import load_cfg_from_registry
 
     # load the default configuration
-    torchrl_cfg: OnPolicyPPORunnerCfg = load_cfg_from_registry(task_name, "torchrl_cfg_entry_point")
+    torchrl_cfg: OnPolicyPPORunnerCfg = load_cfg_from_registry(
+        task_name, "torchrl_cfg_entry_point"
+    )
 
     # override the default configuration with CLI arguments
     torchrl_cfg.device = "cpu" if args_cli.cpu else f"cuda:{args_cli.physics_gpu}"
@@ -143,24 +150,29 @@ def update_torchrl_cfg(agent_cfg: OnPolicyPPORunnerCfg, args_cli: argparse.Names
     if agent_cfg.logger in {"wandb"} and args_cli.log_project_name:
         agent_cfg.wandb_project = args_cli.log_project_name
 
+
 @dataclass
 class ModuleMapping:
     """Maps module names to their configuration classes."""
+
     cfg_class: Type
     network_keys: List[str]
 
+
 class ConfigurationError(Exception):
     """Custom exception for configuration-related errors."""
+
     pass
+
 
 class NNFromYAML:
     """Builds nn models from YAML configurations."""
-    
+
     def __init__(self, config: Dict[str, Any]):
         """
         Args:
             config: Dictionary containing the model configuration.
-        
+
         Raises:
             ValueError: If config is None or empty.
         """
@@ -174,11 +186,11 @@ class NNFromYAML:
             model_type = self.config.get("type")
             if not model_type:
                 raise ConfigurationError("Model type not specified in configuration")
-                
+
             builder = self.SUPPORTED_MODELS.get(model_type)
             if not builder:
                 raise ConfigurationError(f"Unsupported model type: {model_type}")
-                
+
             return builder()
         except Exception as e:
             raise ConfigurationError(f"Error building model: {str(e)}")
@@ -187,33 +199,36 @@ class NNFromYAML:
         try:
             layers = []
             layer_configs = self.config.get("layers", [])
-            
+
             if not layer_configs:
                 raise ConfigurationError("No layers specified for Sequential model")
-                
+
             for layer_config in layer_configs:
                 if not isinstance(layer_config, dict):
-                    raise ConfigurationError(f"Invalid layer configuration: {layer_config}")
-                    
+                    raise ConfigurationError(
+                        f"Invalid layer configuration: {layer_config}"
+                    )
+
                 layer_type = layer_config.get("type")
                 if not layer_type:
                     raise ConfigurationError("Layer type not specified")
-                    
+
                 try:
                     layer_class = getattr(nn, layer_type)
                 except AttributeError:
                     raise ConfigurationError(f"Unknown layer type: {layer_type}")
-                
+
                 # Extract parameters excluding the type
                 parameters = {k: v for k, v in layer_config.items() if k != "type"}
                 layers.append(layer_class(**parameters))
-                
+
             return nn.Sequential(*layers)
         except Exception as e:
             raise ConfigurationError(f"Error building Sequential model: {str(e)}")
 
+
 class DigitNN(nn.Module):
-    def __init__(self, config: Dict[str,Any]):
+    def __init__(self, config: Dict[str, Any]):
         super().__init__()
         try:
             model_builder = NNFromYAML(config)
@@ -221,12 +236,15 @@ class DigitNN(nn.Module):
         except Exception as e:
             raise ConfigurationError(f"Failed to initialize DigitNN: {str(e)}")
 
-    def forward(self,x = None):
+    def forward(self, x=None):
         if x is None:
             return self
         return self.model(x)
 
-def update_torchrl_cfg_with_yaml(yaml_cfg: Dict[str, Any], args_cli: argparse.Namespace):
+
+def update_torchrl_cfg_with_yaml(
+    yaml_cfg: Dict[str, Any], args_cli: argparse.Namespace
+):
     """Update configuration for torchrl agent based on inputs.
     Args:
         agent_cfg: The configuration dictionary from yaml.
@@ -235,38 +253,32 @@ def update_torchrl_cfg_with_yaml(yaml_cfg: Dict[str, Any], args_cli: argparse.Na
         The updated configuration for torchrl agent based on inputs.
     """
     from omni.isaac.lab_tasks.utils.wrappers.torchrl.torchrl_ppo_runner_cfg import (
-        ClipPPOLossCfg, CollectorCfg, ProbabilisticActorCfg, ValueOperatorCfg, OnPolicyPPORunnerCfg
+        ClipPPOLossCfg,
+        CollectorCfg,
+        ProbabilisticActorCfg,
+        ValueOperatorCfg,
+        OnPolicyPPORunnerCfg,
     )
+
     if not yaml_cfg:
         raise ValueError("yaml_cfg cannot be None or empty")
 
     MODULE_MAPPINGS = {
-        'actor_module': ModuleMapping(
-            ProbabilisticActorCfg,
-            ['actor_network']
+        "actor_module": ModuleMapping(ProbabilisticActorCfg, ["actor_network"]),
+        "critic_module": ModuleMapping(ValueOperatorCfg, ["critic_network"]),
+        "collector_module": ModuleMapping(CollectorCfg, ["actor_network"]),
+        "loss_module": ModuleMapping(
+            ClipPPOLossCfg, ["actor_network", "value_network"]
         ),
-        'critic_module': ModuleMapping(
-            ValueOperatorCfg,
-            ['critic_network']
+        "on_policy_runner": ModuleMapping(
+            OnPolicyPPORunnerCfg, ["loss_module", "collector_module"]
         ),
-        'collector_module': ModuleMapping(
-            CollectorCfg,
-            ['actor_network']
-        ),
-        'loss_module': ModuleMapping(
-            ClipPPOLossCfg,
-            ['actor_network', 'value_network']
-        ),
-        'on_policy_runner': ModuleMapping(
-            OnPolicyPPORunnerCfg,
-            ['loss_module', 'collector_module']
-        )
     }
 
     try:
         agent_cfg = {}
 
-        for network_type in ['actor_network', 'critic_network']:
+        for network_type in ["actor_network", "critic_network"]:
             if network_type in yaml_cfg:
                 agent_cfg[network_type] = DigitNN(yaml_cfg[network_type])
 
@@ -284,12 +296,12 @@ def update_torchrl_cfg_with_yaml(yaml_cfg: Dict[str, Any], args_cli: argparse.Na
                         module_cfg[key] = value
                 agent_cfg[module_name] = mapping.cfg_class(**module_cfg)
 
-        if 'on_policy_runner' not in agent_cfg:
-            raise ConfigurationError("Missing required 'on_policy_runner' configuration")
+        if "on_policy_runner" not in agent_cfg:
+            raise ConfigurationError(
+                "Missing required 'on_policy_runner' configuration"
+            )
 
         return agent_cfg.popitem()[1]
 
     except Exception as e:
         raise ConfigurationError(f"Error updating torchrl configuration: {str(e)}")
-
-

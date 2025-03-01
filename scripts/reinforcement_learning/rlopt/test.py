@@ -111,7 +111,7 @@ from rlopt.envs.gymlike import make_isaaclab_gym_env
 from rlopt.agent.ppo import PPO
 
 
-@hydra_task_config(args_cli.task, "sb3_cfg_entry_point")
+@hydra_task_config(args_cli.task, "rlopt_cfg_entry_point")
 def main(
     env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: dict
 ):
@@ -132,7 +132,7 @@ def main(
     note = "_" + args_cli.note if args_cli.note else ""
     log_time_note = log_time + note
     # directory for logging into
-    log_dir = os.path.join("logs", "sb3", args_cli.task, log_time_note)
+    log_dir = os.path.join("logs", "rlopt", args_cli.task, log_time_note)
     # dump the configuration into log-directory
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)

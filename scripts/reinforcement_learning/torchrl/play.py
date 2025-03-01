@@ -46,11 +46,11 @@ import torch
 
 from torchrl.envs.utils import ExplorationType, set_exploration_type
 
-from omni.isaac.lab.utils.dict import print_dict
+from isaac_lab.utils.dict import print_dict
 
-import omni.isaac.lab_tasks  # noqa: F401
-from omni.isaac.lab_tasks.utils import get_checkpoint_path, parse_env_cfg
-from omni.isaac.lab_tasks.utils.wrappers.torchrl import (
+import isaac_lab_tasks  # noqa: F401
+from isaac_lab_tasks.utils import get_checkpoint_path, parse_env_cfg
+from isaac_lab_tasks.utils.wrappers.torchrl import (
     OnPolicyPPORunner,
     OnPolicyPPORunnerCfg,
     TorchRLEnvWrapper,
