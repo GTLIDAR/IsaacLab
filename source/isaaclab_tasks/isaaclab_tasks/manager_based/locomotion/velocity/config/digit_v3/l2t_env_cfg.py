@@ -28,6 +28,14 @@ class L2TObservationsCfg:
     student: StudentObsCfg = StudentObsCfg()
 
 
+@configclass 
+class DigitV3RecorderCfg:
+    """Recorder configurations for the MDP."""
+
+    # recorder groups
+    teacher: TeacherObsCfg = TeacherObsCfg()
+    student: StudentObsCfg = StudentObsCfg()
+
 @configclass
 class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     rewards: DigitV3RewardsCfg = DigitV3RewardsCfg()
@@ -47,7 +55,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.sim.render_interval = self.decimation
         self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 2**26
         self.sim.physx.gpu_total_aggregate_pairs_capacity = 2**22
-
+        
         # Scene
         self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base"

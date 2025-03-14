@@ -15,7 +15,12 @@ from typing import Any, ClassVar
 
 from isaacsim.core.version import get_version
 
-from isaaclab.managers import CommandManager, CurriculumManager, RewardManager, TerminationManager
+from isaaclab.managers import (
+    CommandManager,
+    CurriculumManager,
+    RewardManager,
+    TerminationManager,
+)
 from isaaclab.ui.widgets import ManagerLiveVisualizer
 
 from .common import VecEnvStepReturn
@@ -250,6 +255,18 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # -- reward computation
         self.reward_buf = self.reward_manager.compute(dt=self.step_dt)
 
+        self.obs_buf = self.observation_manager.compute()
+        if any(torch.isnan(v).any() for v in self.obs_buf.values()):
+            print("first, obs has nan. checking its nan index and the done terms")
+            for k, v in self.obs_buf.items():
+                v: torch.Tensor
+                # get the index of the nan values
+                index = torch.nonzero(torch.isnan(v).sum(-1), as_tuple=False)
+                print(
+                    f"{k} index: {index}, done terms: {self.reset_terminated[index]}, {self.reset_time_outs[index]}"
+                )
+            # raise ValueError("Observations contain NaN values.")
+
         if len(self.recorder_manager.active_terms) > 0:
             # update observations for recording if needed
             self.obs_buf = self.observation_manager.compute()
@@ -257,6 +274,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
         # -- reset envs that terminated/timed-out and log the episode information
         reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
+        print("reset index:", reset_env_ids)
         if len(reset_env_ids) > 0:
             # trigger recorder terms for pre-reset calls
             self.recorder_manager.record_pre_reset(reset_env_ids)

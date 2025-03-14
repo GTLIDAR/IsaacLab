@@ -87,10 +87,8 @@ import os
 import random
 from datetime import datetime
 
-from isaaclab_rl.sb3 import (
-    process_sb3_cfg,
-)
-from isaaclab_rl.torchrl import TorchRLEnvWrapper
+from isaaclab_rl.sb3 import process_sb3_cfg
+from isaaclab_rl.torchrl import VecIsaacLabWrapper
 
 
 from isaaclab.envs import (
@@ -161,9 +159,9 @@ def main(
         env = gym.wrappers.RecordVideo(env, **video_kwargs)  # type: ignore
     # wrap around environment for stable baselines
     # env = TorchRLEnvWrapper(env)  # type: ignore
-    env = make_isaaclab_gym_env(
-        env=env,
-    )
+    env = VecIsaacLabWrapper(env)  # type: ignore
+
+    env = make_isaaclab_gym_env(env=env, num_envs=env_cfg.scene.num_envs)
 
     # set the seed
     env.seed(seed=agent_cfg["seed"])
