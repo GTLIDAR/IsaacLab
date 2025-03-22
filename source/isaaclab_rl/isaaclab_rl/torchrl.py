@@ -126,9 +126,9 @@ class VecIsaacLabWrapper(gym.vector.VectorEnv):
 
     def step_async(self, actions: torch.tensor):
         """Asynchronously steps the environment."""
-        actions = actions.to(device=self.sim_device, dtype=torch.float32)
+        # actions = actions.to(device=self.sim_device, dtype=torch.float32)
         # check if action has nan
-        if torch.isnan(actions).any():
+        if actions.isnan().any():
             raise ValueError("Actions contain NaN values.")
         # convert to tensor
         self._async_actions = actions
