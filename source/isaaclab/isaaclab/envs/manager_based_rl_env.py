@@ -196,7 +196,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
         return self.starting_leg
 
-    def step(self, action: torch.Tensor) -> VecEnvStepReturn:
+    def step(self, action: torch.Tensor) -> VecEnvStepReturn:  # type: ignore
         """Execute one time-step of the environment's dynamics and reset terminated environments.
 
         Unlike the :class:`ManagerBasedEnv.step` class, the function performs the following operations:
@@ -255,17 +255,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # -- reward computation
         self.reward_buf = self.reward_manager.compute(dt=self.step_dt)
 
-        self.obs_buf = self.observation_manager.compute()
-        if any(torch.isnan(v).any() for v in self.obs_buf.values()):
-            print("first, obs has nan. checking its nan index and the done terms")
-            for k, v in self.obs_buf.items():
-                v: torch.Tensor
-                # get the index of the nan values
-                index = torch.nonzero(torch.isnan(v).sum(-1), as_tuple=False)
-                print(
-                    f"{k} index: {index}, done terms: {self.reset_terminated[index]}, {self.reset_time_outs[index]}"
-                )
-            # raise ValueError("Observations contain NaN values.")
+        # self.obs_buf: dict = self.observation_manager.compute()
 
         if len(self.recorder_manager.active_terms) > 0:
             # update observations for recording if needed
@@ -274,7 +264,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
         # -- reset envs that terminated/timed-out and log the episode information
         reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
-        print("reset index:", reset_env_ids)
+
         if len(reset_env_ids) > 0:
             # trigger recorder terms for pre-reset calls
             self.recorder_manager.record_pre_reset(reset_env_ids)
@@ -300,6 +290,17 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # note: done after reset to get the correct observations for reset envs
         self.obs_buf = self.observation_manager.compute()
 
+        if any(torch.isnan(v).any() for v in self.obs_buf.values()):
+            print("first, obs has nan. checking its nan index and the done terms")
+            for k, v in self.obs_buf.items():
+                v: torch.Tensor
+                # get the index of the nan values
+                index = torch.nonzero(torch.isnan(v).sum(-1), as_tuple=False)
+                print(
+                    f"{k} index: {index}, done terms: {self.reset_terminated[index]}, {self.reset_time_outs[index]}"
+                )
+            raise ValueError("Observations contain NaN values.")
+
         # return observations, rewards, resets and extras
         return (
             self.obs_buf,
@@ -309,7 +310,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
             self.extras,
         )
 
-    def render(self, recompute: bool = False) -> np.ndarray | None:
+    def render(self, recompute: bool = False) -> np.ndarray | None:  # type: ignore
         """Run rendering without stepping through the physics.
 
         By convention, if mode is:

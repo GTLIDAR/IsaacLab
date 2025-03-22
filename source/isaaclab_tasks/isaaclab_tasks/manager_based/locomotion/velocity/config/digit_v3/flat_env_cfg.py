@@ -15,6 +15,8 @@ class DigitV3FlatEnvCfg(DigitV3RoughEnvCfg):
     def __post_init__(self):
         # post init of parent
         super().__post_init__()
+        self.sim.dt = 0.005
+        self.decimation = 4
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None
         # make a smaller scene for play
@@ -29,8 +31,8 @@ class DigitV3FlatEnvCfg(DigitV3RoughEnvCfg):
         self.curriculum.terrain_levels = None  # type: ignore
         self.observations.observation.height_scan = None  # type: ignore
 
-        self.events.base_external_force_torque = None  # type: ignore
-        self.events.push_robot = None  # type: ignore
+        # self.events.base_external_force_torque = None  # type: ignore
+        # self.events.push_robot = None  # type: ignore
         self.events.robot_joint_stiffness_and_damping = None  # type: ignore
 
 

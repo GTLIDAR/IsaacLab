@@ -8,7 +8,7 @@ env:
 collector:
   num_collectors: 10
   frames_per_batch: 49152
-  total_frames: 100_000_000
+  total_frames: 500_000_000
 
 # logger
 logger:
@@ -34,6 +34,7 @@ loss:
   epochs: 10
   gae_lambda: 0.95
   clip_epsilon: 0.2
+  clip_value: False
   anneal_clip_epsilon: False
   critic_coef: 0.25
   entropy_coef: 0.01
@@ -41,7 +42,7 @@ loss:
 
 # torch compile
 compile:
-  compile: False
+  compile: True
   compile_mode: default
   cudagraphs: False
 

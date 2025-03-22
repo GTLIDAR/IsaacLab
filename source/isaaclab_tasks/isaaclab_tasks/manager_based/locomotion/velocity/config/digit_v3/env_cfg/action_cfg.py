@@ -52,6 +52,6 @@ class DigitV3ActionCfg:
             "right_shoulder_yaw": 1.5708,
             "right_elbow": 1.2174,
         },
-        use_default_offset=True,
-        preserve_order=True,
+        use_default_offset=False,
+        preserve_order=False,
     )

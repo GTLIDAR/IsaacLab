@@ -126,10 +126,10 @@ class VecIsaacLabWrapper(gym.vector.VectorEnv):
 
     def step_async(self, actions: torch.tensor):
         """Asynchronously steps the environment."""
+        actions = actions.to(device=self.sim_device, dtype=torch.float32)
         # check if action has nan
         if torch.isnan(actions).any():
             raise ValueError("Actions contain NaN values.")
-        actions = actions.to(device=self.sim_device, dtype=torch.float32)
         # convert to tensor
         self._async_actions = actions
 
@@ -149,9 +149,12 @@ class VecIsaacLabWrapper(gym.vector.VectorEnv):
                     f"{k} index: {index}, done terms: {terminated[index]}, {truncated[index]}"
                 )
             raise ValueError("Observations contain NaN values.")
+        # check if rew has nan
+        if torch.isnan(rew).any():
+            raise ValueError("Rewards contain NaN values.")
         return (
             obs_dict,
-            rew.unsqueeze(-1),
+            rew.unsqueeze(-1).clamp(min=-100, max=100),
             terminated,
             truncated,
             {"final_info": obs_dict},
