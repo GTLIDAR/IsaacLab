@@ -300,6 +300,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
                 print(
                     f"{k} index: {index}, done terms: {self.reset_terminated[index]}, {self.reset_time_outs[index]}"
                 )
+            print(f"current action: {action}")
             raise ValueError("Observations contain NaN values.")
 
         # return observations, rewards, resets and extras

@@ -19,20 +19,11 @@ class DigitV3FlatEnvCfg(DigitV3RoughEnvCfg):
         self.decimation = 4
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None
-        # make a smaller scene for play
-        self.scene.num_envs = 50
-        self.scene.env_spacing = 2.5
-        # disable randomization for play
-        # self.observations.policy.enable_corruption = False
-        # self.observations.student.enable_corruption = (
-        #     False  # remove random pushing event
-        # )
-        # no terrain curriculum
         self.curriculum.terrain_levels = None  # type: ignore
         self.observations.observation.height_scan = None  # type: ignore
 
-        # self.events.base_external_force_torque = None  # type: ignore
-        # self.events.push_robot = None  # type: ignore
+        self.events.base_external_force_torque = None  # type: ignore
+        self.events.push_robot = None  # type: ignore
         self.events.robot_joint_stiffness_and_damping = None  # type: ignore
 
 

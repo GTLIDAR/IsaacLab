@@ -36,7 +36,7 @@ loss:
   clip_epsilon: 0.2
   clip_value: False
   anneal_clip_epsilon: False
-  critic_coef: 0.25
+  critic_coef: 1.0
   entropy_coef: 0.01
   loss_critic_type: l2
 
@@ -48,10 +48,10 @@ compile:
 
 # actor and critic
 policy:
-  num_cells: [256, 256]
+  num_cells: [512, 256, 128]
 
 value_net:
-  num_cells: [256, 256]
+  num_cells: [512, 256, 128]
 
 # trainer
 trainer:
