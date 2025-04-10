@@ -14,6 +14,7 @@ cat <<EOT > job.sh
 #SBATCH --job-name="training-$(date +"%Y-%m-%dT%H:%M")"
 #SBATCH --output="output.log"
 #SBATCH --error="error.log"
+#SBATCH --nodelist=synapse,dendrite
 
 # Pass the container profile first to run_singularity.sh, then all arguments intended for the executed script
 bash "$1/docker/cluster/run_singularity.sh" "$1" "$2" "${@:3}"
