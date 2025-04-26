@@ -22,7 +22,7 @@ EXTENSION_TOML_DATA = toml.load(
 INSTALL_REQUIRES = [
     # generic
     "numpy<2",
-    "torch==2.5.1",
+    "torch>=2.5.1",
     "onnx==1.16.1",  # 1.16.2 throws access violation on Windows
     "prettytable==3.3.0",
     "toml",
