@@ -50,6 +50,7 @@ def main():
     # create environment configuration
     env_cfg = DigitV3L2TFlatEnvCfg()
     env_cfg.scene.num_envs = args_cli.num_envs
+    env_cfg.sim.device = args_cli.device
     # setup RL environment
     env = ManagerBasedRLEnv(cfg=env_cfg)
     # robot = env.scene["robot"]

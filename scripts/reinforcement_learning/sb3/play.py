@@ -213,7 +213,7 @@ def main_l2t_student():
     print(f"Loading checkpoint from: {checkpoint_path}")
     agent = L2T.load(checkpoint_path, env, print_system_info=True)
 
-    dt = env.unwrapped.physics_dt
+    dt = env.unwrapped.step_dt
 
     # reset environment
     obs = env.reset()

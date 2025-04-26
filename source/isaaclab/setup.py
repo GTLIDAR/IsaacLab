@@ -6,6 +6,7 @@
 """Installation script for the 'isaaclab' python package."""
 
 import os
+import platform
 import toml
 
 from setuptools import setup
@@ -21,7 +22,7 @@ EXTENSION_TOML_DATA = toml.load(
 INSTALL_REQUIRES = [
     # generic
     "numpy<2",
-    "torch==2.5.1",
+    "torch>=2.5.1",
     "onnx==1.16.1",  # 1.16.2 throws access violation on Windows
     "prettytable==3.3.0",
     "toml",
@@ -40,7 +41,15 @@ INSTALL_REQUIRES = [
     "pillow==11.0.0",
     # livestream
     "starlette==0.46.0",
+    "flatdict==4.0.1",
 ]
+
+# Additional dependencies that are only available on Linux platforms
+if platform.system() == "Linux":
+    INSTALL_REQUIRES += [
+        "pin-pink==3.1.0",  # required by isaaclab.isaaclab.controllers.pink_ik
+        "dex-retargeting==0.4.6",  # required by isaaclab.devices.openxr.retargeters.humanoid.fourier.gr1_t2_dex_retargeting_utils
+    ]
 
 PYTORCH_INDEX_URL = ["https://download.pytorch.org/whl/cu118"]
 
