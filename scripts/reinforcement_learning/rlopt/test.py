@@ -88,8 +88,7 @@ import random
 from datetime import datetime
 
 from isaaclab_rl.sb3 import process_sb3_cfg
-from isaaclab_rl.torchrl import VecIsaacLabWrapper
-
+from isaaclab.envs.torchrl_env import IsaacLabManagerBasedEnv
 
 from isaaclab.envs import (
     DirectMARLEnv,
@@ -104,6 +103,7 @@ from isaaclab_tasks.utils.hydra import hydra_task_config
 
 
 from omegaconf import OmegaConf
+from torchrl.envs.libs import IsaacLabWrapper
 
 from rlopt.envs.gymlike import make_isaaclab_gym_env
 from rlopt.agent.ppo import PPO
@@ -146,6 +146,8 @@ def main(
         args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None
     )
 
+    print("[INFO] Environment created.", env)
+
     # wrap for video recording
     if args_cli.video:
         video_kwargs = {
@@ -158,13 +160,13 @@ def main(
         print_dict(video_kwargs, nesting=4)
         env = gym.wrappers.RecordVideo(env, **video_kwargs)  # type: ignore
     # wrap around environment for stable baselines
-    # env = TorchRLEnvWrapper(env)  # type: ignore
-    env = VecIsaacLabWrapper(env)  # type: ignore
 
-    env = make_isaaclab_gym_env(env=env, num_envs=env_cfg.scene.num_envs)
+    env = make_isaaclab_gym_env(
+        env=IsaacLabWrapper(env), num_envs=env_cfg.scene.num_envs
+    )
 
-    # set the seed
-    env.seed(seed=agent_cfg["seed"])
+    # # set the seed
+    # env.seed(seed=agent_cfg["seed"])
 
     if "normalize_input" in agent_cfg:
         env = VecNormalize(
@@ -193,7 +195,7 @@ def main(
 
 if __name__ == "__main__":
     # run the main function
-    main()  # type: ignore
+    main()
 
     # close sim app
     simulation_app.close()

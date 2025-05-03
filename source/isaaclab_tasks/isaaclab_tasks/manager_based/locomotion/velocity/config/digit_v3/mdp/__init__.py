@@ -9,6 +9,7 @@ from .state import (
 from .terminations import (
     root_height_below_minimum_adaptive,
     arm_deviation_too_much,
+    has_nan,
 )
 
 from .events import randomize_actuator_gains

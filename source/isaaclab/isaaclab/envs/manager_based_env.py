@@ -18,6 +18,12 @@ from isaaclab.sim import SimulationContext
 from isaaclab.ui.widgets import ManagerLiveVisualizer
 from isaaclab.utils.timer import Timer
 
+from isaaclab.managers import (
+    CommandManager,
+    CurriculumManager,
+    RewardManager,
+    TerminationManager,
+)
 from .common import VecEnvObs
 from .manager_based_env_cfg import ManagerBasedEnvCfg
 from .ui import ViewportCameraController

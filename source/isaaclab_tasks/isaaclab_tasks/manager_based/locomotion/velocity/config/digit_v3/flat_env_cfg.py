@@ -17,6 +17,7 @@ class DigitV3FlatEnvCfg(DigitV3RoughEnvCfg):
         super().__post_init__()
         self.sim.dt = 0.005
         self.decimation = 4
+        self.sim.render_interval = self.decimation
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None
         self.curriculum.terrain_levels = None  # type: ignore

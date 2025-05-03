@@ -256,8 +256,6 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # -- reward computation
         self.reward_buf = self.reward_manager.compute(dt=self.step_dt)
 
-        # self.obs_buf: dict = self.observation_manager.compute()
-
         if len(self.recorder_manager.active_terms) > 0:
             # update observations for recording if needed
             self.obs_buf = self.observation_manager.compute()
@@ -267,6 +265,9 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
 
         if len(reset_env_ids) > 0:
+            # record the final observation
+            self.final_obs_buf: dict = self.observation_manager.compute()
+
             # trigger recorder terms for pre-reset calls
             self.recorder_manager.record_pre_reset(reset_env_ids)
 
@@ -281,6 +282,8 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
             # trigger recorder terms for post-reset calls
             self.recorder_manager.record_post_reset(reset_env_ids)
+        else:
+            self.final_obs_buf = dict()
 
         # -- update command
         self.command_manager.compute(dt=self.step_dt)
@@ -290,18 +293,6 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # -- compute observations
         # note: done after reset to get the correct observations for reset envs
         self.obs_buf = self.observation_manager.compute()
-
-        if any(torch.isnan(v).any() for v in self.obs_buf.values()):
-            print("first, obs has nan. checking its nan index and the done terms")
-            for k, v in self.obs_buf.items():
-                v: torch.Tensor
-                # get the index of the nan values
-                index = torch.nonzero(torch.isnan(v).sum(-1), as_tuple=False)
-                print(
-                    f"{k} index: {index}, done terms: {self.reset_terminated[index]}, {self.reset_time_outs[index]}"
-                )
-            print(f"current action: {action}")
-            raise ValueError("Observations contain NaN values.")
 
         # return observations, rewards, resets and extras
         return (
@@ -426,7 +417,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # action space (unbounded since we don't impose any limits)
         action_dim = sum(self.action_manager.action_term_dim)
         self.single_action_space = gym.spaces.Box(
-            low=-np.inf, high=np.inf, shape=(action_dim,)
+            low=-1.0, high=1.0, shape=(action_dim,)
         )
 
         # batch the spaces for vectorized environments
@@ -485,8 +476,3 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
         # reset the episode length buffer
         self.episode_length_buf[env_ids] = 0
-
-        # # reset the starting leg
-        # self.starting_leg[env_ids] = torch.randint(
-        #     0, 2, (len(env_ids),), device=self.device
-        # )

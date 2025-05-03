@@ -53,3 +53,16 @@ def arm_deviation_too_much(
         )
         > threshold
     )
+
+
+def has_nan(
+    env: ManagerBasedRLEnv,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    """Terminate when the asset has NaN values."""
+    obs_buf: dict[str, torch.Tensor | dict[str, torch.Tensor]] = env.obs_buf
+    policy_obs = obs_buf["observation"]
+    if isinstance(policy_obs, dict):
+        return torch.isnan(policy_obs["joint_pos"]).sum(-1) > 0
+    else:
+        return torch.isnan(policy_obs).sum(-1) > 0

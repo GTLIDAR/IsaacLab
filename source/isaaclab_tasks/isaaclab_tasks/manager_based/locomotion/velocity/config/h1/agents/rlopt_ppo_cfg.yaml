@@ -1,12 +1,12 @@
 # task and env
 env:
-  env_name: Isaac-Velocity-Flat-Digit-V3-v0
+  env_name: H1-v0
   device: "cuda:0"
   num_envs:
 
 # collector
 collector:
-  num_collectors: 1
+  num_collectors: 10
   frames_per_batch: 49152
   total_frames: 500_000_000
 
@@ -15,7 +15,7 @@ logger:
   backend: wandb
   project_name: torchrl_isaaclab
   group_name: null
-  exp_name: Isaac-Velocity-Flat-Digit-V3-v0
+  exp_name: H1-v0
   test_interval: 1_000_000
   num_test_episodes: 5
   video: False
@@ -31,7 +31,7 @@ optim:
 loss:
   gamma: 0.99
   mini_batch_size: 9830
-  epochs: 5
+  epochs: 10
   gae_lambda: 0.95
   clip_epsilon: 0.2
   clip_value: False

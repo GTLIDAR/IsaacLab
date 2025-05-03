@@ -159,6 +159,7 @@ class ObservationsCfg:
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
+    observation: PolicyCfg = PolicyCfg()
 
 
 @configclass
