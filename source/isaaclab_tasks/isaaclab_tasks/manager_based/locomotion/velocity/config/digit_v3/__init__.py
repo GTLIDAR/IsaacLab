@@ -69,6 +69,7 @@ gym.register(
         "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.DigitV3FlatPPORunnerCfg,
         "skrl_cfg_entry_point": f"{agents.__name__}:skrl_flat_ppo_cfg.yaml",
         "sb3_cfg_entry_point": f"{agents.__name__}:sb3_l2t_cfg.yaml",
+        "cts_cfg_entry_point": f"{agents.__name__}:sb3_ppo_cfg.yaml",
     },
 )
 
@@ -93,6 +94,7 @@ gym.register(
         "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.DigitV3RoughPPORunnerCfg,
         "skrl_cfg_entry_point": f"{agents.__name__}:skrl_rough_ppo_cfg.yaml",
         "sb3_cfg_entry_point": f"{agents.__name__}:sb3_l2t_cfg.yaml",
+        "cts_cfg_entry_point": f"{agents.__name__}:sb3_ppo_cfg.yaml",
     },
 )
 

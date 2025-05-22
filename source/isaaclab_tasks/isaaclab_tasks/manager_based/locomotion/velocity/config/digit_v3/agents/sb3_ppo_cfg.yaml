@@ -17,7 +17,6 @@ use_sde: False
 clip_range: 0.2
 device: "cuda:0"
 policy_kwargs: "dict(
-                  log_std_init=-1,
                   ortho_init=True,
                   activation_fn=nn.ELU,
                   net_arch=[256,128]

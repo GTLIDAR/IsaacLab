@@ -709,3 +709,108 @@ class L2tSb3VecEnvGPUWrapper(Sb3VecEnvGPUWrapper):
             return obs
         else:
             raise NotImplementedError(f"Unsupported data type: {type(obs)}")
+
+
+from collections import deque
+
+
+class CTSSb3VecEnvGPUWrapper(Sb3VecEnvGPUWrapper):
+    """The wrapper for CTS algorithms. Observation is dict[str, torch.Tensor] and action is torch.Tensor."""
+
+    def __init__(
+        self, env: ManagerBasedRLEnv, stack_size: int = 3, teacher_ratio: float = 0.75
+    ):
+        """Initialize the wrapper.
+
+        Args:
+            env: The environment to wrap around.
+
+        Raises:
+            ValueError: When the environment is not an instance of :class:`ManagerBasedRLEnv`.
+        """
+        # check that input is valid
+        if not isinstance(env.unwrapped, ManagerBasedRLEnv) and not isinstance(
+            env.unwrapped, DirectRLEnv
+        ):
+            raise ValueError(
+                "The environment must be inherited from ManagerBasedRLEnv or DirectRLEnv. Environment type:"
+                f" {type(env)}"
+            )
+        # initialize the wrapper
+        self.env = env
+        self.stack_size = stack_size
+        # collect common information
+        self.num_envs = self.unwrapped.num_envs
+        self.sim_device = self.unwrapped.device
+        self.render_mode = self.unwrapped.render_mode
+
+        # obtain gym spaces
+        # note: stable-baselines3 does not like when we have unbounded action space so
+        #   we set it to some high value here. Maybe this is not general but something to think about.
+        observation_space = {}
+        obs_space = self.unwrapped.single_observation_space
+        if "student" not in obs_space.keys():
+            raise ValueError("The environment must have observation space for student.")
+
+        observation_space["student"] = obs_space["student"]
+        observation_space["teacher"] = obs_space["teacher"]
+        observation_space["stacked_obs"] = gym.spaces.Box(
+            low=-np.inf * np.ones(self.stack_size * obs_space["student"].shape[0]),
+            high=np.inf * np.ones(self.stack_size * obs_space["student"].shape[0]),
+            shape=(self.stack_size * obs_space["student"].shape[0],),
+            dtype=obs_space["student"].dtype,
+        )
+        observation_space["teacher_mask"] = gym.spaces.Box(
+            low=0, high=1, shape=(1,), dtype=np.bool_
+        )
+        observation_space = gym.spaces.Dict(observation_space)
+
+        action_space = self.unwrapped.single_action_space
+        if isinstance(action_space, gym.spaces.Box) and not action_space.is_bounded(
+            "both"
+        ):
+            action_space = gym.spaces.Box(low=-100, high=100, shape=action_space.shape)
+
+        # initialize vec-env
+        VecEnv.__init__(self, self.num_envs, observation_space, action_space)
+        # add buffer for logging episodic information
+        self._ep_rew_buf = torch.zeros(self.num_envs, device=self.sim_device)
+        self._ep_len_buf = torch.zeros(self.num_envs, device=self.sim_device)
+
+        n_teacher = int(teacher_ratio * self.num_envs)
+        mask = torch.zeros((self.num_envs, 1), dtype=torch.bool, device=self.sim_device)
+        mask[:n_teacher] = True
+        self.teacher_mask = mask
+
+        self.obs_buf = deque(maxlen=self.stack_size)
+        # initialize the observation buffer with zeros
+        for _ in range(self.stack_size):
+            self.obs_buf.append(
+                torch.zeros(
+                    (self.num_envs, obs_space["student"].shape[0]),
+                    device=self.sim_device,
+                )
+            )
+
+    def _process_obs(
+        self, obs_dict: torch.Tensor | dict[str, torch.Tensor]
+    ) -> (
+        torch.Tensor
+        | dict[str, torch.Tensor]
+        | dict[str, torch.Tensor | dict[str, torch.Tensor]]
+    ):
+        """Do nothing."""
+        # L2T expects a dictionary of tensor with observation and policy
+        obs = obs_dict
+
+        # note: ManagerBasedRLEnv uses torch backend (by default).
+        if isinstance(obs, dict):
+            if "teacher" not in obs.keys():
+                obs["teacher"] = obs["policy"]
+            self.obs_buf.append(obs["student"])
+            stacked_obs = torch.cat([obs for obs in self.obs_buf], dim=-1)
+            obs["stacked_obs"] = stacked_obs
+            obs["teacher_mask"] = self.teacher_mask
+            return obs
+        else:
+            raise NotImplementedError(f"Unsupported data type: {type(obs)}")

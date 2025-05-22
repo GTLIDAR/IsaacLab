@@ -95,7 +95,7 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_hip_pitch",
                 "right_knee",
             ],
-            effort_limit={
+            effort_limit_sim={
                 "left_hip_roll": 126,
                 "left_hip_yaw": 79,
                 "left_hip_pitch": 216,
@@ -105,7 +105,7 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_hip_pitch": 216,
                 "right_knee": 231,
             },
-            velocity_limit=60.0,
+            velocity_limit_sim=60.0,
             stiffness={
                 "left_hip_roll": 100,
                 "left_hip_yaw": 100,
@@ -138,7 +138,7 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_shoulder_yaw",
                 "right_elbow",
             ],
-            effort_limit={
+            effort_limit_sim={
                 "left_shoulder_roll": 126,
                 "left_shoulder_pitch": 126,
                 "left_shoulder_yaw": 79,
@@ -148,7 +148,7 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_shoulder_yaw": 79,
                 "right_elbow": 126,
             },
-            velocity_limit=60.0,
+            velocity_limit_sim=60.0,
             stiffness={
                 "left_shoulder_roll": 150,
                 "left_shoulder_pitch": 150,
@@ -177,13 +177,13 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_toe_A",
                 "right_toe_B",
             ],
-            effort_limit={
+            effort_limit_sim={
                 "left_toe_A": 41,
                 "left_toe_B": 41,
                 "right_toe_A": 41,
                 "right_toe_B": 41,
             },
-            velocity_limit=60.0,
+            velocity_limit_sim=60.0,
             stiffness={
                 "left_toe_A": 20,
                 "left_toe_B": 20,
