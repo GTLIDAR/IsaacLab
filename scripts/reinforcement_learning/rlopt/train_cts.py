@@ -196,7 +196,7 @@ def main(
         print_dict(video_kwargs, nesting=4)
         env = gym.wrappers.RecordVideo(env, **video_kwargs)  # type: ignore
     # wrap around environment for stable baselines
-    env = CTSSb3VecEnvGPUWrapper(env, stack_size=3)  # type: ignore
+    env = CTSSb3VecEnvGPUWrapper(env, stack_size=5)  # type: ignore
     teacher_mask = env.teacher_mask
     policy_kwargs["teacher_mask"] = teacher_mask
 
