@@ -58,7 +58,6 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
                 ".*_knee",
                 ".*_toe.*",
                 ".*_shoulder.*",
-                
                 ".*_elbow"
             ],
         )

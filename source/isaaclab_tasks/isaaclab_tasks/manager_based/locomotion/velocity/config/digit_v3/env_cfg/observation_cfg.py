@@ -44,12 +44,12 @@ class TeacherObsCfg(ObsGroup):
 
     root_quat = ObsTerm(func=mdp.root_quat_w)
 
-    env_params = ObsTerm(
-        func=digit_mdp.get_environment_parameters,
-        params={
-            "asset_cfg": SceneEntityCfg("robot"),
-        },
-    )
+    # env_params = ObsTerm(
+    #     func=digit_mdp.get_environment_parameters,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot"),
+    #     },
+    # )
 
     # student specific observations
     student_base_lin_vel = ObsTerm(

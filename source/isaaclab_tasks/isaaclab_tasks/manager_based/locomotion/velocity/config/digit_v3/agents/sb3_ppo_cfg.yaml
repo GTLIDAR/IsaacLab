@@ -6,11 +6,11 @@ policy: 'MlpPolicy'
 batch_size: 16384
 n_steps: 12
 gamma: 0.99
-gae_lambda: 0.9
+gae_lambda: 0.95
 n_epochs: 5
 ent_coef: 0.01
 sde_sample_freq: 4
-max_grad_norm: 0.5
+max_grad_norm: 1.0
 vf_coef: 1.0
 learning_rate: !!float 3e-4
 use_sde: False
