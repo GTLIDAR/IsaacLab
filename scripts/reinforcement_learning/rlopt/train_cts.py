@@ -197,8 +197,6 @@ def main(
         env = gym.wrappers.RecordVideo(env, **video_kwargs)  # type: ignore
     # wrap around environment for stable baselines
     env = CTSSb3VecEnvGPUWrapper(env, stack_size=5)  # type: ignore
-    teacher_mask = env.teacher_mask
-    policy_kwargs["teacher_mask"] = teacher_mask
 
     # set the seed
     env.seed(seed=agent_cfg["seed"])

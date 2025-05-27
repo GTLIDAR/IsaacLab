@@ -12,12 +12,13 @@ ent_coef: 0.01
 sde_sample_freq: 4
 max_grad_norm: 1.0
 vf_coef: 1.0
-learning_rate: !!float 3e-4
+learning_rate: lin_3e-4
 use_sde: False
 clip_range: 0.2
 device: "cuda:0"
 policy_kwargs: "dict(
+                  share_features_extractor=False,
                   ortho_init=True,
                   activation_fn=nn.ELU,
-                  net_arch=[256,128]
+                  net_arch=dict(pi=[128, 128], vf=[128, 128])
                 )"
