@@ -41,6 +41,8 @@ Guidelines for modifications:
 * Anton Bjørndahl Mortensen
 * Arjun Bhardwaj
 * Ashwin Varghese Kuruttukulam
+* Bikram Pandit
+* Bingjie Tang
 * Brayden Zhang
 * Cameron Upright
 * Calvin Yu
@@ -50,6 +52,7 @@ Guidelines for modifications:
 * Connor Smith
 * CY (Chien-Ying) Chen
 * David Yang
+* Dhananjay Shendre
 * Dorsa Rohani
 * Felipe Mohr
 * Felix Yu
@@ -92,6 +95,7 @@ Guidelines for modifications:
 * Qian Wan
 * Qinxi Yu
 * Rafael Wiltz
+* Renaud Poncelet
 * René Zurbrügg
 * Ritvik Singh
 * Rosario Scalise
@@ -101,13 +105,18 @@ Guidelines for modifications:
 * Stephan Pleines
 * Tyler Lum
 * Victor Khaustov
+* Virgilio Gómez Lambo
 * Vladimir Fokow
 * Wei Yang
 * Xavier Nal
 * Yang Jin
+* Yanzi Zhu
+* Yijie Guo
 * Yujian Zhang
+* Yun Liu
 * Zhengyu Zhang
 * Ziqi Fan
+* Zoe McCarthy
 
 ## Acknowledgements
 

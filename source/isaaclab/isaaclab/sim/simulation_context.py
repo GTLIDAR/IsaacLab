@@ -122,7 +122,9 @@ class SimulationContext(_SimulationContext):
         self.cfg = cfg
         # check that simulation is running
         if stage_utils.get_current_stage() is None:
-            raise RuntimeError("The stage has not been created. Did you run the simulator?")
+            raise RuntimeError(
+                "The stage has not been created. Did you run the simulator?"
+            )
 
         # acquire settings interface
         self.carb_settings = carb.settings.get_settings()
@@ -141,9 +143,13 @@ class SimulationContext(_SimulationContext):
         # read flag for whether the Isaac Lab viewport capture pipeline will be used,
         # casting None to False if the flag doesn't exist
         # this flag is set from the AppLauncher class
-        self._offscreen_render = bool(self.carb_settings.get("/isaaclab/render/offscreen"))
+        self._offscreen_render = bool(
+            self.carb_settings.get("/isaaclab/render/offscreen")
+        )
         # read flag for whether the default viewport should be enabled
-        self._render_viewport = bool(self.carb_settings.get("/isaaclab/render/active_viewport"))
+        self._render_viewport = bool(
+            self.carb_settings.get("/isaaclab/render/active_viewport")
+        )
         # flag for whether any GUI will be rendered (local, livestreamed or viewport)
         self._has_gui = self._local_gui or self._livestream_gui or self._xr_gui
 
@@ -209,15 +215,26 @@ class SimulationContext(_SimulationContext):
         # note: this line is needed to create a "tensor" in the device to avoid issues with torch 2.1 onwards.
         #   the issue is with some heap memory corruption when torch tensor is created inside the asset class.
         #   you can reproduce the issue by commenting out this line and running the test `test_articulation.py`.
-        self._gravity_tensor = torch.tensor(self.cfg.gravity, dtype=torch.float32, device=self.cfg.device)
+        self._gravity_tensor = torch.tensor(
+            self.cfg.gravity, dtype=torch.float32, device=self.cfg.device
+        )
 
-        # add a callback to keep rendering when a stop is triggered through different GUI commands like (save as)
+        # define a global variable to store the exceptions raised in the callback stack
+        builtins.ISAACLAB_CALLBACK_EXCEPTION = None
+
+        # add callback to deal the simulation app when simulation is stopped.
+        # this is needed because physics views go invalid once we stop the simulation
         if not builtins.ISAAC_LAUNCHED_FROM_TERMINAL:
-            timeline_event_stream = omni.timeline.get_timeline_interface().get_timeline_event_stream()
-            self._app_control_on_stop_handle = timeline_event_stream.create_subscription_to_pop_by_type(
-                int(omni.timeline.TimelineEventType.STOP),
-                lambda *args, obj=weakref.proxy(self): obj._app_control_on_stop_handle_fn(*args),
-                order=15,
+            timeline_event_stream = (
+                omni.timeline.get_timeline_interface().get_timeline_event_stream()
+            )
+            self._app_control_on_stop_handle = (
+                timeline_event_stream.create_subscription_to_pop_by_type(
+                    int(omni.timeline.TimelineEventType.STOP),
+                    lambda *args,
+                    obj=weakref.proxy(self): obj._app_control_on_stop_handle_fn(*args),
+                    order=15,
+                )
             )
         else:
             self._app_control_on_stop_handle = None
@@ -244,7 +261,9 @@ class SimulationContext(_SimulationContext):
         """Sets various carb physics settings."""
         # enable hydra scene-graph instancing
         # note: this allows rendering of instanceable assets on the GUI
-        set_carb_setting(self.carb_settings, "/persistent/omnihydra/useSceneGraphInstancing", True)
+        set_carb_setting(
+            self.carb_settings, "/persistent/omnihydra/useSceneGraphInstancing", True
+        )
         # change dispatcher to use the default dispatcher in PhysX SDK instead of carb tasking
         # note: dispatcher handles how threads are launched for multi-threaded physics
         set_carb_setting(self.carb_settings, "/physics/physxDispatcher", True)
@@ -263,10 +282,16 @@ class SimulationContext(_SimulationContext):
         # disable custom geometry for cylinder and cone collision shapes to allow contact reporting for them
         # reason: cylinders and cones aren't natively supported by PhysX so we need to use custom geometry flags
         # reference: https://nvidia-omniverse.github.io/PhysX/physx/5.4.1/docs/Geometry.html?highlight=capsule#geometry
-        set_carb_setting(self.carb_settings, "/physics/collisionConeCustomGeometry", False)
-        set_carb_setting(self.carb_settings, "/physics/collisionCylinderCustomGeometry", False)
+        set_carb_setting(
+            self.carb_settings, "/physics/collisionConeCustomGeometry", False
+        )
+        set_carb_setting(
+            self.carb_settings, "/physics/collisionCylinderCustomGeometry", False
+        )
         # hide the Simulation Settings window
-        set_carb_setting(self.carb_settings, "/physics/autoPopupSimulationOutputWindow", False)
+        set_carb_setting(
+            self.carb_settings, "/physics/autoPopupSimulationOutputWindow", False
+        )
 
     def _apply_render_settings_from_cfg(self):
         """Sets rtx settings specified in the RenderCfg."""
@@ -298,8 +323,12 @@ class SimulationContext(_SimulationContext):
                 )
 
             # parse preset file
-            repo_path = os.path.join(carb.tokens.get_tokens_interface().resolve("${app}"), "..")
-            preset_filename = os.path.join(repo_path, f"apps/rendering_modes/{rendering_mode}.kit")
+            repo_path = os.path.join(
+                carb.tokens.get_tokens_interface().resolve("${app}"), ".."
+            )
+            preset_filename = os.path.join(
+                repo_path, f"apps/rendering_modes/{rendering_mode}.kit"
+            )
             with open(preset_filename) as file:
                 preset_dict = toml.load(file)
             preset_dict = dict(flatdict.FlatDict(preset_dict, delimiter="."))
@@ -327,11 +356,17 @@ class SimulationContext(_SimulationContext):
         if carb_settings is not None:
             for key, value in carb_settings.items():
                 if "_" in key:
-                    key = "/" + key.replace("_", "/")  # convert from python variable style string
+                    key = "/" + key.replace(
+                        "_", "/"
+                    )  # convert from python variable style string
                 elif "." in key:
-                    key = "/" + key.replace(".", "/")  # convert from .kit file style string
+                    key = "/" + key.replace(
+                        ".", "/"
+                    )  # convert from .kit file style string
                 if get_carb_setting(self.carb_settings, key) is None:
-                    raise ValueError(f"'{key}' in RenderCfg.general_parameters does not map to a carb setting.")
+                    raise ValueError(
+                        f"'{key}' in RenderCfg.general_parameters does not map to a carb setting."
+                    )
                 set_carb_setting(self.carb_settings, key, value)
 
         # set denoiser mode
@@ -339,12 +374,17 @@ class SimulationContext(_SimulationContext):
             try:
                 import omni.replicator.core as rep
 
-                rep.settings.set_render_rtx_realtime(antialiasing=self.cfg.render.antialiasing_mode)
+                rep.settings.set_render_rtx_realtime(
+                    antialiasing=self.cfg.render.antialiasing_mode
+                )
             except Exception:
                 pass
 
         # WAR: Ensure /rtx/renderMode RaytracedLighting is correctly cased.
-        if get_carb_setting(self.carb_settings, "/rtx/rendermode").lower() == "raytracedlighting":
+        if (
+            get_carb_setting(self.carb_settings, "/rtx/rendermode").lower()
+            == "raytracedlighting"
+        ):
             set_carb_setting(self.carb_settings, "/rtx/rendermode", "RaytracedLighting")
 
     """
@@ -397,7 +437,11 @@ class SimulationContext(_SimulationContext):
         * Minor version (int): This is the half-year of the release (e.g. 1 or 2).
         * Patch version (int): This is the patch number of the release (e.g. 0).
         """
-        return int(self._isaacsim_version[2]), int(self._isaacsim_version[3]), int(self._isaacsim_version[4])
+        return (
+            int(self._isaacsim_version[2]),
+            int(self._isaacsim_version[3]),
+            int(self._isaacsim_version[4]),
+        )
 
     """
     Operations - New utilities.
@@ -467,7 +511,9 @@ class SimulationContext(_SimulationContext):
                 # reset the throttle counter
                 self._render_throttle_counter = 0
             else:
-                raise ValueError(f"Unsupported render mode: {mode}! Please check `RenderMode` for details.")
+                raise ValueError(
+                    f"Unsupported render mode: {mode}! Please check `RenderMode` for details."
+                )
             # update render mode
             self.render_mode = mode
 
@@ -513,6 +559,11 @@ class SimulationContext(_SimulationContext):
 
     def reset(self, soft: bool = False):
         self._disable_app_control_on_stop_handle = True
+        # check if we need to raise an exception that was raised in a callback
+        if builtins.ISAACLAB_CALLBACK_EXCEPTION is not None:
+            exception_to_raise = builtins.ISAACLAB_CALLBACK_EXCEPTION
+            builtins.ISAACLAB_CALLBACK_EXCEPTION = None
+            raise exception_to_raise
         super().reset(soft=soft)
         # app.update() may be changing the cuda device in reset, so we force it back to our desired device here
         if "cuda" in self.device:
@@ -537,6 +588,11 @@ class SimulationContext(_SimulationContext):
             render: Whether to render the scene after stepping the physics simulation.
                     If set to False, the scene is not rendered and only the physics simulation is stepped.
         """
+        # check if we need to raise an exception that was raised in a callback
+        if builtins.ISAACLAB_CALLBACK_EXCEPTION is not None:
+            exception_to_raise = builtins.ISAACLAB_CALLBACK_EXCEPTION
+            builtins.ISAACLAB_CALLBACK_EXCEPTION = None
+            raise exception_to_raise
         # check if the simulation timeline is paused. in that case keep stepping until it is playing
         if not self.is_playing():
             # step the simulator (but not the physics) to have UI still active
@@ -570,6 +626,11 @@ class SimulationContext(_SimulationContext):
         Args:
             mode: The rendering mode. Defaults to None, in which case the current rendering mode is used.
         """
+        # check if we need to raise an exception that was raised in a callback
+        if builtins.ISAACLAB_CALLBACK_EXCEPTION is not None:
+            exception_to_raise = builtins.ISAACLAB_CALLBACK_EXCEPTION
+            builtins.ISAACLAB_CALLBACK_EXCEPTION = None
+            raise exception_to_raise
         # check if we need to change the render mode
         if mode is not None:
             self.set_render_mode(mode)
@@ -657,18 +718,26 @@ class SimulationContext(_SimulationContext):
         """Sets additional PhysX parameters that are not directly supported by the parent class."""
         # obtain the physics scene api
         physics_scene: UsdPhysics.Scene = self._physics_context._physics_scene
-        physx_scene_api: PhysxSchema.PhysxSceneAPI = self._physics_context._physx_scene_api
+        physx_scene_api: PhysxSchema.PhysxSceneAPI = (
+            self._physics_context._physx_scene_api
+        )
         # assert that scene api is not None
         if physx_scene_api is None:
-            raise RuntimeError("Physics scene API is None! Please create the scene first.")
+            raise RuntimeError(
+                "Physics scene API is None! Please create the scene first."
+            )
         # set parameters not directly supported by the constructor
         # -- Continuous Collision Detection (CCD)
         # ref: https://nvidia-omniverse.github.io/PhysX/physx/5.4.1/docs/AdvancedCollisionDetection.html?highlight=ccd#continuous-collision-detection
         self._physics_context.enable_ccd(self.cfg.physx.enable_ccd)
         # -- GPU collision stack size
-        physx_scene_api.CreateGpuCollisionStackSizeAttr(self.cfg.physx.gpu_collision_stack_size)
+        physx_scene_api.CreateGpuCollisionStackSizeAttr(
+            self.cfg.physx.gpu_collision_stack_size
+        )
         # -- Improved determinism by PhysX
-        physx_scene_api.CreateEnableEnhancedDeterminismAttr(self.cfg.physx.enable_enhanced_determinism)
+        physx_scene_api.CreateEnableEnhancedDeterminismAttr(
+            self.cfg.physx.enable_enhanced_determinism
+        )
 
         # -- Gravity
         # note: Isaac sim only takes the "up-axis" as the gravity direction. But physics allows any direction so we
@@ -686,11 +755,19 @@ class SimulationContext(_SimulationContext):
         physics_scene.CreateGravityMagnitudeAttr(gravity_magnitude)
 
         # position iteration count
-        physx_scene_api.CreateMinPositionIterationCountAttr(self.cfg.physx.min_position_iteration_count)
-        physx_scene_api.CreateMaxPositionIterationCountAttr(self.cfg.physx.max_position_iteration_count)
+        physx_scene_api.CreateMinPositionIterationCountAttr(
+            self.cfg.physx.min_position_iteration_count
+        )
+        physx_scene_api.CreateMaxPositionIterationCountAttr(
+            self.cfg.physx.max_position_iteration_count
+        )
         # velocity iteration count
-        physx_scene_api.CreateMinVelocityIterationCountAttr(self.cfg.physx.min_velocity_iteration_count)
-        physx_scene_api.CreateMaxVelocityIterationCountAttr(self.cfg.physx.max_velocity_iteration_count)
+        physx_scene_api.CreateMinVelocityIterationCountAttr(
+            self.cfg.physx.min_velocity_iteration_count
+        )
+        physx_scene_api.CreateMaxVelocityIterationCountAttr(
+            self.cfg.physx.max_velocity_iteration_count
+        )
 
         # create the default physics material
         # this material is used when no material is specified for a primitive
@@ -825,7 +902,11 @@ def build_simulation_context(
                 intensity=10000,
             )
             # Dome light named specifically to avoid conflicts
-            cfg.func(prim_path="/World/defaultDomeLight", cfg=cfg, translation=(0.0, 0.0, 10.0))
+            cfg.func(
+                prim_path="/World/defaultDomeLight",
+                cfg=cfg,
+                translation=(0.0, 0.0, 10.0),
+            )
 
         yield sim
 
@@ -840,3 +921,8 @@ def build_simulation_context(
         # Clear the stage
         sim.clear_all_callbacks()
         sim.clear_instance()
+        # check if we need to raise an exception that was raised in a callback
+        if builtins.ISAACLAB_CALLBACK_EXCEPTION is not None:
+            exception_to_raise = builtins.ISAACLAB_CALLBACK_EXCEPTION
+            builtins.ISAACLAB_CALLBACK_EXCEPTION = None
+            raise exception_to_raise

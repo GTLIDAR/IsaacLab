@@ -15,7 +15,7 @@ import omni.kit.app
 import omni.log
 import omni.physics.tensors.impl.api as physx
 import omni.timeline
-from isaacsim.core.simulation_manager import SimulationManager
+from isaacsim.core.simulation_manager import IsaacEvents, SimulationManager
 from pxr import UsdPhysics
 
 import isaaclab.sim as sim_utils
@@ -67,7 +67,7 @@ class RigidObjectCollection(AssetBase):
         self.cfg = cfg.copy()
         # flag for whether the asset is initialized
         self._is_initialized = False
-
+        self._prim_paths = []
         # spawn the rigid objects
         for rigid_object_cfg in self.cfg.rigid_objects.values():
             # check if the rigid object path is valid
@@ -87,26 +87,37 @@ class RigidObjectCollection(AssetBase):
             # check that spawn was successful
             matching_prims = sim_utils.find_matching_prims(rigid_object_cfg.prim_path)
             if len(matching_prims) == 0:
-                raise RuntimeError(f"Could not find prim with path {rigid_object_cfg.prim_path}.")
-
+                raise RuntimeError(
+                    f"Could not find prim with path {rigid_object_cfg.prim_path}."
+                )
+            self._prim_paths.append(rigid_object_cfg.prim_path)
         # stores object names
         self._object_names_list = []
 
         # note: Use weakref on all callbacks to ensure that this object can be deleted when its destructor is called.
         # add callbacks for stage play/stop
         # The order is set to 10 which is arbitrary but should be lower priority than the default order of 0
-        timeline_event_stream = omni.timeline.get_timeline_interface().get_timeline_event_stream()
-        self._initialize_handle = timeline_event_stream.create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.PLAY),
-            lambda event, obj=weakref.proxy(self): obj._initialize_callback(event),
-            order=10,
+        timeline_event_stream = (
+            omni.timeline.get_timeline_interface().get_timeline_event_stream()
         )
-        self._invalidate_initialize_handle = timeline_event_stream.create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.STOP),
-            lambda event, obj=weakref.proxy(self): obj._invalidate_initialize_callback(event),
-            order=10,
+        self._initialize_handle = (
+            timeline_event_stream.create_subscription_to_pop_by_type(
+                int(omni.timeline.TimelineEventType.PLAY),
+                lambda event, obj=weakref.proxy(self): obj._initialize_callback(event),
+                order=10,
+            )
         )
-
+        self._invalidate_initialize_handle = (
+            timeline_event_stream.create_subscription_to_pop_by_type(
+                int(omni.timeline.TimelineEventType.STOP),
+                lambda event,
+                obj=weakref.proxy(self): obj._invalidate_initialize_callback(event),
+                order=10,
+            )
+        )
+        self._prim_deletion_callback_id = SimulationManager.register_callback(
+            self._on_prim_deletion, event=IsaacEvents.PRIM_DELETION
+        )
         self._debug_vis_handle = None
 
     """
@@ -148,7 +159,11 @@ class RigidObjectCollection(AssetBase):
     Operations.
     """
 
-    def reset(self, env_ids: torch.Tensor | None = None, object_ids: slice | torch.Tensor | None = None):
+    def reset(
+        self,
+        env_ids: torch.Tensor | None = None,
+        object_ids: slice | torch.Tensor | None = None,
+    ):
         """Resets all internal buffers of selected environments and objects.
 
         Args:
@@ -177,7 +192,9 @@ class RigidObjectCollection(AssetBase):
                 force_data=self.reshape_data_to_view(self._external_force_b),
                 torque_data=self.reshape_data_to_view(self._external_torque_b),
                 position_data=None,
-                indices=self._env_obj_ids_to_view_ids(self._ALL_ENV_INDICES, self._ALL_OBJ_INDICES),
+                indices=self._env_obj_ids_to_view_ids(
+                    self._ALL_ENV_INDICES, self._ALL_OBJ_INDICES
+                ),
                 is_global=False,
             )
 
@@ -203,7 +220,9 @@ class RigidObjectCollection(AssetBase):
         Returns:
             A tuple containing the object indices and names.
         """
-        obj_ids, obj_names = string_utils.resolve_matching_names(name_keys, self.object_names, preserve_order)
+        obj_ids, obj_names = string_utils.resolve_matching_names(
+            name_keys, self.object_names, preserve_order
+        )
         return torch.tensor(obj_ids, device=self.device), obj_names
 
     """
@@ -228,8 +247,12 @@ class RigidObjectCollection(AssetBase):
         """
 
         # set into simulation
-        self.write_object_pose_to_sim(object_state[..., :7], env_ids=env_ids, object_ids=object_ids)
-        self.write_object_velocity_to_sim(object_state[..., 7:], env_ids=env_ids, object_ids=object_ids)
+        self.write_object_pose_to_sim(
+            object_state[..., :7], env_ids=env_ids, object_ids=object_ids
+        )
+        self.write_object_velocity_to_sim(
+            object_state[..., 7:], env_ids=env_ids, object_ids=object_ids
+        )
 
     def write_object_com_state_to_sim(
         self,
@@ -247,8 +270,12 @@ class RigidObjectCollection(AssetBase):
             object_ids: Object indices. If None, then all indices are used.
         """
         # set into simulation
-        self.write_object_com_pose_to_sim(object_state[..., :7], env_ids=env_ids, object_ids=object_ids)
-        self.write_object_com_velocity_to_sim(object_state[..., 7:], env_ids=env_ids, object_ids=object_ids)
+        self.write_object_com_pose_to_sim(
+            object_state[..., :7], env_ids=env_ids, object_ids=object_ids
+        )
+        self.write_object_com_velocity_to_sim(
+            object_state[..., 7:], env_ids=env_ids, object_ids=object_ids
+        )
 
     def write_object_link_state_to_sim(
         self,
@@ -266,8 +293,12 @@ class RigidObjectCollection(AssetBase):
             object_ids: Object indices. If None, then all indices are used.
         """
         # set into simulation
-        self.write_object_link_pose_to_sim(object_state[..., :7], env_ids=env_ids, object_ids=object_ids)
-        self.write_object_link_velocity_to_sim(object_state[..., 7:], env_ids=env_ids, object_ids=object_ids)
+        self.write_object_link_pose_to_sim(
+            object_state[..., :7], env_ids=env_ids, object_ids=object_ids
+        )
+        self.write_object_link_velocity_to_sim(
+            object_state[..., 7:], env_ids=env_ids, object_ids=object_ids
+        )
 
     def write_object_pose_to_sim(
         self,
@@ -293,13 +324,17 @@ class RigidObjectCollection(AssetBase):
             object_ids = self._ALL_OBJ_INDICES
         # note: we need to do this here since tensors are not set into simulation until step.
         # set into internal buffers
-        self._data.object_state_w[env_ids[:, None], object_ids, :7] = object_pose.clone()
+        self._data.object_state_w[env_ids[:, None], object_ids, :7] = (
+            object_pose.clone()
+        )
         # convert the quaternion from wxyz to xyzw
         poses_xyzw = self._data.object_state_w[..., :7].clone()
         poses_xyzw[..., 3:] = math_utils.convert_quat(poses_xyzw[..., 3:], to="xyzw")
         # set into simulation
         view_ids = self._env_obj_ids_to_view_ids(env_ids, object_ids)
-        self.root_physx_view.set_transforms(self.reshape_data_to_view(poses_xyzw), indices=view_ids)
+        self.root_physx_view.set_transforms(
+            self.reshape_data_to_view(poses_xyzw), indices=view_ids
+        )
 
     def write_object_link_pose_to_sim(
         self,
@@ -326,14 +361,20 @@ class RigidObjectCollection(AssetBase):
             object_ids = self._ALL_OBJ_INDICES
         # note: we need to do this here since tensors are not set into simulation until step.
         # set into internal buffers
-        self._data.object_link_state_w[env_ids[:, None], object_ids, :7] = object_pose.clone()
-        self._data.object_state_w[env_ids[:, None], object_ids, :7] = object_pose.clone()
+        self._data.object_link_state_w[env_ids[:, None], object_ids, :7] = (
+            object_pose.clone()
+        )
+        self._data.object_state_w[env_ids[:, None], object_ids, :7] = (
+            object_pose.clone()
+        )
         # convert the quaternion from wxyz to xyzw
         poses_xyzw = self._data.object_link_state_w[..., :7].clone()
         poses_xyzw[..., 3:] = math_utils.convert_quat(poses_xyzw[..., 3:], to="xyzw")
         # set into simulation
         view_ids = self._env_obj_ids_to_view_ids(env_ids, object_ids)
-        self.root_physx_view.set_transforms(self.reshape_data_to_view(poses_xyzw), indices=view_ids)
+        self.root_physx_view.set_transforms(
+            self.reshape_data_to_view(poses_xyzw), indices=view_ids
+        )
 
     def write_object_com_pose_to_sim(
         self,
@@ -371,7 +412,9 @@ class RigidObjectCollection(AssetBase):
         )
 
         object_link_pose = torch.cat((object_link_pos, object_link_quat), dim=-1)
-        self.write_object_link_pose_to_sim(object_pose=object_link_pose, env_ids=env_ids, object_ids=object_ids)
+        self.write_object_link_pose_to_sim(
+            object_pose=object_link_pose, env_ids=env_ids, object_ids=object_ids
+        )
 
     def write_object_velocity_to_sim(
         self,
@@ -394,13 +437,16 @@ class RigidObjectCollection(AssetBase):
         if object_ids is None:
             object_ids = self._ALL_OBJ_INDICES
 
-        self._data.object_state_w[env_ids[:, None], object_ids, 7:] = object_velocity.clone()
+        self._data.object_state_w[env_ids[:, None], object_ids, 7:] = (
+            object_velocity.clone()
+        )
         self._data.object_acc_w[env_ids[:, None], object_ids] = 0.0
 
         # set into simulation
         view_ids = self._env_obj_ids_to_view_ids(env_ids, object_ids)
         self.root_physx_view.set_velocities(
-            self.reshape_data_to_view(self._data.object_state_w[..., 7:]), indices=view_ids
+            self.reshape_data_to_view(self._data.object_state_w[..., 7:]),
+            indices=view_ids,
         )
 
     def write_object_com_velocity_to_sim(
@@ -424,14 +470,19 @@ class RigidObjectCollection(AssetBase):
         if object_ids is None:
             object_ids = self._ALL_OBJ_INDICES
 
-        self._data.object_com_state_w[env_ids[:, None], object_ids, 7:] = object_velocity.clone()
-        self._data.object_state_w[env_ids[:, None], object_ids, 7:] = object_velocity.clone()
+        self._data.object_com_state_w[env_ids[:, None], object_ids, 7:] = (
+            object_velocity.clone()
+        )
+        self._data.object_state_w[env_ids[:, None], object_ids, 7:] = (
+            object_velocity.clone()
+        )
         self._data.object_acc_w[env_ids[:, None], object_ids] = 0.0
 
         # set into simulation
         view_ids = self._env_obj_ids_to_view_ids(env_ids, object_ids)
         self.root_physx_view.set_velocities(
-            self.reshape_data_to_view(self._data.object_com_state_w[..., 7:]), indices=view_ids
+            self.reshape_data_to_view(self._data.object_com_state_w[..., 7:]),
+            indices=view_ids,
         )
 
     def write_object_link_velocity_to_sim(
@@ -463,7 +514,9 @@ class RigidObjectCollection(AssetBase):
         com_pos_b = self.data.com_pos_b[local_env_ids][:, local_object_ids, :]
         # transform given velocity to center of mass
         object_com_velocity[..., :3] += torch.linalg.cross(
-            object_com_velocity[..., 3:], math_utils.quat_rotate(quat, com_pos_b), dim=-1
+            object_com_velocity[..., 3:],
+            math_utils.quat_rotate(quat, com_pos_b),
+            dim=-1,
         )
         # write center of mass velocity to sim
         self.write_object_com_velocity_to_sim(
@@ -535,14 +588,19 @@ class RigidObjectCollection(AssetBase):
         root_prim_path_exprs = []
         for name, rigid_object_cfg in self.cfg.rigid_objects.items():
             # obtain the first prim in the regex expression (all others are assumed to be a copy of this)
-            template_prim = sim_utils.find_first_matching_prim(rigid_object_cfg.prim_path)
+            template_prim = sim_utils.find_first_matching_prim(
+                rigid_object_cfg.prim_path
+            )
             if template_prim is None:
-                raise RuntimeError(f"Failed to find prim for expression: '{rigid_object_cfg.prim_path}'.")
+                raise RuntimeError(
+                    f"Failed to find prim for expression: '{rigid_object_cfg.prim_path}'."
+                )
             template_prim_path = template_prim.GetPath().pathString
 
             # find rigid root prims
             root_prims = sim_utils.get_all_matching_child_prims(
-                template_prim_path, predicate=lambda prim: prim.HasAPI(UsdPhysics.RigidBodyAPI)
+                template_prim_path,
+                predicate=lambda prim: prim.HasAPI(UsdPhysics.RigidBodyAPI),
             )
             if len(root_prims) == 0:
                 raise RuntimeError(
@@ -558,10 +616,15 @@ class RigidObjectCollection(AssetBase):
 
             # check that no rigid object has an articulation root API, which decreases simulation performance
             articulation_prims = sim_utils.get_all_matching_child_prims(
-                template_prim_path, predicate=lambda prim: prim.HasAPI(UsdPhysics.ArticulationRootAPI)
+                template_prim_path,
+                predicate=lambda prim: prim.HasAPI(UsdPhysics.ArticulationRootAPI),
             )
             if len(articulation_prims) != 0:
-                if articulation_prims[0].GetAttribute("physxArticulation:articulationEnabled").Get():
+                if (
+                    articulation_prims[0]
+                    .GetAttribute("physxArticulation:articulationEnabled")
+                    .Get()
+                ):
                     raise RuntimeError(
                         f"Found an articulation root when resolving '{rigid_object_cfg.prim_path}' in the rigid object"
                         f" collection. These are located at: '{articulation_prims}' under '{template_prim_path}'."
@@ -571,17 +634,23 @@ class RigidObjectCollection(AssetBase):
 
             # resolve root prim back into regex expression
             root_prim_path = root_prims[0].GetPath().pathString
-            root_prim_path_expr = rigid_object_cfg.prim_path + root_prim_path[len(template_prim_path) :]
+            root_prim_path_expr = (
+                rigid_object_cfg.prim_path + root_prim_path[len(template_prim_path) :]
+            )
             root_prim_path_exprs.append(root_prim_path_expr.replace(".*", "*"))
 
             self._object_names_list.append(name)
 
         # -- object view
-        self._root_physx_view = self._physics_sim_view.create_rigid_body_view(root_prim_path_exprs)
+        self._root_physx_view = self._physics_sim_view.create_rigid_body_view(
+            root_prim_path_exprs
+        )
 
         # check if the rigid body was created
         if self._root_physx_view._backend is None:
-            raise RuntimeError("Failed to create rigid body collection. Please check PhysX logs.")
+            raise RuntimeError(
+                "Failed to create rigid body collection. Please check PhysX logs."
+            )
 
         # log information about the rigid body
         omni.log.info(f"Number of instances: {self.num_instances}")
@@ -589,7 +658,9 @@ class RigidObjectCollection(AssetBase):
         omni.log.info(f"Object names: {self.object_names}")
 
         # container for data access
-        self._data = RigidObjectCollectionData(self.root_physx_view, self.num_objects, self.device)
+        self._data = RigidObjectCollectionData(
+            self.root_physx_view, self.num_objects, self.device
+        )
 
         # create buffers
         self._create_buffers()
@@ -601,18 +672,28 @@ class RigidObjectCollection(AssetBase):
     def _create_buffers(self):
         """Create buffers for storing data."""
         # constants
-        self._ALL_ENV_INDICES = torch.arange(self.num_instances, dtype=torch.long, device=self.device)
-        self._ALL_OBJ_INDICES = torch.arange(self.num_objects, dtype=torch.long, device=self.device)
+        self._ALL_ENV_INDICES = torch.arange(
+            self.num_instances, dtype=torch.long, device=self.device
+        )
+        self._ALL_OBJ_INDICES = torch.arange(
+            self.num_objects, dtype=torch.long, device=self.device
+        )
 
         # external forces and torques
         self.has_external_wrench = False
-        self._external_force_b = torch.zeros((self.num_instances, self.num_objects, 3), device=self.device)
+        self._external_force_b = torch.zeros(
+            (self.num_instances, self.num_objects, 3), device=self.device
+        )
         self._external_torque_b = torch.zeros_like(self._external_force_b)
 
         # set information about rigid body into data
         self._data.object_names = self.object_names
-        self._data.default_mass = self.reshape_view_to_data(self.root_physx_view.get_masses().clone())
-        self._data.default_inertia = self.reshape_view_to_data(self.root_physx_view.get_inertias().clone())
+        self._data.default_mass = self.reshape_view_to_data(
+            self.root_physx_view.get_masses().clone()
+        )
+        self._data.default_inertia = self.reshape_view_to_data(
+            self.root_physx_view.get_inertias().clone()
+        )
 
     def _process_cfg(self):
         """Post processing of configuration parameters."""
@@ -627,7 +708,9 @@ class RigidObjectCollection(AssetBase):
                 + tuple(rigid_object_cfg.init_state.ang_vel)
             )
             default_object_state = (
-                torch.tensor(default_object_state, dtype=torch.float, device=self.device)
+                torch.tensor(
+                    default_object_state, dtype=torch.float, device=self.device
+                )
                 .repeat(self.num_instances, 1)
                 .unsqueeze(1)
             )
@@ -645,7 +728,9 @@ class RigidObjectCollection(AssetBase):
         Returns:
             The reshaped data. Shape is (num_instances, num_objects, data_size).
         """
-        return torch.einsum("ijk -> jik", data.reshape(self.num_objects, self.num_instances, -1))
+        return torch.einsum(
+            "ijk -> jik", data.reshape(self.num_objects, self.num_instances, -1)
+        )
 
     def reshape_data_to_view(self, data: torch.Tensor) -> torch.Tensor:
         """Reshapes and arranges the data to the be consistent with data from the :attr:`root_physx_view`.
@@ -656,7 +741,9 @@ class RigidObjectCollection(AssetBase):
         Returns:
             The reshaped data. Shape is (num_instances*num_objects, data_size).
         """
-        return torch.einsum("ijk -> jik", data).reshape(self.num_objects * self.num_instances, *data.shape[2:])
+        return torch.einsum("ijk -> jik", data).reshape(
+            self.num_objects * self.num_instances, *data.shape[2:]
+        )
 
     def _env_obj_ids_to_view_ids(
         self, env_ids: torch.Tensor, object_ids: Sequence[int] | slice | torch.Tensor
@@ -688,3 +775,26 @@ class RigidObjectCollection(AssetBase):
         super()._invalidate_initialize_callback(event)
         # set all existing views to None to invalidate them
         self._root_physx_view = None
+
+    def _on_prim_deletion(self, prim_path: str) -> None:
+        """Invalidates and deletes the callbacks when the prim is deleted.
+
+        Args:
+            prim_path: The path to the prim that is being deleted.
+
+        Note:
+            This function is called when the prim is deleted.
+        """
+        if prim_path == "/":
+            self._clear_callbacks()
+            return
+        for prim_path_expr in self._prim_paths:
+            result = re.match(
+                pattern="^"
+                + "/".join(prim_path_expr.split("/")[: prim_path.count("/") + 1])
+                + "$",
+                string=prim_path,
+            )
+            if result:
+                self._clear_callbacks()
+                return
