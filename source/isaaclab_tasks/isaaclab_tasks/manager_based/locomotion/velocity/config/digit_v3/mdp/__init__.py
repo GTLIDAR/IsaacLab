@@ -12,3 +12,4 @@ from .terminations import (
 )
 
 from .events import randomize_actuator_gains
+from .curriculums import eval_terrain_levels_vel

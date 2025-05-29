@@ -444,6 +444,7 @@ def main_recurrentl2t_student():
             episode_starts = (
                 _last_episode_starts.clone().to(agent.device).type(torch.float32)
             )
+            print("curriculum level:", info['log']['Curriculum/terrain_levels'])
         print("step:", timestep)
         # i += 1
         # if i == 10:
