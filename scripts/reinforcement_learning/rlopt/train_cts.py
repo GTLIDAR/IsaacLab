@@ -491,7 +491,7 @@ def main_roa(
         print_dict(video_kwargs, nesting=4)
         env = gym.wrappers.RecordVideo(env, **video_kwargs)  # type: ignore
     # wrap around environment for stable baselines
-    env = CTSSb3VecEnvGPUWrapper(env, stack_size=5)  # type: ignore
+    env = CTSSb3VecEnvGPUWrapper(env, stack_size=10)  # type: ignore
 
     # set the seed
     env.seed(seed=agent_cfg["seed"])
@@ -570,6 +570,6 @@ def main_roa(
 
 if __name__ == "__main__":
     # run the main function
-    main_roa()  # type: ignore
+    main_dwm()  # type: ignore
     # close sim app
     simulation_app.close()
