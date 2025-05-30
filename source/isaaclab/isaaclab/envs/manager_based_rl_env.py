@@ -449,7 +449,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         self.extras["log"].update(info)
         # -- curriculum manager
         info = self.curriculum_manager.reset(env_ids)
-        self.extras["log"].update(info)
+        self.extras["log"].update(info) 
         # -- command manager
         info = self.command_manager.reset(env_ids)
         self.extras["log"].update(info)

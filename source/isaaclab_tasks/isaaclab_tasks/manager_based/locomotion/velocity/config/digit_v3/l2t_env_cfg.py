@@ -43,7 +43,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # post init of parent
         super().__post_init__()
         self.scene.env_spacing = 5.0
-        self.scene.terrain.max_init_terrain_level = 0
+        self.scene.terrain.max_init_terrain_level = 5
         self.sim.dt = 0.001
         self.decimation = 20
         self.sim.gravity = (0.0, 0.0, -9.806)
@@ -51,7 +51,7 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.sim.physx.gpu_found_lost_aggregate_pairs_capacity = 2**26
         self.sim.physx.gpu_total_aggregate_pairs_capacity = 2**22
         # curriculum
-        self.curriculum.terrain_levels.func = eval_terrain_levels_vel  # type: ignore
+        # self.curriculum.terrain_levels.func = eval_terrain_levels_vel  # type: ignore
         # Scene
         self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base"

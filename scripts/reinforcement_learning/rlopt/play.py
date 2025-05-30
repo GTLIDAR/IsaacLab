@@ -38,7 +38,12 @@ parser.add_argument(
     action="store_true",
     help="When no checkpoint provided, use the last saved model. Otherwise use the best saved model.",
 )
-parser.add_argument("--real-time", action="store_true", default=False, help="Run in real-time, if possible.")
+parser.add_argument(
+    "--real-time",
+    action="store_true",
+    default=False,
+    help="Run in real-time, if possible.",
+)
 parser.add_argument(
     "--video",
     action="store_true",
@@ -81,8 +86,13 @@ from isaaclab.utils.dict import print_dict
 from isaaclab.utils.pretrained_checkpoint import get_published_pretrained_checkpoint
 
 import isaaclab_tasks  # noqa: F401
-from isaaclab_tasks.utils.parse_cfg import get_checkpoint_path, load_cfg_from_registry, parse_env_cfg
+from isaaclab_tasks.utils.parse_cfg import (
+    get_checkpoint_path,
+    load_cfg_from_registry,
+    parse_env_cfg,
+)
 from rlopt.agent import L2T, RecurrentL2T
+
 
 def main():
     """Play with stable-baselines agent."""
@@ -123,7 +133,9 @@ def main():
     if args_cli.use_pretrained_checkpoint:
         checkpoint_path = get_published_pretrained_checkpoint("sb3", args_cli.task)
         if not checkpoint_path:
-            print("[INFO] Unfortunately a pre-trained checkpoint is currently unavailable for this task.")
+            print(
+                "[INFO] Unfortunately a pre-trained checkpoint is currently unavailable for this task."
+            )
             return
     elif args_cli.checkpoint is None:
         if args_cli.use_last_checkpoint:
@@ -172,7 +184,9 @@ def main_l2t_student():
     )
 
     # create isaac environment
-    env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
+    env = gym.make(
+        args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None
+    )
 
     # convert to single-agent instance if required by the RL algorithm
     if isinstance(env.unwrapped, DirectMARLEnv):
@@ -444,10 +458,15 @@ def main_recurrentl2t_student():
             episode_starts = (
                 _last_episode_starts.clone().to(agent.device).type(torch.float32)
             )
-            print("curriculum level:", info['log']['Curriculum/terrain_levels'])
-        print("step:", timestep)
-        # i += 1
-        # if i == 10:
+
+        i += 1
+        if i % 1000 == 0:
+            print(
+                "step: ",
+                i,
+                "curriculum level:",
+                info["log"]["Curriculum/terrain_levels"],
+            )
         #     break
         if args_cli.video:
             timestep += 1
