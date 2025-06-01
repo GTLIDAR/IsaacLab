@@ -383,7 +383,6 @@ def main_dwm(
         DWLPolicy,
         env,
         verbose=1,
-        rollout_buffer_class=DictRolloutBuffer,
         policy_kwargs=policy_kwargs,
         rollout_buffer_kwargs={"device": "cpu"},
         **agent_cfg,
