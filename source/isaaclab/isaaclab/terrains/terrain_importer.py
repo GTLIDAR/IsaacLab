@@ -338,7 +338,6 @@ class TerrainImporter:
         self.max_terrain_level = num_rows
         # define all terrain levels and types available
         self.terrain_levels = torch.randint(0, max_init_level + 1, (num_envs,), device=self.device)
-        self.terrain_levels = torch.ones_like(self.terrain_levels) * 5
         self.terrain_types = torch.div(
             torch.arange(num_envs, device=self.device), (num_envs / num_cols), rounding_mode="floor"
         ).to(torch.long)

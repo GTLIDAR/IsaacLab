@@ -482,8 +482,8 @@ if __name__ == "__main__":
     if args_cli.l2t:
         # run the main function
         # main_l2t_student()
-        # main_recurrentl2t_teacher()
-        main_recurrentl2t_student()
+        main_recurrentl2t_teacher()
+        # main_recurrentl2t_student()
     else:
         # run the main function
         main()
