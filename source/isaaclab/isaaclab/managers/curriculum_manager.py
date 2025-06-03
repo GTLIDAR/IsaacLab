@@ -112,8 +112,8 @@ class CurriculumManager(ManagerBase):
                         extras[f"Curriculum/{term_name}/{key}"] = value
                 else:
                     # log directly if not a dict
-                    if isinstance(term_state, torch.Tensor):
-                        term_state = term_state.item()
+                    # if isinstance(term_state, torch.Tensor):
+                    #     term_state = term_state.item()
                     extras[f"Curriculum/{term_name}"] = term_state
         # reset all the curriculum terms
         for term_cfg in self._class_term_cfgs:
@@ -138,7 +138,9 @@ class CurriculumManager(ManagerBase):
             state = term_cfg.func(self._env, env_ids, **term_cfg.params)
             self._curriculum_state[name] = state
 
-    def get_active_iterable_terms(self, env_idx: int) -> Sequence[tuple[str, Sequence[float]]]:
+    def get_active_iterable_terms(
+        self, env_idx: int
+    ) -> Sequence[tuple[str, Sequence[float]]]:
         """Returns the active terms as iterable sequence of tuples.
 
         The first element of the tuple is the name of the term and the second element is the raw value(s) of the term.

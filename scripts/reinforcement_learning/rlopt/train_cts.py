@@ -569,6 +569,6 @@ def main_roa(
 
 if __name__ == "__main__":
     # run the main function
-    main_dwm()  # type: ignore
+    main()  # type: ignore
     # close sim app
     simulation_app.close()

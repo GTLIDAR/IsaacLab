@@ -814,3 +814,32 @@ class CTSSb3VecEnvGPUWrapper(Sb3VecEnvGPUWrapper):
             return obs
         else:
             raise NotImplementedError(f"Unsupported data type: {type(obs)}")
+
+    def step_wait(self) -> GPUVecEnvStepReturn:  # noqa: D102
+        # Call parent's step_wait method
+        obs, rew, dones, extras = super().step_wait()
+
+        # Compute separate terrain levels for teacher and student if available
+        if "log" in extras and "Curriculum/terrain_levels" in extras["log"]:
+            terrain_levels = extras["log"]["Curriculum/terrain_levels"]
+
+            # Use teacher_mask to separate teacher and student terrain levels
+            teacher_mask = self.teacher_mask.squeeze(
+                -1
+            )  # Remove last dimension to match terrain_levels
+            student_mask = ~teacher_mask
+
+            # Compute mean terrain levels for teachers and students
+            if teacher_mask.any():
+                teacher_terrain_levels = terrain_levels[teacher_mask].mean()
+                extras["log"][
+                    "Curriculum/teacher_terrain_levels"
+                ] = teacher_terrain_levels
+
+            if student_mask.any():
+                student_terrain_levels = terrain_levels[student_mask].mean()
+                extras["log"][
+                    "Curriculum/student_terrain_levels"
+                ] = student_terrain_levels
+
+        return obs, rew, dones, extras
