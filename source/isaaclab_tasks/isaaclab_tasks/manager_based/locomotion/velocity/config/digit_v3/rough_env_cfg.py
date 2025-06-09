@@ -31,7 +31,7 @@ class DigitV3ObservationsCfg:
     """Observation specifications for the MDP."""
 
     # observation groups
-    policy: TeacherObsCfg = TeacherObsCfg()
+    policy: StudentObsCfg = StudentObsCfg()
 
 
 @configclass
