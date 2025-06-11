@@ -62,6 +62,7 @@ class SensorsSceneCfg(InteractiveSceneCfg):
     # robot
     robot: ArticulationCfg = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot") # type: ignore
 
+
     front_cube = AssetBaseCfg(
         prim_path="{ENV_REGEX_NS}/Cube",
         spawn=sim_utils.CuboidCfg(
@@ -69,10 +70,57 @@ class SensorsSceneCfg(InteractiveSceneCfg):
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.2, 0.7, 0.3))
         ),
         init_state=AssetBaseCfg.InitialStateCfg(
-            pos=(1.5, 0.0, 0.15),  
+            pos=(4.5, 0.0, 0.15),  
             rot=(1.0, 0.0, 0.0, 0.0), 
         ),
     )
+    """
+    Sensor Configurations:
+    -----------------------------
+    1. Upper Velodyne VLP16 Lidar:
+    - Type: 16-channel 3D LiDAR
+    - Range: 200m max distance
+    - FOV: 360° horizontal / 30° vertical (-15° to +15°)
+    - Update rate: 50Hz (0.02s period)
+    - Mount position: 
+    - Output: Depth point cloud
+
+    2. Forward TIS DFM27UP Color Camera:
+    - Resolution: 1280x960
+    - Lens: 24mm focal length, f/2.8
+    - FOV: 75 x 60 degrees
+    - Frame rate: 20Hz 
+    - Mount position: 
+    - Output: RGB images
+
+    3. Forward Chest Realsense D435:
+    - Resolution: 1280x700
+    - Frame rate: 20Hz  
+    - FOV: 85 x 58 degrees
+    - Mount position: 
+    - Output: RGB + Depth
+
+    4. Downward Pelvis Realsense D430:
+    - Resolution: 1280x800 
+    - Frame rate: 20Hz  
+    - FOV: 85 x 58 degrees
+    - Mount position: 
+    - Output: Depth
+
+    5. Forward Pelvis Realsense D430:
+    - Resolution: 1280x800 
+    - Frame rate: 20Hz  
+    - FOV: 85 x 58 degrees
+    - Mount position: 
+    - Output: Depth
+
+    6. Backward Pelvis Realsense D430:
+    - Resolution: 1280x800 
+    - Frame rate: 20Hz  
+    - FOV: 85 x 58 degrees
+    - Mount position: 
+    - Output: Depth
+    """
     # ----------------------- upper_velodyne_vlp16  -----------------------
     upper_velodyne_vlp16_depth = RayCasterCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base",
@@ -95,13 +143,13 @@ class SensorsSceneCfg(InteractiveSceneCfg):
     # ----------------------- forward-tis-dfm27up  -----------------------
     forward_tis_dfm27up_color = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base/forward_tis_dfm27up_color",
-        update_period=0.1,
-        height=480,
-        width=640,
+        update_period=0.05,
+        height=960,
+        width=1280,
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
-            focal_length=6.0,  
-            focus_distance=400.0,
+            focal_length=14.3,  
+            focus_distance=5.0,
             horizontal_aperture=20.955,  
             clipping_range=(0.1, 1.0e5),
         ),
@@ -114,12 +162,12 @@ class SensorsSceneCfg(InteractiveSceneCfg):
     # ----------------------- forward-chest-realsense-d435  -----------------------
     forward_chest_realsense_d435 = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base/forward_chest_realsense_d435",
-        update_period=0.1,
-        height=480,
-        width=640,
+        update_period=0.05,
+        height=700,
+        width=1280,
         data_types=["rgb", "depth"],
         spawn=sim_utils.PinholeCameraCfg(
-            focal_length=6.0,  
+            focal_length=12.37,  
             focus_distance=400.0,
             horizontal_aperture=20.955,  
             clipping_range=(0.1, 1.0e5),
@@ -134,11 +182,11 @@ class SensorsSceneCfg(InteractiveSceneCfg):
     downward_pelvis_realsense_d430 = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base/downward_pelvis_realsense_d430",
         update_period=0.1,
-        height=480,
-        width=640,
+        height=800,
+        width=1280,
         data_types=["depth"],
         spawn=sim_utils.PinholeCameraCfg(
-            focal_length=6.0,
+            focal_length=13.10,
             focus_distance=400.0,
             horizontal_aperture=20.955,
             clipping_range=(0.1, 1.0e5),
@@ -152,11 +200,11 @@ class SensorsSceneCfg(InteractiveSceneCfg):
     forward_pelvis_realsense_d430 = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base/forward_pelvis_realsense_d430",
         update_period=0.1,
-        height=480,
-        width=640,
+        height=800,
+        width=1280,
         data_types=["depth"],
         spawn=sim_utils.PinholeCameraCfg(
-            focal_length=6.0,  
+            focal_length=13.10,  
             focus_distance=400.0,
             horizontal_aperture=20.955,  
             clipping_range=(0.1, 1.0e5),
@@ -172,11 +220,11 @@ class SensorsSceneCfg(InteractiveSceneCfg):
     backward_pelvis_realsense_d430 = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base/backward_pelvis_realsense_d430",
         update_period=0.1,
-        height=480,
-        width=640,
+        height=800,
+        width=1280,
         data_types=["depth"],
         spawn=sim_utils.PinholeCameraCfg(
-            focal_length=6.0,  
+            focal_length=13.10,  
             focus_distance=400.0,
             horizontal_aperture=20.955,  
             clipping_range=(0.1, 1.0e5),
