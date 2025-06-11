@@ -36,8 +36,8 @@ DIGITV3_CFG = ArticulationCfg(
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
             retain_accelerations=True,
-            linear_damping=0.0,
-            angular_damping=0.0,
+            linear_damping= 1e6,
+            angular_damping= 1e6,
             max_linear_velocity=1000.0,
             max_angular_velocity=1000.0,
             max_depenetration_velocity=1.0,
@@ -234,6 +234,7 @@ DIGITV3_CFG = ArticulationCfg(
                 "right_toe_pitch": 0.0,
                 "right_toe_roll": 0.0,
             },
+            
         ),
     },
 )
