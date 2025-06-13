@@ -88,7 +88,7 @@ submit_job() {
             ;;
     esac
 
-    ssh $CLUSTER_LOGIN "cd $CLUSTER_ISAACLAB_DIR && bash $CLUSTER_ISAACLAB_DIR/docker/cluster/$job_script_file \"$CLUSTER_ISAACLAB_DIR\" \"isaac-lab-$profile\" ${@}"
+    ssh $CLUSTER_LOGIN "cd $CLUSTER_ISAACLAB_DIR && bash -l $CLUSTER_ISAACLAB_DIR/docker/cluster/$job_script_file \"$CLUSTER_ISAACLAB_DIR\" \"isaac-lab-$profile\" ${@}"
 }
 
 #==
