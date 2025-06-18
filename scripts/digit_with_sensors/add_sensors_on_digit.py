@@ -82,7 +82,7 @@ class SensorsSceneCfg(InteractiveSceneCfg):
     - Range: 200m max distance
     - FOV: 360° horizontal / 30° vertical (-15° to +15°)
     - Update rate: 50Hz (0.02s period)
-    - Mount position: 
+    - Mount position: pos=(0.025, 0.0, 0.4925), rot=(0.0, 0.0, 0.2588, 0.9659)
     - Output: Depth point cloud
 
     2. Forward TIS DFM27UP Color Camera:
@@ -97,28 +97,29 @@ class SensorsSceneCfg(InteractiveSceneCfg):
     - Resolution: 1280x700
     - Frame rate: 20Hz  
     - FOV: 85 x 58 degrees
-    - Mount position: 
+    - Mount position: pos=(0.093981, 0.0225, 0.426449), rot=(0.2706, 0.2706, 0.6533, 0.6533)
     - Output: RGB + Depth
 
     4. Downward Pelvis Realsense D430:
     - Resolution: 1280x800 
     - Frame rate: 20Hz  
     - FOV: 85 x 58 degrees
-    - Mount position: 
+    - Mount position: pos=(0.0305, 0.025, -0.03268), rot=(0.7071, 0.0, 0.0, 0.7071)
     - Output: Depth
 
     5. Forward Pelvis Realsense D430:
     - Resolution: 1280x800 
     - Frame rate: 20Hz  
     - FOV: 85 x 58 degrees
-    - Mount position: 
+    - Mount position: pos=(0.061607, 0.025, -0.025283), rot=(0.2706, 0.2706, 0.6533, 0.6533)
+
     - Output: Depth
 
     6. Backward Pelvis Realsense D430:
     - Resolution: 1280x800 
     - Frame rate: 20Hz  
     - FOV: 85 x 58 degrees
-    - Mount position: 
+    - Mount position: pos=(-0.000607, 0.025, -0.025283), rot=(0.0, 0.7071, 0.7071, 0.0)
     - Output: Depth
     """
     # ----------------------- upper_velodyne_vlp16  -----------------------
@@ -126,32 +127,31 @@ class SensorsSceneCfg(InteractiveSceneCfg):
         prim_path="{ENV_REGEX_NS}/Robot/base",
         update_period=0.02,
         offset=RayCasterCfg.OffsetCfg(
-            pos=(0.0, 0.0, 0.4),  
-            rot=(1.0, 0.0, 0.0, 0.0)  
+            pos=(0.025, 0.0, 0.4925),  
+            rot=(0.99144486, 0, 0, 0.13052619), 
         ),
         attach_yaw_only=True,
         pattern_cfg=patterns.LidarPatternCfg(
-            channels=16,  
-            vertical_fov_range=(-15.0, 15.0),  
-            horizontal_fov_range=(0.0, 360.0),  
-            horizontal_res=0.2, 
+            channels=16,
+            vertical_fov_range=(-15.0, 15.0),
+            horizontal_fov_range=(0.0, 360.0),
+            horizontal_res=0.2,
         ),
         debug_vis=True,
         max_distance=200.0,
         mesh_prim_paths=["/World/defaultGroundPlane"],
     )
+
     # ----------------------- forward-tis-dfm27up  -----------------------
     forward_tis_dfm27up_color = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base/forward_tis_dfm27up_color",
-        update_period=0.05,
+        update_period=0.1,
         height=960,
         width=1280,
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=14.3,  
             focus_distance=5.0,
-            horizontal_aperture=20.955,  
-            clipping_range=(0.1, 1.0e5),
         ),
         offset=CameraCfg.OffsetCfg(
             pos=(0.3, 0.0, 0.15),  
@@ -159,25 +159,25 @@ class SensorsSceneCfg(InteractiveSceneCfg):
             convention="ros",
         ),
     )
+
     # ----------------------- forward-chest-realsense-d435  -----------------------
     forward_chest_realsense_d435 = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base/forward_chest_realsense_d435",
-        update_period=0.05,
+        update_period=0.1,
         height=700,
         width=1280,
         data_types=["rgb", "depth"],
         spawn=sim_utils.PinholeCameraCfg(
-            focal_length=12.37,  
-            focus_distance=400.0,
-            horizontal_aperture=20.955,  
-            clipping_range=(0.1, 1.0e5),
+            focal_length=13.10,
+            focus_distance=5.0,
         ),
         offset=CameraCfg.OffsetCfg(
-            pos=(0.0, 0.0, 0.0), 
-            rot=(0.5, -0.5, 0.5, -0.5),  
-            convention="ros",
+            pos=(0.093981, 0.0225, 0.426449),  
+            rot=(0.92387953, 0.0, 0.38268343, 0),  
+            convention="world",
         ),
     )
+
     # ----------------------- downward Pelvis RealSense D430 -----------------------
     downward_pelvis_realsense_d430 = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base/downward_pelvis_realsense_d430",
@@ -187,15 +187,15 @@ class SensorsSceneCfg(InteractiveSceneCfg):
         data_types=["depth"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=13.10,
-            focus_distance=400.0,
-            horizontal_aperture=20.955,
-            clipping_range=(0.1, 1.0e5),
+            focus_distance=5.0,
         ),
         offset=CameraCfg.OffsetCfg(
-            pos=(0.0, 0.0, 0.1), 
-            rot=(0.5, -0.5, 0.5, -0.5),  
+            pos=(0.0305, 0.025, -0.03268), 
+            rot=(0.70710678, 0.0, 0.70710678, 0),  
+            convention="world",
         ),
     )
+
     # ----------------------- forward-pelvis-realsense-d430  -----------------------
     forward_pelvis_realsense_d430 = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base/forward_pelvis_realsense_d430",
@@ -204,19 +204,17 @@ class SensorsSceneCfg(InteractiveSceneCfg):
         width=1280,
         data_types=["depth"],
         spawn=sim_utils.PinholeCameraCfg(
-            focal_length=13.10,  
-            focus_distance=400.0,
-            horizontal_aperture=20.955,  
-            clipping_range=(0.1, 1.0e5),
+            focal_length=13.10,
+            focus_distance=5.0,
         ),
         offset=CameraCfg.OffsetCfg(
-            pos=(0.0, 0.0, -0.1),  
-            rot=(0.707, 0.0, 0.0, 0.707),  
-            convention="ros",
+            pos=(0.061607, 0.025, -0.025283),  
+            rot=(0.92387953, 0.0, 0.38268343, 0),   
+            convention="world",
         ),
-    ) 
+    )
 
-# ----------------------- backward-pelvis-realsense-d430  -----------------------
+    # ----------------------- backward-pelvis-realsense-d430  -----------------------
     backward_pelvis_realsense_d430 = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base/backward_pelvis_realsense_d430",
         update_period=0.1,
@@ -224,15 +222,13 @@ class SensorsSceneCfg(InteractiveSceneCfg):
         width=1280,
         data_types=["depth"],
         spawn=sim_utils.PinholeCameraCfg(
-            focal_length=13.10,  
-            focus_distance=400.0,
-            horizontal_aperture=20.955,  
-            clipping_range=(0.1, 1.0e5),
+            focal_length=13.10,
+            focus_distance=5.0,
         ),
         offset=CameraCfg.OffsetCfg(
-            pos=(-0.2, 0.0, 0.1), 
-            rot=(0.0, 0.707, 0.707, 0.0),
-            convention="ros",
+            pos=(-0.000607, 0.025, -0.025283),  
+            rot=(-3.82683432e-01, -8.00039076e-17, -9.23879533e-01, 8.00039076e-17), 
+            convention="world",
         ),
     )  
 
@@ -374,7 +370,6 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
             rgb_images = [scene["forward_tis_dfm27up_color"].data.output["rgb"][env_id, ..., :3]]
             save_images(
                 rgb_images,
-                title="RGB Image",
                 filename=os.path.join(output_dir, "rgb", f"{count:04d}.jpg"),
             )
         
