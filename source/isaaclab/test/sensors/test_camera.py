@@ -56,7 +56,10 @@ def setup() -> tuple[sim_utils.SimulationContext, CameraCfg, float]:
         update_period=0,
         data_types=["distance_to_image_plane"],
         spawn=sim_utils.PinholeCameraCfg(
-            focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 1.0e5)
+            focal_length=24.0,
+            focus_distance=400.0,
+            horizontal_aperture=20.955,
+            clipping_range=(0.1, 1.0e5),
         ),
     )
     # Create a new stage
@@ -174,9 +177,15 @@ def test_camera_init_offset(setup_sim_camera):
     sim.reset()
 
     # retrieve camera pose using USD API
-    prim_tf_ros = camera_ros._sensor_prims[0].ComputeLocalToWorldTransform(Usd.TimeCode.Default())
-    prim_tf_opengl = camera_opengl._sensor_prims[0].ComputeLocalToWorldTransform(Usd.TimeCode.Default())
-    prim_tf_world = camera_world._sensor_prims[0].ComputeLocalToWorldTransform(Usd.TimeCode.Default())
+    prim_tf_ros = camera_ros._sensor_prims[0].ComputeLocalToWorldTransform(
+        Usd.TimeCode.Default()
+    )
+    prim_tf_opengl = camera_opengl._sensor_prims[0].ComputeLocalToWorldTransform(
+        Usd.TimeCode.Default()
+    )
+    prim_tf_world = camera_world._sensor_prims[0].ComputeLocalToWorldTransform(
+        Usd.TimeCode.Default()
+    )
     # convert them from column-major to row-major
     prim_tf_ros = np.transpose(prim_tf_ros)
     prim_tf_opengl = np.transpose(prim_tf_opengl)
@@ -209,10 +218,18 @@ def test_camera_init_offset(setup_sim_camera):
         sim.step()
 
     # check if transform correctly set in output
-    np.testing.assert_allclose(camera_ros.data.pos_w[0].cpu().numpy(), cam_cfg_offset_ros.offset.pos, rtol=1e-5)
-    np.testing.assert_allclose(camera_ros.data.quat_w_ros[0].cpu().numpy(), QUAT_ROS, rtol=1e-5)
-    np.testing.assert_allclose(camera_ros.data.quat_w_opengl[0].cpu().numpy(), QUAT_OPENGL, rtol=1e-5)
-    np.testing.assert_allclose(camera_ros.data.quat_w_world[0].cpu().numpy(), QUAT_WORLD, rtol=1e-5)
+    np.testing.assert_allclose(
+        camera_ros.data.pos_w[0].cpu().numpy(), cam_cfg_offset_ros.offset.pos, rtol=1e-5
+    )
+    np.testing.assert_allclose(
+        camera_ros.data.quat_w_ros[0].cpu().numpy(), QUAT_ROS, rtol=1e-5
+    )
+    np.testing.assert_allclose(
+        camera_ros.data.quat_w_opengl[0].cpu().numpy(), QUAT_OPENGL, rtol=1e-5
+    )
+    np.testing.assert_allclose(
+        camera_ros.data.quat_w_world[0].cpu().numpy(), QUAT_WORLD, rtol=1e-5
+    )
 
 
 def test_multi_camera_init(setup_sim_camera):
@@ -278,8 +295,18 @@ def test_multi_camera_with_different_resolution(setup_sim_camera):
     cam_1.update(dt)
     cam_2.update(dt)
     # check image sizes
-    assert cam_1.data.output["distance_to_image_plane"].shape == (1, camera_cfg.height, camera_cfg.width, 1)
-    assert cam_2.data.output["distance_to_image_plane"].shape == (1, cam_cfg_2.height, cam_cfg_2.width, 1)
+    assert cam_1.data.output["distance_to_image_plane"].shape == (
+        1,
+        camera_cfg.height,
+        camera_cfg.width,
+        1,
+    )
+    assert cam_2.data.output["distance_to_image_plane"].shape == (
+        1,
+        cam_cfg_2.height,
+        cam_cfg_2.width,
+        1,
+    )
 
 
 def test_camera_init_intrinsic_matrix(setup_sim_camera):
@@ -401,7 +428,11 @@ def test_intrinsic_matrix(setup_sim_camera):
     sim.reset()
     # Desired properties (obtained from realsense camera at 320x240 resolution)
     rs_intrinsic_matrix = [229.8, 0.0, 160.0, 0.0, 229.8, 120.0, 0.0, 0.0, 1.0]
-    rs_intrinsic_matrix = torch.tensor(rs_intrinsic_matrix, device=camera.device).reshape(3, 3).unsqueeze(0)
+    rs_intrinsic_matrix = (
+        torch.tensor(rs_intrinsic_matrix, device=camera.device)
+        .reshape(3, 3)
+        .unsqueeze(0)
+    )
     # Set matrix into simulator
     camera.set_intrinsic_matrices(rs_intrinsic_matrix.clone())
 
@@ -418,10 +449,18 @@ def test_intrinsic_matrix(setup_sim_camera):
         # update camera
         camera.update(dt)
         # Check that matrix is correct
-        torch.testing.assert_close(rs_intrinsic_matrix[0, 0, 0], camera.data.intrinsic_matrices[0, 0, 0])
-        torch.testing.assert_close(rs_intrinsic_matrix[0, 1, 1], camera.data.intrinsic_matrices[0, 1, 1])
-        torch.testing.assert_close(rs_intrinsic_matrix[0, 0, 2], camera.data.intrinsic_matrices[0, 0, 2])
-        torch.testing.assert_close(rs_intrinsic_matrix[0, 1, 2], camera.data.intrinsic_matrices[0, 1, 2])
+        torch.testing.assert_close(
+            rs_intrinsic_matrix[0, 0, 0], camera.data.intrinsic_matrices[0, 0, 0]
+        )
+        torch.testing.assert_close(
+            rs_intrinsic_matrix[0, 1, 1], camera.data.intrinsic_matrices[0, 1, 1]
+        )
+        torch.testing.assert_close(
+            rs_intrinsic_matrix[0, 0, 2], camera.data.intrinsic_matrices[0, 0, 2]
+        )
+        torch.testing.assert_close(
+            rs_intrinsic_matrix[0, 1, 2], camera.data.intrinsic_matrices[0, 1, 2]
+        )
 
 
 def test_depth_clipping(setup_sim_camera):
@@ -435,7 +474,9 @@ def test_depth_clipping(setup_sim_camera):
     sim, _, dt = setup_sim_camera
     camera_cfg_zero = CameraCfg(
         prim_path="/World/CameraZero",
-        offset=CameraCfg.OffsetCfg(pos=(2.5, 2.5, 6.0), rot=(-0.125, 0.362, 0.873, -0.302), convention="ros"),
+        offset=CameraCfg.OffsetCfg(
+            pos=(2.5, 2.5, 6.0), rot=(-0.125, 0.362, 0.873, -0.302), convention="ros"
+        ),
         spawn=sim_utils.PinholeCameraCfg().from_intrinsic_matrix(
             focal_length=38.0,
             intrinsic_matrix=[380.08, 0.0, 467.79, 0.0, 380.08, 262.05, 0.0, 0.0, 1.0],
@@ -476,11 +517,15 @@ def test_depth_clipping(setup_sim_camera):
     assert torch.isinf(camera_none.data.output["distance_to_camera"]).any()
     assert torch.isinf(camera_none.data.output["distance_to_image_plane"]).any()
     assert (
-        camera_none.data.output["distance_to_camera"][~torch.isinf(camera_none.data.output["distance_to_camera"])].min()
+        camera_none.data.output["distance_to_camera"][
+            ~torch.isinf(camera_none.data.output["distance_to_camera"])
+        ].min()
         >= camera_cfg_zero.spawn.clipping_range[0]
     )
     assert (
-        camera_none.data.output["distance_to_camera"][~torch.isinf(camera_none.data.output["distance_to_camera"])].max()
+        camera_none.data.output["distance_to_camera"][
+            ~torch.isinf(camera_none.data.output["distance_to_camera"])
+        ].max()
         <= camera_cfg_zero.spawn.clipping_range[1]
     )
     assert (
@@ -498,7 +543,10 @@ def test_depth_clipping(setup_sim_camera):
 
     # zero clipping should result in zero values
     assert torch.all(
-        camera_zero.data.output["distance_to_camera"][torch.isinf(camera_none.data.output["distance_to_camera"])] == 0.0
+        camera_zero.data.output["distance_to_camera"][
+            torch.isinf(camera_none.data.output["distance_to_camera"])
+        ]
+        == 0.0
     )
     assert torch.all(
         camera_zero.data.output["distance_to_image_plane"][
@@ -507,21 +555,31 @@ def test_depth_clipping(setup_sim_camera):
         == 0.0
     )
     assert (
-        camera_zero.data.output["distance_to_camera"][camera_zero.data.output["distance_to_camera"] != 0.0].min()
+        camera_zero.data.output["distance_to_camera"][
+            camera_zero.data.output["distance_to_camera"] != 0.0
+        ].min()
         >= camera_cfg_zero.spawn.clipping_range[0]
     )
-    assert camera_zero.data.output["distance_to_camera"].max() <= camera_cfg_zero.spawn.clipping_range[1]
+    assert (
+        camera_zero.data.output["distance_to_camera"].max()
+        <= camera_cfg_zero.spawn.clipping_range[1]
+    )
     assert (
         camera_zero.data.output["distance_to_image_plane"][
             camera_zero.data.output["distance_to_image_plane"] != 0.0
         ].min()
         >= camera_cfg_zero.spawn.clipping_range[0]
     )
-    assert camera_zero.data.output["distance_to_image_plane"].max() <= camera_cfg_zero.spawn.clipping_range[1]
+    assert (
+        camera_zero.data.output["distance_to_image_plane"].max()
+        <= camera_cfg_zero.spawn.clipping_range[1]
+    )
 
     # max clipping should result in max values
     assert torch.all(
-        camera_max.data.output["distance_to_camera"][torch.isinf(camera_none.data.output["distance_to_camera"])]
+        camera_max.data.output["distance_to_camera"][
+            torch.isinf(camera_none.data.output["distance_to_camera"])
+        ]
         == camera_cfg_zero.spawn.clipping_range[1]
     )
     assert torch.all(
@@ -530,10 +588,22 @@ def test_depth_clipping(setup_sim_camera):
         ]
         == camera_cfg_zero.spawn.clipping_range[1]
     )
-    assert camera_max.data.output["distance_to_camera"].min() >= camera_cfg_zero.spawn.clipping_range[0]
-    assert camera_max.data.output["distance_to_camera"].max() <= camera_cfg_zero.spawn.clipping_range[1]
-    assert camera_max.data.output["distance_to_image_plane"].min() >= camera_cfg_zero.spawn.clipping_range[0]
-    assert camera_max.data.output["distance_to_image_plane"].max() <= camera_cfg_zero.spawn.clipping_range[1]
+    assert (
+        camera_max.data.output["distance_to_camera"].min()
+        >= camera_cfg_zero.spawn.clipping_range[0]
+    )
+    assert (
+        camera_max.data.output["distance_to_camera"].max()
+        <= camera_cfg_zero.spawn.clipping_range[1]
+    )
+    assert (
+        camera_max.data.output["distance_to_image_plane"].min()
+        >= camera_cfg_zero.spawn.clipping_range[0]
+    )
+    assert (
+        camera_max.data.output["distance_to_image_plane"].max()
+        <= camera_cfg_zero.spawn.clipping_range[1]
+    )
 
 
 def test_camera_resolution_all_colorize(setup_sim_camera):
@@ -848,10 +918,16 @@ def test_throughput(setup_sim_camera):
         with Timer(f"Time taken for writing data with shape {camera.image_shape}   "):
             # Pack data back into replicator format to save them using its writer
             rep_output = {"annotators": {}}
-            camera_data = convert_dict_to_backend({k: v[0] for k, v in camera.data.output.items()}, backend="numpy")
-            for key, data, info in zip(camera_data.keys(), camera_data.values(), camera.data.info[0].values()):
+            camera_data = convert_dict_to_backend(
+                {k: v[0] for k, v in camera.data.output.items()}, backend="numpy"
+            )
+            for key, data, info in zip(
+                camera_data.keys(), camera_data.values(), camera.data.info[0].values()
+            ):
                 if info is not None:
-                    rep_output["annotators"][key] = {"render_product": {"data": data, **info}}
+                    rep_output["annotators"][key] = {
+                        "render_product": {"data": data, **info}
+                    }
                 else:
                     rep_output["annotators"][key] = {"render_product": {"data": data}}
             # Save images

@@ -26,6 +26,7 @@ class L2TObservationsCfg:
     # observation groups, defined in observation_cfg.py
     teacher: TeacherObsCfg = TeacherObsCfg()
     student: StudentObsCfg = StudentObsCfg()
+    policy: TeacherObsCfg = TeacherObsCfg()
 
 
 @configclass 

@@ -239,7 +239,9 @@ def joint_vel_rel(
     )
 
 
-def joint_effort(env: ManagerBasedEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+def joint_effort(
+    env: ManagerBasedEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
     """The joint applied effort of the robot.
 
     NOTE: Only the joints configured in :attr:`asset_cfg.joint_ids` will have their effort returned.
@@ -286,11 +288,15 @@ def body_incoming_wrench(
     # extract the used quantities (to enable type-hinting)
     asset: Articulation = env.scene[asset_cfg.name]
     # obtain the link incoming forces in world frame
-    body_incoming_joint_wrench_b = asset.data.body_incoming_joint_wrench_b[:, asset_cfg.body_ids]
+    body_incoming_joint_wrench_b = asset.data.body_incoming_joint_wrench_b[
+        :, asset_cfg.body_ids
+    ]
     return body_incoming_joint_wrench_b.view(env.num_envs, -1)
 
 
-def imu_orientation(env: ManagerBasedEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("imu")) -> torch.Tensor:
+def imu_orientation(
+    env: ManagerBasedEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("imu")
+) -> torch.Tensor:
     """Imu sensor orientation in the simulation world frame.
 
     Args:
@@ -306,7 +312,9 @@ def imu_orientation(env: ManagerBasedEnv, asset_cfg: SceneEntityCfg = SceneEntit
     return asset.data.quat_w
 
 
-def imu_ang_vel(env: ManagerBasedEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("imu")) -> torch.Tensor:
+def imu_ang_vel(
+    env: ManagerBasedEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("imu")
+) -> torch.Tensor:
     """Imu sensor angular velocity w.r.t. environment origin expressed in the sensor frame.
 
     Args:
@@ -322,7 +330,9 @@ def imu_ang_vel(env: ManagerBasedEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg
     return asset.data.ang_vel_b
 
 
-def imu_lin_acc(env: ManagerBasedEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("imu")) -> torch.Tensor:
+def imu_lin_acc(
+    env: ManagerBasedEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("imu")
+) -> torch.Tensor:
     """Imu sensor linear acceleration w.r.t. the environment origin expressed in sensor frame.
 
     Args:
@@ -462,9 +472,13 @@ class image_features(ManagerTermBase):
             )
         if self.model_zoo_cfg is None:
             if self.model_name in default_theia_models:
-                model_config = self._prepare_theia_transformer_model(self.model_name, self.model_device)
+                model_config = self._prepare_theia_transformer_model(
+                    self.model_name, self.model_device
+                )
             elif self.model_name in default_resnet_models:
-                model_config = self._prepare_resnet_model(self.model_name, self.model_device)
+                model_config = self._prepare_resnet_model(
+                    self.model_name, self.model_device
+                )
             else:
                 raise ValueError(
                     f"Model name '{self.model_name}' not found in the default model zoo configuration."
@@ -507,7 +521,9 @@ class image_features(ManagerTermBase):
         # store the device of the image
         image_device = image_data.device
         # forward the images through the model
-        features = self._inference_fn(self._model, image_data, **(inference_kwargs or {}))
+        features = self._inference_fn(
+            self._model, image_data, **(inference_kwargs or {})
+        )
 
         # move the features back to the image device
         return features.detach().to(image_device)
@@ -516,7 +532,9 @@ class image_features(ManagerTermBase):
     Helper functions.
     """
 
-    def _prepare_theia_transformer_model(self, model_name: str, model_device: str) -> dict:
+    def _prepare_theia_transformer_model(
+        self, model_name: str, model_device: str
+    ) -> dict:
         """Prepare the Theia transformer model for inference.
 
         Args:
@@ -530,7 +548,9 @@ class image_features(ManagerTermBase):
 
         def _load_model() -> torch.nn.Module:
             """Load the Theia transformer model."""
-            model = AutoModel.from_pretrained(f"theaiinstitute/{model_name}", trust_remote_code=True).eval()
+            model = AutoModel.from_pretrained(
+                f"theaiinstitute/{model_name}", trust_remote_code=True
+            ).eval()
             return model.to(model_device)
 
         def _inference(model, images: torch.Tensor) -> torch.Tensor:
@@ -548,12 +568,18 @@ class image_features(ManagerTermBase):
             # permute the image to (num_envs, channel, height, width)
             image_proc = image_proc.permute(0, 3, 1, 2).float() / 255.0
             # Normalize the image
-            mean = torch.tensor([0.485, 0.456, 0.406], device=model_device).view(1, 3, 1, 1)
-            std = torch.tensor([0.229, 0.224, 0.225], device=model_device).view(1, 3, 1, 1)
+            mean = torch.tensor([0.485, 0.456, 0.406], device=model_device).view(
+                1, 3, 1, 1
+            )
+            std = torch.tensor([0.229, 0.224, 0.225], device=model_device).view(
+                1, 3, 1, 1
+            )
             image_proc = (image_proc - mean) / std
 
             # Taken from Transformers; inference converted to be GPU only
-            features = model.backbone.model(pixel_values=image_proc, interpolate_pos_encoding=True)
+            features = model.backbone.model(
+                pixel_values=image_proc, interpolate_pos_encoding=True
+            )
             return features.last_hidden_state[:, 1:]
 
         # return the model, preprocess and inference functions
@@ -582,7 +608,9 @@ class image_features(ManagerTermBase):
             }
 
             # load the model
-            model = getattr(models, model_name)(weights=resnet_weights[model_name]).eval()
+            model = getattr(models, model_name)(
+                weights=resnet_weights[model_name]
+            ).eval()
             return model.to(model_device)
 
         def _inference(model, images: torch.Tensor) -> torch.Tensor:
@@ -600,8 +628,12 @@ class image_features(ManagerTermBase):
             # permute the image to (num_envs, channel, height, width)
             image_proc = image_proc.permute(0, 3, 1, 2).float() / 255.0
             # normalize the image
-            mean = torch.tensor([0.485, 0.456, 0.406], device=model_device).view(1, 3, 1, 1)
-            std = torch.tensor([0.229, 0.224, 0.225], device=model_device).view(1, 3, 1, 1)
+            mean = torch.tensor([0.485, 0.456, 0.406], device=model_device).view(
+                1, 3, 1, 1
+            )
+            std = torch.tensor([0.229, 0.224, 0.225], device=model_device).view(
+                1, 3, 1, 1
+            )
             image_proc = (image_proc - mean) / std
 
             # forward the image through the model

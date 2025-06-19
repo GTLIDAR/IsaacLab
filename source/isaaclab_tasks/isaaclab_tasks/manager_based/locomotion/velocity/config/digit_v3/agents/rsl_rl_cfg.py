@@ -15,12 +15,12 @@ from isaaclab_rl.rsl_rl import (
 @configclass
 class DigitV3RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 12
-    max_iterations = 6100
+    max_iterations = 10200
     save_interval = 600
     experiment_name = "rsl_digit_v3_rough"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
-        class_name="ActorCritic",
+        class_name="ActorCriticRecurrent",
         init_noise_std=1.0,
         actor_hidden_dims=[512, 256, 128],
         critic_hidden_dims=[512, 256, 128],

@@ -74,26 +74,54 @@ def test_render_cfg():
     assert sim.cfg.render.enable_ambient_occlusion == enable_ambient_occlusion
 
     carb_settings_iface = carb.settings.get_settings()
-    assert carb_settings_iface.get("/rtx/translucency/enabled") == sim.cfg.render.enable_translucency
-    assert carb_settings_iface.get("/rtx/reflections/enabled") == sim.cfg.render.enable_reflections
-    assert carb_settings_iface.get("/rtx/indirectDiffuse/enabled") == sim.cfg.render.enable_global_illumination
-    assert carb_settings_iface.get("/rtx-transient/dlssg/enabled") == sim.cfg.render.enable_dlssg
-    assert carb_settings_iface.get("/rtx-transient/dldenoiser/enabled") == sim.cfg.render.enable_dl_denoiser
-    assert carb_settings_iface.get("/rtx/post/dlss/execMode") == sim.cfg.render.dlss_mode
-    assert carb_settings_iface.get("/rtx/directLighting/enabled") == sim.cfg.render.enable_direct_lighting
+    assert (
+        carb_settings_iface.get("/rtx/translucency/enabled")
+        == sim.cfg.render.enable_translucency
+    )
+    assert (
+        carb_settings_iface.get("/rtx/reflections/enabled")
+        == sim.cfg.render.enable_reflections
+    )
+    assert (
+        carb_settings_iface.get("/rtx/indirectDiffuse/enabled")
+        == sim.cfg.render.enable_global_illumination
+    )
+    assert (
+        carb_settings_iface.get("/rtx-transient/dlssg/enabled")
+        == sim.cfg.render.enable_dlssg
+    )
+    assert (
+        carb_settings_iface.get("/rtx-transient/dldenoiser/enabled")
+        == sim.cfg.render.enable_dl_denoiser
+    )
+    assert (
+        carb_settings_iface.get("/rtx/post/dlss/execMode") == sim.cfg.render.dlss_mode
+    )
+    assert (
+        carb_settings_iface.get("/rtx/directLighting/enabled")
+        == sim.cfg.render.enable_direct_lighting
+    )
     assert (
         carb_settings_iface.get("/rtx/directLighting/sampledLighting/samplesPerPixel")
         == sim.cfg.render.samples_per_pixel
     )
-    assert carb_settings_iface.get("/rtx/shadows/enabled") == sim.cfg.render.enable_shadows
-    assert carb_settings_iface.get("/rtx/ambientOcclusion/enabled") == sim.cfg.render.enable_ambient_occlusion
+    assert (
+        carb_settings_iface.get("/rtx/shadows/enabled") == sim.cfg.render.enable_shadows
+    )
+    assert (
+        carb_settings_iface.get("/rtx/ambientOcclusion/enabled")
+        == sim.cfg.render.enable_ambient_occlusion
+    )
     assert carb_settings_iface.get("/rtx/post/aa/op") == 4  # dlss = 3, dlaa=4
 
     def test_render_cfg_presets(self):
         """Test that the simulation context is created with the correct render cfg preset with overrides."""
 
         # carb setting dictionary overrides
-        carb_settings = {"/rtx/raytracing/subpixel/mode": 3, "/rtx/pathtracing/maxSamplesPerLaunch": 999999}
+        carb_settings = {
+            "/rtx/raytracing/subpixel/mode": 3,
+            "/rtx/pathtracing/maxSamplesPerLaunch": 999999,
+        }
         # user-friendly setting overrides
         dlss_mode = ("/rtx/post/dlss/execMode", 5)
 
@@ -118,52 +146,9 @@ def test_render_cfg():
 
             carb_settings_iface = carb.settings.get_settings()
             for key, val in preset_dict.items():
-                setting_name = "/" + key.replace(".", "/")  # convert to carb setting format
-
-                if setting_name in carb_settings:
-                    # grab groundtruth from carb setting dictionary overrides
-                    setting_gt = carb_settings[setting_name]
-                elif setting_name == dlss_mode[0]:
-                    # grab groundtruth from user-friendly setting overrides
-                    setting_gt = dlss_mode[1]
-                else:
-                    # grab groundtruth from preset
-                    setting_gt = val
-
-                setting_val = get_carb_setting(carb_settings_iface, setting_name)
-
-                self.assertEqual(setting_gt, setting_val)
-
-    def test_render_cfg_presets(self):
-        """Test that the simulation context is created with the correct render cfg preset with overrides."""
-
-        # carb setting dictionary overrides
-        carb_settings = {"/rtx/raytracing/subpixel/mode": 3, "/rtx/pathtracing/maxSamplesPerLaunch": 999999}
-        # user-friendly setting overrides
-        dlss_mode = ("/rtx/post/dlss/execMode", 5)
-
-        rendering_modes = ["performance", "balanced", "quality", "xr"]
-
-        for rendering_mode in rendering_modes:
-            # grab groundtruth preset settings
-            preset_filename = f"apps/rendering_modes/{rendering_mode}.kit"
-            with open(preset_filename) as file:
-                preset_dict = toml.load(file)
-            preset_dict = dict(flatdict.FlatDict(preset_dict, delimiter="."))
-
-            render_cfg = RenderCfg(
-                rendering_mode=rendering_mode,
-                dlss_mode=dlss_mode[1],
-                carb_settings=carb_settings,
-            )
-
-            cfg = SimulationCfg(render=render_cfg)
-
-            SimulationContext(cfg)
-
-            carb_settings_iface = carb.settings.get_settings()
-            for key, val in preset_dict.items():
-                setting_name = "/" + key.replace(".", "/")  # convert to carb setting format
+                setting_name = "/" + key.replace(
+                    ".", "/"
+                )  # convert to carb setting format
 
                 if setting_name in carb_settings:
                     # grab groundtruth from carb setting dictionary overrides
@@ -226,17 +211,42 @@ def test_render_cfg_defaults():
     assert sim.cfg.render.enable_ambient_occlusion == enable_ambient_occlusion
 
     carb_settings_iface = carb.settings.get_settings()
-    assert carb_settings_iface.get("/rtx/translucency/enabled") == sim.cfg.render.enable_translucency
-    assert carb_settings_iface.get("/rtx/reflections/enabled") == sim.cfg.render.enable_reflections
-    assert carb_settings_iface.get("/rtx/indirectDiffuse/enabled") == sim.cfg.render.enable_global_illumination
-    assert carb_settings_iface.get("/rtx-transient/dlssg/enabled") == sim.cfg.render.enable_dlssg
-    assert carb_settings_iface.get("/rtx-transient/dldenoiser/enabled") == sim.cfg.render.enable_dl_denoiser
-    assert carb_settings_iface.get("/rtx/post/dlss/execMode") == sim.cfg.render.dlss_mode
-    assert carb_settings_iface.get("/rtx/directLighting/enabled") == sim.cfg.render.enable_direct_lighting
+    assert (
+        carb_settings_iface.get("/rtx/translucency/enabled")
+        == sim.cfg.render.enable_translucency
+    )
+    assert (
+        carb_settings_iface.get("/rtx/reflections/enabled")
+        == sim.cfg.render.enable_reflections
+    )
+    assert (
+        carb_settings_iface.get("/rtx/indirectDiffuse/enabled")
+        == sim.cfg.render.enable_global_illumination
+    )
+    assert (
+        carb_settings_iface.get("/rtx-transient/dlssg/enabled")
+        == sim.cfg.render.enable_dlssg
+    )
+    assert (
+        carb_settings_iface.get("/rtx-transient/dldenoiser/enabled")
+        == sim.cfg.render.enable_dl_denoiser
+    )
+    assert (
+        carb_settings_iface.get("/rtx/post/dlss/execMode") == sim.cfg.render.dlss_mode
+    )
+    assert (
+        carb_settings_iface.get("/rtx/directLighting/enabled")
+        == sim.cfg.render.enable_direct_lighting
+    )
     assert (
         carb_settings_iface.get("/rtx/directLighting/sampledLighting/samplesPerPixel")
         == sim.cfg.render.samples_per_pixel
     )
-    assert carb_settings_iface.get("/rtx/shadows/enabled") == sim.cfg.render.enable_shadows
-    assert carb_settings_iface.get("/rtx/ambientOcclusion/enabled") == sim.cfg.render.enable_ambient_occlusion
+    assert (
+        carb_settings_iface.get("/rtx/shadows/enabled") == sim.cfg.render.enable_shadows
+    )
+    assert (
+        carb_settings_iface.get("/rtx/ambientOcclusion/enabled")
+        == sim.cfg.render.enable_ambient_occlusion
+    )
     assert carb_settings_iface.get("/rtx/post/aa/op") == 3  # dlss = 3, dlaa=4

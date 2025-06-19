@@ -47,7 +47,11 @@ def setup_environment():
     registered_tasks = list()
     for task_spec in gym.registry.values():
         # TODO: Factory environments causes test to fail if run together with other envs
-        if "Isaac" in task_spec.id and not task_spec.id.endswith("Play-v0") and "Factory" not in task_spec.id:
+        if (
+            "Isaac" in task_spec.id
+            and not task_spec.id.endswith("Play-v0")
+            and "Factory" not in task_spec.id
+        ):
             registered_tasks.append(task_spec.id)
     # sort environments by name
     registered_tasks.sort()
@@ -83,7 +87,9 @@ def test_environments(task_name, num_envs, device):
     print("-" * 80)
 
 
-def _check_random_actions(task_name: str, device: str, num_envs: int, num_steps: int = 1000):
+def _check_random_actions(
+    task_name: str, device: str, num_envs: int, num_steps: int = 1000
+):
     """Run random actions and check environments returned signals are valid."""
     # create a new stage
     omni.usd.get_context().new_stage()
@@ -91,7 +97,9 @@ def _check_random_actions(task_name: str, device: str, num_envs: int, num_steps:
     carb.settings.get_settings().set_bool("/isaaclab/render/rtx_sensors", False)
     try:
         # parse configuration
-        env_cfg: ManagerBasedRLEnvCfg = parse_env_cfg(task_name, device=device, num_envs=num_envs)
+        env_cfg: ManagerBasedRLEnvCfg = parse_env_cfg(
+            task_name, device=device, num_envs=num_envs
+        )
 
         # skip test if the environment is a multi-agent task
         if hasattr(env_cfg, "possible_agents"):
@@ -106,7 +114,9 @@ def _check_random_actions(task_name: str, device: str, num_envs: int, num_steps:
         else:
             if hasattr(e, "obj") and hasattr(e.obj, "_is_closed"):
                 e.obj.close()
-        pytest.fail(f"Failed to set-up the environment for task {task_name}. Error: {e}")
+        pytest.fail(
+            f"Failed to set-up the environment for task {task_name}. Error: {e}"
+        )
 
     # disable control on stop
     env.unwrapped.sim._app_control_on_stop_handle = None  # type: ignore
@@ -127,7 +137,11 @@ def _check_random_actions(task_name: str, device: str, num_envs: int, num_steps:
     with torch.inference_mode():
         for _ in range(num_steps):
             # sample actions according to the defined space
-            actions = sample_space(env.unwrapped.single_action_space, device=env.unwrapped.device, batch_size=num_envs)
+            actions = sample_space(
+                env.unwrapped.single_action_space,
+                device=env.unwrapped.device,
+                batch_size=num_envs,
+            )
             # apply actions
             transition = env.step(actions)
             # check signals
