@@ -66,7 +66,9 @@ def load_cfg_from_registry(task_name: str, entry_point_key: str) -> dict | objec
                     .split("_")
                 )
                 agent = spec[0].replace("-", "_")
-                algorithms = [item.upper() for item in (spec[1:] if len(spec) > 1 else ["PPO"])]
+                algorithms = [
+                    item.upper() for item in (spec[1:] if len(spec) > 1 else ["PPO"])
+                ]
                 agents[agent].extend(algorithms)
         msg = "\nExisting RL library (and algorithms) config entry points: "
         for agent, algorithms in agents.items():
@@ -115,7 +117,10 @@ def load_cfg_from_registry(task_name: str, entry_point_key: str) -> dict | objec
 
 
 def parse_env_cfg(
-    task_name: str, device: str = "cuda:0", num_envs: int | None = None, use_fabric: bool | None = None
+    task_name: str,
+    device: str = "cuda:0",
+    num_envs: int | None = None,
+    use_fabric: bool | None = None,
 ) -> ManagerBasedRLEnvCfg | DirectRLEnvCfg:
     """Parse configuration for an environment and override based on inputs.
 
@@ -140,7 +145,9 @@ def parse_env_cfg(
     # check that it is not a dict
     # we assume users always use a class for the configuration
     if isinstance(cfg, dict):
-        raise RuntimeError(f"Configuration for the task: '{task_name}' is not a class. Please provide a class.")
+        raise RuntimeError(
+            f"Configuration for the task: '{task_name}' is not a class. Please provide a class."
+        )
 
     # simulation device
     cfg.sim.device = device
@@ -155,7 +162,11 @@ def parse_env_cfg(
 
 
 def get_checkpoint_path(
-    log_path: str, run_dir: str = ".*", checkpoint: str = ".*", other_dirs: list[str] = None, sort_alpha: bool = True
+    log_path: str,
+    run_dir: str = ".*",
+    checkpoint: str = ".*",
+    other_dirs: list[str] = None,
+    sort_alpha: bool = True,
 ) -> str:
     """Get path to the model checkpoint in input directory.
 
@@ -188,7 +199,9 @@ def get_checkpoint_path(
     try:
         # find all runs in the directory that math the regex expression
         runs = [
-            os.path.join(log_path, run) for run in os.scandir(log_path) if run.is_dir() and re.match(run_dir, run.name)
+            os.path.join(log_path, run)
+            for run in os.scandir(log_path)
+            if run.is_dir() and re.match(run_dir, run.name)
         ]
         # sort matched runs by alphabetical order (latest run should be last)
         if sort_alpha:
@@ -201,13 +214,17 @@ def get_checkpoint_path(
         else:
             run_path = runs[-1]
     except IndexError:
-        raise ValueError(f"No runs present in the directory: '{log_path}' match: '{run_dir}'.")
+        raise ValueError(
+            f"No runs present in the directory: '{log_path}' match: '{run_dir}'."
+        )
 
     # list all model checkpoints in the directory
     model_checkpoints = [f for f in os.listdir(run_path) if re.match(checkpoint, f)]
     # check if any checkpoints are present
     if len(model_checkpoints) == 0:
-        raise ValueError(f"No checkpoints in the directory: '{run_path}' match '{checkpoint}'.")
+        raise ValueError(
+            f"No checkpoints in the directory: '{run_path}' match '{checkpoint}'."
+        )
     # sort alphabetically while ensuring that *_10 comes after *_9
     model_checkpoints.sort(key=lambda m: f"{m:0>15}")
     # get latest matched checkpoint file

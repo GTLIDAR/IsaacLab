@@ -83,7 +83,9 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         self.common_step_counter = 0
 
         # initialize the episode length buffer BEFORE loading the managers to use it in mdp functions.
-        self.episode_length_buf = torch.zeros(cfg.scene.num_envs, device=cfg.sim.device, dtype=torch.long)
+        self.episode_length_buf = torch.zeros(
+            cfg.scene.num_envs, device=cfg.sim.device, dtype=torch.long
+        )
 
         # initialize the base class to setup the scene.
         super().__init__(cfg=cfg)
@@ -284,6 +286,9 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         else:
             self.final_obs_buf = dict()
 
+        # add the terminal observation to the extras
+        self.extras["terminal_obs"] = self.final_obs_buf
+
         # -- update command
         self.command_manager.compute(dt=self.step_dt)
         # -- step interval events
@@ -402,13 +407,17 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
             # if not concatenated, then we need to add each term separately as a dictionary
             if has_concatenated_obs:
                 self.single_observation_space[group_name] = gym.spaces.Box(
-                    low=-np.inf, high=np.inf, shape=group_dim  # type: ignore
+                    low=-np.inf,
+                    high=np.inf,
+                    shape=group_dim,  # type: ignore
                 )
             else:
                 self.single_observation_space[group_name] = gym.spaces.Dict(
                     {
                         term_name: gym.spaces.Box(
-                            low=-np.inf, high=np.inf, shape=term_dim  # type: ignore
+                            low=-np.inf,
+                            high=np.inf,
+                            shape=term_dim,  # type: ignore
                         )
                         for term_name, term_dim in zip(group_term_names, group_dim)
                     }

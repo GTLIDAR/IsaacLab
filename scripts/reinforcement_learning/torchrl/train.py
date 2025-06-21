@@ -10,16 +10,15 @@
 import argparse
 import sys
 
-from isaac_lab.app import AppLauncher
-
-# local imports
-import cli_args  # isort: skip
+from isaaclab.app import AppLauncher
 
 
 # add argparse arguments
-parser = argparse.ArgumentParser(description="Train an RL agent with torchrl.")
+parser = argparse.ArgumentParser(
+    description="Train an RL agent with Stable-Baselines3."
+)
 parser.add_argument(
-    "--video", action="store_true", default=True, help="Record videos during training."
+    "--video", action="store_true", default=False, help="Record videos during training."
 )
 parser.add_argument(
     "--video_length",
@@ -43,15 +42,31 @@ parser.add_argument(
 parser.add_argument(
     "--max_iterations", type=int, default=None, help="RL Policy training iterations."
 )
-# append torchrl cli arguments
-cli_args.add_torchrl_args(parser)
+parser.add_argument(
+    "--resume_training",
+    action="store_true",
+    default=False,
+    help="Resume training from a checkpoint.",
+)
+parser.add_argument(
+    "--note",
+    type=str,
+    default=None,
+    help="Add a note to the log directory name.",
+)
+parser.add_argument(
+    "--checkpoint",
+    type=str,
+    default=None,
+    help="Path to the checkpoint to resume training from.",
+)
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
+# parse the arguments
 args_cli, hydra_args = parser.parse_known_args()
-
 # always enable cameras to record video
 if args_cli.video:
-    args_cli.enable_cameras = True
+    args_cli.enable_cameras = True  # type: ignore
 
 # clear out sys.argv for Hydra
 sys.argv = [sys.argv[0]] + hydra_args
@@ -60,65 +75,76 @@ sys.argv = [sys.argv[0]] + hydra_args
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
+
 """Rest everything follows."""
 
-import gymnasium as gym
 import os
-import torch
 from datetime import datetime
+import random
+from omegaconf import OmegaConf
+from dataclasses import asdict
 
+import gymnasium as gym
+import torch
 from isaaclab.envs import ManagerBasedRLEnvCfg
 from isaaclab.utils.dict import print_dict
 from isaaclab.utils.io import dump_pickle, dump_yaml
-
-from isaaclab_tasks.utils import get_checkpoint_path
+from isaaclab_rl.torchrl import IsaacLabWrapper, PatchTerminalObs, RLOptPPOConfig
 from isaaclab_tasks.utils.hydra import hydra_task_config
-from isaaclab_rl.torchrl import (
-    OnPolicyPPORunner,
-    OnPolicyPPORunnerCfg,
-    TorchRLEnvWrapper,
+
+from rlopt.agent.ppo.ppo import PPO
+
+from torchrl.envs import (
+    TransformedEnv,
+    Compose,
+    RewardSum,
+    StepCounter,
+    ClipTransform,
+    VecNormV2,
 )
 
-torch.backends.cuda.matmul.allow_tf32 = True
-torch.backends.cudnn.allow_tf32 = True
-torch.backends.cudnn.deterministic = False
-torch.backends.cudnn.benchmark = False
 
+@hydra_task_config(args_cli.task, "rlopt_cfg_entry_point")
+def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RLOptPPOConfig):  # type: ignore
+    # randomly sample a seed if seed = -1
+    if args_cli.seed == -1:
+        args_cli.seed = random.randint(0, 10000)  # type: ignore
 
-@hydra_task_config(args_cli.task, "torchrl_cfg_entry_point")
-def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: OnPolicyPPORunnerCfg):
-    """Train with torchrl agent."""
     # override configurations with non-hydra CLI arguments
-    # print("aAAAAAAA")
-    agent_cfg = cli_args.update_torchrl_cfg_with_yaml(agent_cfg, args_cli)
-    # print("bbbbbbbbbb")
     env_cfg.scene.num_envs = (
         args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
     )
-    agent_cfg.max_iterations = (
-        args_cli.max_iterations
-        if args_cli.max_iterations is not None
-        else agent_cfg.max_iterations
-    )
+    agent_cfg.env.env_name = args_cli.task
+    agent_cfg.env.num_envs = args_cli.num_envs
 
-    # print(agent_cfg)
+    agent_cfg.seed = args_cli.seed if args_cli.seed is not None else agent_cfg.seed
+    # max iterations for training
+    if args_cli.max_iterations is not None:
+        agent_cfg.collector.total_frames = (
+            args_cli.max_iterations * agent_cfg.collector.frames_per_batch
+        )
+
     # set the environment seed
     # note: certain randomizations occur in the environment initialization so we set the seed here
     env_cfg.seed = agent_cfg.seed
     env_cfg.sim.device = (
         args_cli.device if args_cli.device is not None else env_cfg.sim.device
     )
+    agent_cfg.env.device = env_cfg.sim.device
 
-    # specify directory for logging experiments
-    log_root_path = os.path.join("logs", "torchrl", agent_cfg.experiment_name)
-    print("aAAAAAAA")
-    log_root_path = os.path.abspath(log_root_path)
+    # directory for logging into
+    run_info = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_root_path = os.path.abspath(os.path.join("logs", "rlopt", args_cli.task))
     print(f"[INFO] Logging experiment in directory: {log_root_path}")
-    # specify directory for logging runs: {time-stamp}_{run_name}
-    log_dir = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    if agent_cfg.run_name:
-        log_dir += f"_{agent_cfg.run_name}"
-    log_dir = os.path.join(log_root_path, log_dir)
+    # The Ray Tune workflow extracts experiment name using the logging line below, hence, do not change it (see PR #2346, comment-2819298849)
+    print(f"Exact experiment name requested from command line: {run_info}")
+    log_dir = os.path.join(log_root_path, run_info)
+    agent_cfg.logger.exp_name = args_cli.task + "_" + run_info
+    # dump the configuration into log-directory
+    dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
+    dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
+    dump_pickle(os.path.join(log_dir, "params", "env.pkl"), env_cfg)
+    dump_pickle(os.path.join(log_dir, "params", "agent.pkl"), agent_cfg)
 
     # create isaac environment
     env = gym.make(
@@ -134,31 +160,32 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: OnPolicyPPORunnerCfg):
         }
         print("[INFO] Recording videos during training.")
         print_dict(video_kwargs, nesting=4)
-        env = gym.wrappers.RecordVideo(env, **video_kwargs)
+        env = gym.wrappers.RecordVideo(env, **video_kwargs)  # type: ignore
 
     # wrap environment for TorchRL
-    env = TorchRLEnvWrapper(env)
+    env = IsaacLabWrapper(env)
+    env = TransformedEnv(
+        env=env,
+        transform=Compose(
+            PatchTerminalObs(),
+            VecNormV2(in_keys=["observation"], decay=0.99999, eps=1e-2),
+            ClipTransform(in_keys=["reward"], low=-1, high=1),
+            RewardSum(),
+            StepCounter(1000),
+        ),
+    )
 
-    # create runner from rsl-rl
-    runner = OnPolicyPPORunner(env, agent_cfg, log_dir=log_dir, device=agent_cfg.device)
-    # save resume path before creating a new log_dir
-    if agent_cfg.resume:
-        # get path to previous checkpoint
-        resume_path = get_checkpoint_path(
-            log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint
-        )
-        print(f"[INFO]: Loading model checkpoint from: {resume_path}")
-        # load previously trained model
-        runner.load(resume_path, eval_mode=False)
-
-    env.unwrapped.seed(agent_cfg.seed)
+    agent = PPO(
+        env=env,
+        config=OmegaConf.create(asdict(agent_cfg)),  # type: ignore
+    )
 
     # dump the configuration into log-directory
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
     dump_pickle(os.path.join(log_dir, "params", "env.pkl"), env_cfg)
 
     # run training
-    runner.learn(init_at_random_ep_len=True)
+    agent.train()
 
     # close the simulator
     env.close()
@@ -168,4 +195,4 @@ if __name__ == "__main__":
     # run the main function
     main()
     # close sim app
-    simulation_app.close()
+    simulation_app.close()  # type: ignore

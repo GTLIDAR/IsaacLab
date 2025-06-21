@@ -21,11 +21,11 @@ class DigitV3FlatEnvCfg(DigitV3RoughEnvCfg):
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None
         self.curriculum.terrain_levels = None  # type: ignore
-        self.observations.observation.height_scan = None  # type: ignore
+        # self.observations.policy.height_scan = None  # type: ignore
 
         self.events.base_external_force_torque = None  # type: ignore
         self.events.push_robot = None  # type: ignore
-        self.events.robot_joint_stiffness_and_damping = None  # type: ignore
+        # self.events.robot_joint_stiffness_and_damping = None  # type: ignore
 
 
 class DigitV3FlatEnvCfg_PLAY(DigitV3FlatEnvCfg):

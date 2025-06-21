@@ -1,6 +1,6 @@
 # task and env
 env:
-  env_name: Isaac-Velocity-Flat-Digit-V3-v0
+  env_name: 
   device: "cuda:0"
   num_envs:
 
@@ -15,7 +15,7 @@ logger:
   backend: wandb
   project_name: torchrl_isaaclab
   group_name: null
-  exp_name: Isaac-Velocity-Flat-Digit-V3-v0
+  exp_name: 
   test_interval: 1_000_000
   num_test_episodes: 5
   video: False
@@ -30,7 +30,7 @@ optim:
 # loss
 loss:
   gamma: 0.99
-  mini_batch_size: 9830
+  mini_batch_size: 
   epochs: 5
   gae_lambda: 0.95
   clip_epsilon: 0.2

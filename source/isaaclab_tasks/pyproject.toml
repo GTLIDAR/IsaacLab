@@ -1,3 +1,11 @@
 [build-system]
 requires = ["setuptools", "wheel", "toml"]
 build-backend = "setuptools.build_meta"
+[tool.pyrefly]
+search-path = [
+    "source/isaaclab_tasks",
+    "source/isaaclab",
+    "source/isaaclab_rl",
+    "source/isaaclab_mimic",
+    "source/isaaclab_assets",
+]
