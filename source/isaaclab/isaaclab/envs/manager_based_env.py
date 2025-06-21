@@ -12,7 +12,12 @@ import isaacsim.core.utils.torch as torch_utils
 import omni.log
 from isaacsim.core.simulation_manager import SimulationManager
 
-from isaaclab.managers import ActionManager, EventManager, ObservationManager, RecorderManager
+from isaaclab.managers import (
+    ActionManager,
+    EventManager,
+    ObservationManager,
+    RecorderManager,
+)
 from isaaclab.scene import InteractiveScene
 from isaaclab.sim import SimulationContext
 from isaaclab.ui.widgets import ManagerLiveVisualizer
@@ -91,7 +96,9 @@ class ManagerBasedEnv:
         if self.cfg.seed is not None:
             self.cfg.seed = self.seed(self.cfg.seed)
         else:
-            omni.log.warn("Seed not set for the environment. The environment creation may not be deterministic.")
+            omni.log.warn(
+                "Seed not set for the environment. The environment creation may not be deterministic."
+            )
 
         # create a simulation context to control the simulator
         if SimulationContext.instance() is None:
@@ -102,7 +109,9 @@ class ManagerBasedEnv:
             # simulation context should only be created before the environment
             # when in extension mode
             if not builtins.ISAAC_LAUNCHED_FROM_TERMINAL:
-                raise RuntimeError("Simulation context already exists. Cannot create a new one.")
+                raise RuntimeError(
+                    "Simulation context already exists. Cannot create a new one."
+                )
             self.sim: SimulationContext = SimulationContext.instance()
 
         # make sure torch is running on the correct device
@@ -114,7 +123,9 @@ class ManagerBasedEnv:
         print(f"\tEnvironment device    : {self.device}")
         print(f"\tEnvironment seed      : {self.cfg.seed}")
         print(f"\tPhysics step-size     : {self.physics_dt}")
-        print(f"\tRendering step-size   : {self.physics_dt * self.cfg.sim.render_interval}")
+        print(
+            f"\tRendering step-size   : {self.physics_dt * self.cfg.sim.render_interval}"
+        )
         print(f"\tEnvironment step-size : {self.step_dt}")
 
         if self.cfg.sim.render_interval < self.cfg.decimation:
@@ -141,7 +152,9 @@ class ManagerBasedEnv:
         # FIXME: This needs to be fixed in the future when we unify the UI functionalities even for
         # non-rendering modes.
         if self.sim.render_mode >= self.sim.RenderMode.PARTIAL_RENDERING:
-            self.viewport_camera_controller = ViewportCameraController(self, self.cfg.viewer)
+            self.viewport_camera_controller = ViewportCameraController(
+                self, self.cfg.viewer
+            )
         else:
             self.viewport_camera_controller = None
 
@@ -158,7 +171,9 @@ class ManagerBasedEnv:
         # note: this activates the physics simulation view that exposes TensorAPIs
         # note: when started in extension mode, first call sim.reset_async() and then initialize the managers
         if builtins.ISAAC_LAUNCHED_FROM_TERMINAL is False:
-            print("[INFO]: Starting the simulation. This may take a few seconds. Please wait...")
+            print(
+                "[INFO]: Starting the simulation. This may take a few seconds. Please wait..."
+            )
             with Timer("[INFO]: Time taken for simulation start", "simulation_start"):
                 self.sim.reset()
                 # update scene to pre populate data buffers for assets and sensors.
@@ -252,7 +267,10 @@ class ManagerBasedEnv:
         # perform events at the start of the simulation
         # in-case a child implementation creates other managers, the randomization should happen
         # when all the other managers are created
-        if self.__class__ == ManagerBasedEnv and "startup" in self.event_manager.available_modes:
+        if (
+            self.__class__ == ManagerBasedEnv
+            and "startup" in self.event_manager.available_modes
+        ):
             self.event_manager.apply(mode="startup")
 
     def setup_manager_visualizers(self):
@@ -260,7 +278,9 @@ class ManagerBasedEnv:
 
         self.manager_visualizers = {
             "action_manager": ManagerLiveVisualizer(manager=self.action_manager),
-            "observation_manager": ManagerLiveVisualizer(manager=self.observation_manager),
+            "observation_manager": ManagerLiveVisualizer(
+                manager=self.observation_manager
+            ),
         }
 
     """
@@ -268,7 +288,10 @@ class ManagerBasedEnv:
     """
 
     def reset(
-        self, seed: int | None = None, env_ids: Sequence[int] | None = None, options: dict[str, Any] | None = None
+        self,
+        seed: int | None = None,
+        env_ids: Sequence[int] | None = None,
+        options: dict[str, Any] | None = None,
     ) -> tuple[VecEnvObs, dict]:
         """Resets the specified environments and returns observations.
 
@@ -412,7 +435,10 @@ class ManagerBasedEnv:
             # render between steps only if the GUI or an RTX sensor needs it
             # note: we assume the render interval to be the shortest accepted rendering interval.
             #    If a camera needs rendering at a faster frequency, this will lead to unexpected behavior.
-            if self._sim_step_counter % self.cfg.sim.render_interval == 0 and is_rendering:
+            if (
+                self._sim_step_counter % self.cfg.sim.render_interval == 0
+                and is_rendering
+            ):
                 self.sim.render()
             # update buffers at sim dt
             self.scene.update(dt=self.physics_dt)
@@ -483,7 +509,9 @@ class ManagerBasedEnv:
         # apply events such as randomization for environments that need a reset
         if "reset" in self.event_manager.available_modes:
             env_step_count = self._sim_step_counter // self.cfg.decimation
-            self.event_manager.apply(mode="reset", env_ids=env_ids, global_env_step_count=env_step_count)
+            self.event_manager.apply(
+                mode="reset", env_ids=env_ids, global_env_step_count=env_step_count
+            )
 
         # iterate over all managers and reset them
         # this returns a dictionary of information which is stored in the extras

@@ -13,7 +13,7 @@ import torch
 from collections.abc import Sequence
 from typing import Any, ClassVar
 
-from isaacsim.core.version import get_version
+from isaacsim.core.version import get_version  # type: ignore[import-untyped]
 
 from isaaclab.managers import (
     CommandManager,
@@ -63,7 +63,10 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
     metadata: ClassVar[dict[str, Any]] = {
         "render_modes": [None, "human", "rgb_array"],
         "isaac_sim_version": get_version(),
+        "autoreset_mode": "SameStep",
     }
+    autoreset_mode = "SameStep"
+
     """Metadata for the environment."""
 
     cfg: ManagerBasedRLEnvCfg
@@ -269,6 +272,9 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
             # record the final observation
             self.final_obs_buf: dict = self.observation_manager.compute()
 
+            # add the final observation to the extras
+            self.extras["final_obs"] = self.final_obs_buf
+
             # trigger recorder terms for pre-reset calls
             self.recorder_manager.record_pre_reset(reset_env_ids)
 
@@ -283,11 +289,6 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
             # trigger recorder terms for post-reset calls
             self.recorder_manager.record_post_reset(reset_env_ids)
-        else:
-            self.final_obs_buf = dict()
-
-        # add the terminal observation to the extras
-        self.extras["terminal_obs"] = self.final_obs_buf
 
         # -- update command
         self.command_manager.compute(dt=self.step_dt)
@@ -442,6 +443,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         Args:
             env_ids: List of environment ids which must be reset
         """
+        print(f"in _reset_idx: {env_ids=}")
         # update the curriculum for environments that need a reset
         self.curriculum_manager.compute(env_ids=env_ids)
         # reset the internal buffers of the scene elements

@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 from dataclasses import MISSING
-
+from collections import deque
+import gymnasium as gym
 import torch
-from torchrl.envs.libs.gym import GymWrapper
+from torchrl.envs.libs.gym import GymWrapper, GymLikeEnv
 from torchrl.envs import Transform
-import tensordict
-from tensordict import TensorDict
+from tensordict import TensorDictBase, TensorDict
 
-import isaaclab
 from isaaclab.envs import ManagerBasedRLEnv
 from isaaclab.utils import configclass
 
@@ -74,9 +73,28 @@ class IsaacLabWrapper(GymWrapper):
             convert_actions_to_numpy=convert_actions_to_numpy,
             **kwargs,
         )
+        self.log_infos = deque(maxlen=100)
 
     def seed(self, seed: int | None):
         self._set_seed(seed)
+
+    def _build_env(
+        self,
+        env,
+        from_pixels: bool = False,
+        pixels_only: bool = False,
+    ) -> gym.core.Env:  # noqa: F821
+        env = super()._build_env(
+            env,
+            from_pixels=from_pixels,
+            pixels_only=pixels_only,
+        )
+        env.autoreset_mode = "SameStep"
+        return env
+
+    @property
+    def _is_batched(self) -> bool:
+        return True
 
     def _output_transform(self, step_outputs_tuple):  # type: ignore
         # IsaacLab will modify the `terminated` and `truncated` tensors
@@ -85,19 +103,37 @@ class IsaacLabWrapper(GymWrapper):
         observations, reward, terminated, truncated, info = step_outputs_tuple
         done = terminated | truncated
         reward = reward.unsqueeze(-1)  # to get to (num_envs, 1)
-        terminal_obs = info.pop("terminal_obs", {})
-        if terminal_obs != {}:
-            terminal_obs = self.read_obs(terminal_obs)
-            info["terminal_obs"] = terminal_obs
 
-        return (
-            observations,
-            reward,
-            terminated.clone(),
-            truncated.clone(),
-            done.clone(),
-            info,
-        )
+        self.log_infos.append(info["log"])
+
+        if "final_obs" in info:
+            info["final_obs"] = self.read_obs(info["final_obs"])
+            return (
+                observations,
+                reward,
+                terminated.clone(),
+                truncated.clone(),
+                done.clone(),
+                {"final_obs": info["final_obs"]},
+            )
+        else:
+            return (
+                observations,
+                reward,
+                terminated.clone(),
+                truncated.clone(),
+                done.clone(),
+                {},
+            )
+
+    def _reset_output_transform(self, reset_data):
+        """Transform the output of the reset method."""
+        observations, info = reset_data
+        if "final_obs" in info:
+            info["final_obs"] = self.read_obs(info["final_obs"])
+            return (observations, {"final_obs": info["final_obs"]})
+        else:
+            return (observations, {})
 
 
 # we need to patch the terminal observation to the next observation
@@ -153,6 +189,9 @@ class RLOptPPOConfig:
         total_frames: int = 500_000_000
         """Total number of frames to collect."""
 
+        set_truncated: bool = True
+        """Whether to set truncated to True when the episode is done."""
+
     @configclass
     class LoggerConfig:
         """Logger configuration for RLOpt PPO."""
@@ -160,7 +199,7 @@ class RLOptPPOConfig:
         backend: str = "wandb"
         """Logger backend to use."""
 
-        project_name: str = "torchrl_isaaclab"
+        project_name: str = "IsaacLab"
         """Project name for logging."""
 
         group_name: str | None = None

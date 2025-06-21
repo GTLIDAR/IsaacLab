@@ -162,13 +162,12 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RLOptPPOConfig):  # type: ign
         print_dict(video_kwargs, nesting=4)
         env = gym.wrappers.RecordVideo(env, **video_kwargs)  # type: ignore
 
-    # wrap environment for TorchRL
     env = IsaacLabWrapper(env)
     env = TransformedEnv(
         env=env,
         transform=Compose(
-            PatchTerminalObs(),
-            VecNormV2(in_keys=["observation"], decay=0.99999, eps=1e-2),
+            # PatchTerminalObs(),
+            # VecNormV2(in_keys=["observation"], decay=0.99999, eps=1e-2),
             ClipTransform(in_keys=["reward"], low=-1, high=1),
             RewardSum(),
             StepCounter(1000),

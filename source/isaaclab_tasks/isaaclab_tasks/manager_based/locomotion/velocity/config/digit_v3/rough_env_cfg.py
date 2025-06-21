@@ -32,7 +32,7 @@ class DigitV3ObservationsCfg:
 
     # observation groups
     policy: StudentObsCfg = StudentObsCfg()
-    observation: StudentObsCfg = StudentObsCfg()
+    agent: StudentObsCfg = StudentObsCfg()
 
 
 @configclass
