@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -68,15 +68,24 @@ class RslRlVecEnvWrapper(VecEnv):
         if hasattr(self.unwrapped, "observation_manager"):
             self.num_obs = self.unwrapped.observation_manager.group_obs_dim["policy"][0]
         else:
-            self.num_obs = gym.spaces.flatdim(self.unwrapped.single_observation_space["policy"])
+            self.num_obs = gym.spaces.flatdim(
+                self.unwrapped.single_observation_space["policy"]
+            )
         # -- privileged observations
         if (
             hasattr(self.unwrapped, "observation_manager")
             and "critic" in self.unwrapped.observation_manager.group_obs_dim
         ):
-            self.num_privileged_obs = self.unwrapped.observation_manager.group_obs_dim["critic"][0]
-        elif hasattr(self.unwrapped, "num_states") and "critic" in self.unwrapped.single_observation_space:
-            self.num_privileged_obs = gym.spaces.flatdim(self.unwrapped.single_observation_space["critic"])
+            self.num_privileged_obs = self.unwrapped.observation_manager.group_obs_dim[
+                "critic"
+            ][0]
+        elif (
+            hasattr(self.unwrapped, "num_states")
+            and "critic" in self.unwrapped.single_observation_space
+        ):
+            self.num_privileged_obs = gym.spaces.flatdim(
+                self.unwrapped.single_observation_space["critic"]
+            )
         else:
             self.num_privileged_obs = 0
 

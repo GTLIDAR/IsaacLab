@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -64,6 +64,7 @@ def process_sb3_cfg(cfg: dict) -> dict:
     """
 
     def update_dict(hyperparams: dict[str, Any]) -> dict[str, Any]:
+
         for key, value in hyperparams.items():
             if isinstance(value, dict):
                 update_dict(value)
@@ -95,7 +96,8 @@ def process_sb3_cfg(cfg: dict) -> dict:
                         hyperparams[key] = constant_fn(float(value))
                     else:
                         raise ValueError(f"Invalid value for {key}: {hyperparams[key]}")
-
+        # print("aaaaaaaaaaaaaa")
+        # print(hyperparams)
         return hyperparams
 
     # parse agent configuration and convert to classes

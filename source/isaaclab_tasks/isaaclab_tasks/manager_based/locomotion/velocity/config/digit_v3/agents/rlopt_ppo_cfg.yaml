@@ -1,0 +1,68 @@
+# task and env
+env:
+  env_name: 
+  device: "cuda:0"
+  num_envs:
+
+# collector
+collector:
+  num_collectors: 1
+  frames_per_batch: 49152
+  total_frames: 500_000_000
+
+# logger
+logger:
+  backend: wandb
+  project_name: torchrl_isaaclab
+  group_name: null
+  exp_name: 
+  test_interval: 1_000_000
+  num_test_episodes: 5
+  video: False
+
+# Optim
+optim:
+  lr: !!float 3e-4
+  weight_decay: 0.0
+  anneal_lr: True
+  device: "cuda:0"
+
+# loss
+loss:
+  gamma: 0.99
+  mini_batch_size: 
+  epochs: 5
+  gae_lambda: 0.95
+  clip_epsilon: 0.2
+  clip_value: False
+  anneal_clip_epsilon: False
+  critic_coef: 1.0
+  entropy_coef: 0.01
+  loss_critic_type: l2
+
+# torch compile
+compile:
+  compile: False
+  compile_mode: default
+  cudagraphs: False
+
+# actor and critic
+policy:
+  num_cells: [512, 256, 128]
+
+value_net:
+  num_cells: [512, 256, 128]
+
+# trainer
+trainer:
+  optim_steps_per_batch: 10
+  clip_grad_norm: True
+  clip_norm: 0.5
+  progress_bar: True
+  save_trainer_interval: 10_000
+  log_interval: 1000
+  save_trainer_file: None
+  frame_skip: 1
+
+device: cuda:0
+seed: 0

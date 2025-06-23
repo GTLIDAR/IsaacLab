@@ -1,8 +1,7 @@
-# Copyright (c) 2024-2025, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -20,7 +19,9 @@ class InitialStateRecorder(RecorderTerm):
                 return {k: extract_env_ids_values(v) for k, v in value.items()}
             return value[env_ids]
 
-        return "initial_state", extract_env_ids_values(self._env.scene.get_state(is_relative=True))
+        return "initial_state", extract_env_ids_values(
+            self._env.scene.get_state(is_relative=True)
+        )
 
 
 class PostStepStatesRecorder(RecorderTerm):
@@ -42,3 +43,10 @@ class PreStepFlatPolicyObservationsRecorder(RecorderTerm):
 
     def record_pre_step(self):
         return "obs", self._env.obs_buf["policy"]
+
+
+class PreResetStatesRecorder(RecorderTerm):
+    """Recorder term that records the state of the environment at the end of each step."""
+
+    def record_pre_reset(self):
+        return "final_observation", self._env.observation_manager._obs_buffer
