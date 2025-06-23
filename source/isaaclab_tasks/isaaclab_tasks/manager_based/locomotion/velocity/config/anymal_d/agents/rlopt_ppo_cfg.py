@@ -34,4 +34,4 @@ class DigitV3FlatRLOptPPOConfig(DigitV3RLOptPPOConfig):
         # Adjust configurations for flat terrain (typically easier)
         self.policy.num_cells = [256, 256, 128]
         self.value_net.num_cells = [256, 256, 128]
-        self.collector.total_frames = 300_000_000  # Fewer frames for flat terrain
+        self.collector.total_frames = 300000000  # Fewer frames for flat terrain

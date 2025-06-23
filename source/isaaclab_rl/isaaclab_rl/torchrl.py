@@ -6,9 +6,11 @@ from typing import Any
 from dataclasses import MISSING
 from collections import deque
 import gymnasium as gym
+import numpy as np
 import torch
 from torchrl.envs.libs.gym import GymWrapper, GymLikeEnv
 from torchrl.envs import Transform
+from torchrl.envs.libs.gym import terminal_obs_reader
 from tensordict import TensorDictBase, TensorDict
 
 from isaaclab.envs import ManagerBasedRLEnv
@@ -101,20 +103,31 @@ class IsaacLabWrapper(GymWrapper):
         #  in-place. We clone them here to make sure data doesn't inadvertently get modified.
         # The variable naming follows torchrl's convention here.
         observations, reward, terminated, truncated, info = step_outputs_tuple
+        for k, v in observations.items():
+            if torch.isnan(v).any():
+                raise ValueError(
+                    f"NaN values found in observation {k} during step. "
+                    "This is likely due to an error in the environment or the model."
+                )
+        if torch.isnan(reward).any():
+            raise ValueError(
+                "NaN values found in reward during step. "
+                "This is likely due to an error in the environment or the model."
+            )
+
         done = terminated | truncated
         reward = reward.unsqueeze(-1)  # to get to (num_envs, 1)
 
         self.log_infos.append(info["log"])
 
         if "final_obs" in info:
-            info["final_obs"] = self.read_obs(info["final_obs"])
             return (
                 observations,
                 reward,
                 terminated.clone(),
                 truncated.clone(),
                 done.clone(),
-                {"final_obs": info["final_obs"]},
+                {"final_obs": {k: v.clone() for k, v in observations.items()}},
             )
         else:
             return (
@@ -129,11 +142,7 @@ class IsaacLabWrapper(GymWrapper):
     def _reset_output_transform(self, reset_data):
         """Transform the output of the reset method."""
         observations, info = reset_data
-        if "final_obs" in info:
-            info["final_obs"] = self.read_obs(info["final_obs"])
-            return (observations, {"final_obs": info["final_obs"]})
-        else:
-            return (observations, {})
+        return (observations, {})
 
 
 # we need to patch the terminal observation to the next observation
@@ -157,6 +166,50 @@ class PatchTerminalObs(Transform):
             next_obs[mask] = term_obs[mask]  # type: ignore
             td.set("next_observation", next_obs)
         return td
+
+
+class IsaacLabTerminalObsReader(terminal_obs_reader):
+    """A terminal observation reader for IsaacLab environments.
+
+    This reader extracts the terminal observation from the environment's info dictionary.
+    It is used to read the terminal observation when the environment is reset."""
+
+    def __call__(self, info_dict, tensordict):
+        """Read the terminal observation from the info dictionary and update the tensordict.
+
+        Args:
+            info_dict (dict): The info dictionary from the environment.
+            tensordict (TensorDictBase): The tensordict to update with the terminal observation.
+        Returns:
+            TensorDictBase: The updated tensordict with the terminal observation.
+        """
+        # convert info_dict to a tensordict
+        info_dict = TensorDict(info_dict)
+        # get the terminal observation
+        terminal_obs = info_dict.pop(self.backend_key[self.backend], None)
+
+        # get the terminal info dict
+        terminal_info = info_dict.pop(self.backend_info_key[self.backend], None)
+
+        if terminal_info is None:
+            terminal_info = {}
+
+        super().__call__(info_dict, tensordict)
+        if not self._final_validated:
+            self.info_spec[self.name] = self._obs_spec.update(self.info_spec)
+            self._final_validated = True
+        final_info = terminal_info.copy()
+        if terminal_obs is not None:
+            final_info["observation"] = terminal_obs
+
+        for key in self.info_spec[self.name].keys():
+            tensordict.set(
+                (self.name, key),
+                terminal_obs[key]
+                if terminal_obs is not None
+                else self.info_spec[self.name, key].zero(),
+            )
+        return tensordict
 
 
 @configclass
@@ -186,10 +239,10 @@ class RLOptPPOConfig:
         frames_per_batch: int = 49150
         """Number of frames per batch."""
 
-        total_frames: int = 500_000_000
+        total_frames: int = 100_000_000
         """Total number of frames to collect."""
 
-        set_truncated: bool = True
+        set_truncated: bool = False
         """Whether to set truncated to True when the episode is done."""
 
     @configclass
@@ -271,13 +324,13 @@ class RLOptPPOConfig:
     class CompileConfig:
         """Compilation configuration for RLOpt PPO."""
 
-        compile: bool = True
+        compile: bool = False
         """Whether to compile the model."""
 
         compile_mode: str = "default"
         """Compilation mode."""
 
-        cudagraphs: bool = True
+        cudagraphs: bool = False
         """Whether to use CUDA graphs."""
 
     @configclass

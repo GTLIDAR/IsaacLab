@@ -89,7 +89,12 @@ import torch
 from isaaclab.envs import ManagerBasedRLEnvCfg
 from isaaclab.utils.dict import print_dict
 from isaaclab.utils.io import dump_pickle, dump_yaml
-from isaaclab_rl.torchrl import IsaacLabWrapper, PatchTerminalObs, RLOptPPOConfig
+from isaaclab_rl.torchrl import (
+    IsaacLabWrapper,
+    PatchTerminalObs,
+    RLOptPPOConfig,
+    IsaacLabTerminalObsReader,
+)
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
 from rlopt.agent.ppo.ppo import PPO
@@ -163,6 +168,11 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RLOptPPOConfig):  # type: ign
         env = gym.wrappers.RecordVideo(env, **video_kwargs)  # type: ignore
 
     env = IsaacLabWrapper(env)
+    env = env.set_info_dict_reader(
+        IsaacLabTerminalObsReader(
+            observation_spec=env.observation_spec, backend="gymnasium"
+        )
+    )
     env = TransformedEnv(
         env=env,
         transform=Compose(
