@@ -273,7 +273,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
             self.final_obs_buf: dict = self.observation_manager.compute()
 
             # add the final observation to the extras
-            self.extras["final_obs"] = self.final_obs_buf
+            self.extras["final_obs_buf"] = self.final_obs_buf
 
             # trigger recorder terms for pre-reset calls
             self.recorder_manager.record_pre_reset(reset_env_ids)

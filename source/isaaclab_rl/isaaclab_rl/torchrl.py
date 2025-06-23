@@ -120,14 +120,18 @@ class IsaacLabWrapper(GymWrapper):
 
         self.log_infos.append(info["log"])
 
-        if "final_obs" in info:
+        if "final_obs_buf" in info:
             return (
                 observations,
                 reward,
                 terminated.clone(),
                 truncated.clone(),
                 done.clone(),
-                {"final_obs": {k: v.clone() for k, v in observations.items()}},
+                {
+                    "final_obs_buf": {
+                        k: v.clone() for k, v in info["final_obs_buf"].items()
+                    }
+                },
             )
         else:
             return (
@@ -186,7 +190,7 @@ class IsaacLabTerminalObsReader(terminal_obs_reader):
         # convert info_dict to a tensordict
         info_dict = TensorDict(info_dict)
         # get the terminal observation
-        terminal_obs = info_dict.pop(self.backend_key[self.backend], None)
+        terminal_obs = info_dict.pop("final_obs_buf", None)
 
         # get the terminal info dict
         terminal_info = info_dict.pop(self.backend_info_key[self.backend], None)
@@ -305,7 +309,7 @@ class RLOptPPOConfig:
         clip_epsilon: float = 0.2
         """Clipping epsilon for PPO."""
 
-        clip_value: bool = False
+        clip_value: bool = True
         """Whether to clip value function."""
 
         anneal_clip_epsilon: bool = False

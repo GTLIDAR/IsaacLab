@@ -12,8 +12,8 @@ from isaaclab_rl.torchrl import RLOptPPOConfig
 
 # Convenience configurations for different scenarios
 @configclass
-class DigitV3RLOptPPOConfig(RLOptPPOConfig):
-    """RLOpt PPO configuration for Digit V3."""
+class ANYMALDRLOptPPOConfig(RLOptPPOConfig):
+    """RLOpt PPO configuration for ANYMAL-D."""
 
     def __post_init__(self):
         """Post-initialization setup."""
@@ -24,14 +24,14 @@ class DigitV3RLOptPPOConfig(RLOptPPOConfig):
 
 
 @configclass
-class DigitV3FlatRLOptPPOConfig(DigitV3RLOptPPOConfig):
-    """RLOpt PPO configuration for Digit V3 on flat terrain."""
+class ANYMALDRLOptPPOFlatConfig(ANYMALDRLOptPPOConfig):
+    """RLOpt PPO configuration for ANYMAL-D on flat terrain."""
 
     def __post_init__(self):
         """Post-initialization setup for flat terrain."""
         super().__post_init__()
 
         # Adjust configurations for flat terrain (typically easier)
-        self.policy.num_cells = [256, 256, 128]
-        self.value_net.num_cells = [256, 256, 128]
+        self.policy.num_cells = [256, 128]
+        self.value_net.num_cells = [256, 128]
         self.collector.total_frames = 300000000  # Fewer frames for flat terrain

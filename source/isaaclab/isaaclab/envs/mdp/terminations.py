@@ -32,14 +32,47 @@ def time_out(env: ManagerBasedRLEnv) -> torch.Tensor:
     return env.episode_length_buf >= env.max_episode_length
 
 
-def command_resample(env: ManagerBasedRLEnv, command_name: str, num_resamples: int = 1) -> torch.Tensor:
+def command_resample(
+    env: ManagerBasedRLEnv, command_name: str, num_resamples: int = 1
+) -> torch.Tensor:
     """Terminate the episode based on the total number of times commands have been re-sampled.
 
     This makes the maximum episode length fluid in nature as it depends on how the commands are
     sampled. It is useful in situations where delayed rewards are used :cite:`rudin2022advanced`.
     """
     command: CommandTerm = env.command_manager.get_term(command_name)
-    return torch.logical_and((command.time_left <= env.step_dt), (command.command_counter == num_resamples))
+    return torch.logical_and(
+        (command.time_left <= env.step_dt), (command.command_counter == num_resamples)
+    )
+
+
+def nan_observation(env: ManagerBasedRLEnv) -> torch.Tensor:
+    """Terminate the episode when NaN values are detected in the observation buffer.
+
+    This function checks for NaN values in the observation buffer and terminates episodes
+    where any NaN values are found. This is useful for detecting numerical instabilities
+    or invalid states that could cause training issues.
+    """
+    # Check for NaN values in all observation tensors
+    has_nan = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+
+    def check_dict_for_nan(data):
+        if isinstance(data, dict):
+            for value in data.values():
+                if isinstance(value, torch.Tensor):
+                    if len(value.shape) == 1:
+                        continue
+                    # Tensor is of shape (num_envs, feature_dim)
+                    # Check if any feature has NaN for any environment
+                    has_nan[:] = torch.logical_or(
+                        has_nan, torch.any(torch.isnan(value), dim=1)
+                    )
+                elif isinstance(value, dict):
+                    # Recursively check nested dictionary
+                    check_dict_for_nan(value)
+
+    check_dict_for_nan(env.obs_buf)
+    return has_nan
 
 
 """
@@ -48,7 +81,9 @@ Root terminations.
 
 
 def bad_orientation(
-    env: ManagerBasedRLEnv, limit_angle: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+    env: ManagerBasedRLEnv,
+    limit_angle: float,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
 ) -> torch.Tensor:
     """Terminate when the asset's orientation is too far from the desired orientation limits.
 
@@ -60,7 +95,9 @@ def bad_orientation(
 
 
 def root_height_below_minimum(
-    env: ManagerBasedRLEnv, minimum_height: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+    env: ManagerBasedRLEnv,
+    minimum_height: float,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
 ) -> torch.Tensor:
     """Terminate when the asset's root height is below the minimum height.
 
@@ -77,18 +114,26 @@ Joint terminations.
 """
 
 
-def joint_pos_out_of_limit(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+def joint_pos_out_of_limit(
+    env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
     """Terminate when the asset's joint positions are outside of the soft joint limits."""
     # extract the used quantities (to enable type-hinting)
     asset: Articulation = env.scene[asset_cfg.name]
     # compute any violations
-    out_of_upper_limits = torch.any(asset.data.joint_pos > asset.data.soft_joint_pos_limits[..., 1], dim=1)
-    out_of_lower_limits = torch.any(asset.data.joint_pos < asset.data.soft_joint_pos_limits[..., 0], dim=1)
+    out_of_upper_limits = torch.any(
+        asset.data.joint_pos > asset.data.soft_joint_pos_limits[..., 1], dim=1
+    )
+    out_of_lower_limits = torch.any(
+        asset.data.joint_pos < asset.data.soft_joint_pos_limits[..., 0], dim=1
+    )
     return torch.logical_or(out_of_upper_limits, out_of_lower_limits)
 
 
 def joint_pos_out_of_manual_limit(
-    env: ManagerBasedRLEnv, bounds: tuple[float, float], asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+    env: ManagerBasedRLEnv,
+    bounds: tuple[float, float],
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
 ) -> torch.Tensor:
     """Terminate when the asset's joint positions are outside of the configured bounds.
 
@@ -100,28 +145,42 @@ def joint_pos_out_of_manual_limit(
     if asset_cfg.joint_ids is None:
         asset_cfg.joint_ids = slice(None)
     # compute any violations
-    out_of_upper_limits = torch.any(asset.data.joint_pos[:, asset_cfg.joint_ids] > bounds[1], dim=1)
-    out_of_lower_limits = torch.any(asset.data.joint_pos[:, asset_cfg.joint_ids] < bounds[0], dim=1)
+    out_of_upper_limits = torch.any(
+        asset.data.joint_pos[:, asset_cfg.joint_ids] > bounds[1], dim=1
+    )
+    out_of_lower_limits = torch.any(
+        asset.data.joint_pos[:, asset_cfg.joint_ids] < bounds[0], dim=1
+    )
     return torch.logical_or(out_of_upper_limits, out_of_lower_limits)
 
 
-def joint_vel_out_of_limit(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")) -> torch.Tensor:
+def joint_vel_out_of_limit(
+    env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
     """Terminate when the asset's joint velocities are outside of the soft joint limits."""
     # extract the used quantities (to enable type-hinting)
     asset: Articulation = env.scene[asset_cfg.name]
     # compute any violations
     limits = asset.data.soft_joint_vel_limits
-    return torch.any(torch.abs(asset.data.joint_vel[:, asset_cfg.joint_ids]) > limits[:, asset_cfg.joint_ids], dim=1)
+    return torch.any(
+        torch.abs(asset.data.joint_vel[:, asset_cfg.joint_ids])
+        > limits[:, asset_cfg.joint_ids],
+        dim=1,
+    )
 
 
 def joint_vel_out_of_manual_limit(
-    env: ManagerBasedRLEnv, max_velocity: float, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+    env: ManagerBasedRLEnv,
+    max_velocity: float,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
 ) -> torch.Tensor:
     """Terminate when the asset's joint velocities are outside the provided limits."""
     # extract the used quantities (to enable type-hinting)
     asset: Articulation = env.scene[asset_cfg.name]
     # compute any violations
-    return torch.any(torch.abs(asset.data.joint_vel[:, asset_cfg.joint_ids]) > max_velocity, dim=1)
+    return torch.any(
+        torch.abs(asset.data.joint_vel[:, asset_cfg.joint_ids]) > max_velocity, dim=1
+    )
 
 
 def joint_effort_out_of_limit(
@@ -137,7 +196,8 @@ def joint_effort_out_of_limit(
     asset: Articulation = env.scene[asset_cfg.name]
     # check if any joint effort is out of limit
     out_of_limits = torch.isclose(
-        asset.data.computed_torque[:, asset_cfg.joint_ids], asset.data.applied_torque[:, asset_cfg.joint_ids]
+        asset.data.computed_torque[:, asset_cfg.joint_ids],
+        asset.data.applied_torque[:, asset_cfg.joint_ids],
     )
     return torch.any(out_of_limits, dim=1)
 
@@ -147,12 +207,18 @@ Contact sensor.
 """
 
 
-def illegal_contact(env: ManagerBasedRLEnv, threshold: float, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
+def illegal_contact(
+    env: ManagerBasedRLEnv, threshold: float, sensor_cfg: SceneEntityCfg
+) -> torch.Tensor:
     """Terminate when the contact force on the sensor exceeds the force threshold."""
     # extract the used quantities (to enable type-hinting)
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
     net_contact_forces = contact_sensor.data.net_forces_w_history
     # check if any contact force exceeds the threshold
     return torch.any(
-        torch.max(torch.norm(net_contact_forces[:, :, sensor_cfg.body_ids], dim=-1), dim=1)[0] > threshold, dim=1
+        torch.max(
+            torch.norm(net_contact_forces[:, :, sensor_cfg.body_ids], dim=-1), dim=1
+        )[0]
+        > threshold,
+        dim=1,
     )
