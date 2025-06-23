@@ -77,6 +77,7 @@ Table of Contents
    :caption: Isaac Lab
 
    source/setup/ecosystem
+   source/setup/quickstart
    source/setup/installation/index
    source/setup/installation/cloud_installation
    source/refs/reference_architecture/index

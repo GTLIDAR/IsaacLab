@@ -34,7 +34,9 @@ class MySceneCfg(InteractiveSceneCfg):
         prim_path="/World/ground",
         terrain_type="plane",
         collision_group=-1,
-        physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=1.0, dynamic_friction=1.0, restitution=0.0),
+        physics_material=sim_utils.RigidBodyMaterialCfg(
+            static_friction=1.0, dynamic_friction=1.0, restitution=0.0
+        ),
         debug_vis=False,
     )
 
@@ -135,15 +137,23 @@ class ObservationsCfg:
         base_lin_vel = ObsTerm(func=mdp.base_lin_vel)
         base_ang_vel = ObsTerm(func=mdp.base_ang_vel, scale=0.25)
         base_yaw_roll = ObsTerm(func=mdp.base_yaw_roll)
-        base_angle_to_target = ObsTerm(func=mdp.base_angle_to_target, params={"target_pos": (1000.0, 0.0, 0.0)})
+        base_angle_to_target = ObsTerm(
+            func=mdp.base_angle_to_target, params={"target_pos": (1000.0, 0.0, 0.0)}
+        )
         base_up_proj = ObsTerm(func=mdp.base_up_proj)
-        base_heading_proj = ObsTerm(func=mdp.base_heading_proj, params={"target_pos": (1000.0, 0.0, 0.0)})
+        base_heading_proj = ObsTerm(
+            func=mdp.base_heading_proj, params={"target_pos": (1000.0, 0.0, 0.0)}
+        )
         joint_pos_norm = ObsTerm(func=mdp.joint_pos_limit_normalized)
         joint_vel_rel = ObsTerm(func=mdp.joint_vel_rel, scale=0.1)
         feet_body_forces = ObsTerm(
             func=mdp.body_incoming_wrench,
             scale=0.01,
-            params={"asset_cfg": SceneEntityCfg("robot", body_names=["left_foot", "right_foot"])},
+            params={
+                "asset_cfg": SceneEntityCfg(
+                    "robot", body_names=["left_foot", "right_foot"]
+                )
+            },
         )
         actions = ObsTerm(func=mdp.last_action)
 
@@ -152,7 +162,7 @@ class ObservationsCfg:
             self.concatenate_terms = True
 
     # observation groups
-    policy: PolicyCfg = PolicyCfg()
+    observation: PolicyCfg = PolicyCfg()
 
 
 @configclass
@@ -180,14 +190,20 @@ class RewardsCfg:
     """Reward terms for the MDP."""
 
     # (1) Reward for moving forward
-    progress = RewTerm(func=mdp.progress_reward, weight=1.0, params={"target_pos": (1000.0, 0.0, 0.0)})
+    progress = RewTerm(
+        func=mdp.progress_reward, weight=1.0, params={"target_pos": (1000.0, 0.0, 0.0)}
+    )
     # (2) Stay alive bonus
     alive = RewTerm(func=mdp.is_alive, weight=2.0)
     # (3) Reward for non-upright posture
-    upright = RewTerm(func=mdp.upright_posture_bonus, weight=0.1, params={"threshold": 0.93})
+    upright = RewTerm(
+        func=mdp.upright_posture_bonus, weight=0.1, params={"threshold": 0.93}
+    )
     # (4) Reward for moving in the right direction
     move_to_target = RewTerm(
-        func=mdp.move_to_target_bonus, weight=0.5, params={"threshold": 0.8, "target_pos": (1000.0, 0.0, 0.0)}
+        func=mdp.move_to_target_bonus,
+        weight=0.5,
+        params={"threshold": 0.8, "target_pos": (1000.0, 0.0, 0.0)},
     )
     # (5) Penalty for large action commands
     action_l2 = RewTerm(func=mdp.action_l2, weight=-0.01)
@@ -237,7 +253,9 @@ class TerminationsCfg:
     # (1) Terminate if the episode length is exceeded
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
     # (2) Terminate if the robot falls
-    torso_height = DoneTerm(func=mdp.root_height_below_minimum, params={"minimum_height": 0.8})
+    torso_height = DoneTerm(
+        func=mdp.root_height_below_minimum, params={"minimum_height": 0.8}
+    )
 
 
 @configclass

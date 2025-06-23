@@ -44,7 +44,9 @@ class RslRlVecEnvWrapper(VecEnv):
             ValueError: When the environment is not an instance of :class:`ManagerBasedRLEnv` or :class:`DirectRLEnv`.
         """
         # check that input is valid
-        if not isinstance(env.unwrapped, ManagerBasedRLEnv) and not isinstance(env.unwrapped, DirectRLEnv):
+        if not isinstance(env.unwrapped, ManagerBasedRLEnv) and not isinstance(
+            env.unwrapped, DirectRLEnv
+        ):
             raise ValueError(
                 "The environment must be inherited from ManagerBasedRLEnv or DirectRLEnv. Environment type:"
                 f" {type(env)}"
@@ -66,15 +68,24 @@ class RslRlVecEnvWrapper(VecEnv):
         if hasattr(self.unwrapped, "observation_manager"):
             self.num_obs = self.unwrapped.observation_manager.group_obs_dim["policy"][0]
         else:
-            self.num_obs = gym.spaces.flatdim(self.unwrapped.single_observation_space["policy"])
+            self.num_obs = gym.spaces.flatdim(
+                self.unwrapped.single_observation_space["policy"]
+            )
         # -- privileged observations
         if (
             hasattr(self.unwrapped, "observation_manager")
             and "critic" in self.unwrapped.observation_manager.group_obs_dim
         ):
-            self.num_privileged_obs = self.unwrapped.observation_manager.group_obs_dim["critic"][0]
-        elif hasattr(self.unwrapped, "num_states") and "critic" in self.unwrapped.single_observation_space:
-            self.num_privileged_obs = gym.spaces.flatdim(self.unwrapped.single_observation_space["critic"])
+            self.num_privileged_obs = self.unwrapped.observation_manager.group_obs_dim[
+                "critic"
+            ][0]
+        elif (
+            hasattr(self.unwrapped, "num_states")
+            and "critic" in self.unwrapped.single_observation_space
+        ):
+            self.num_privileged_obs = gym.spaces.flatdim(
+                self.unwrapped.single_observation_space["critic"]
+            )
         else:
             self.num_privileged_obs = 0
 
@@ -174,6 +185,7 @@ class RslRlVecEnvWrapper(VecEnv):
             actions = torch.clamp(actions, -self.clip_actions, self.clip_actions)
         # record step information
         obs_dict, rew, terminated, truncated, extras = self.env.step(actions)
+        # print(f"[INFO] Time taken for step: {(time.time_ns() - time_now)/1e9} ns")
         # compute dones for compatibility with RSL-RL
         dones = (terminated | truncated).to(dtype=torch.long)
         # move extra observations to the extras dict

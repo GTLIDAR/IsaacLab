@@ -39,7 +39,7 @@ extra_standard_library = [
     "tqdm",
     "torchvision",
     "transformers",
-    "einops" # Needed for transformers, doesn't always auto-install
+    "einops",       # Needed for transformers, doesn't always auto-install
 ]
 # Imports from Isaac Sim and Omniverse
 known_third_party = [
@@ -55,10 +55,7 @@ known_third_party = [
 # Imports from this repository
 known_first_party = "isaaclab"
 known_assets_firstparty = "isaaclab_assets"
-known_extra_firstparty = [
-    "isaaclab_rl",
-    "isaaclab_mimic",
-]
+known_extra_firstparty = ["isaaclab_rl", "isaaclab_mimic"]
 known_task_firstparty = "isaaclab_tasks"
 # Imports from the local folder
 known_local_folder = "config"
@@ -66,14 +63,7 @@ known_local_folder = "config"
 [tool.pyright]
 
 include = ["source", "scripts"]
-exclude = [
-    "**/__pycache__",
-    "**/_isaac_sim",
-    "**/docs",
-    "**/logs",
-    ".git",
-    ".vscode",
-]
+exclude = ["**/__pycache__", "**/_isaac_sim", "**/docs", "**/logs", ".git", ".vscode"]
 
 typeCheckingMode = "basic"
 pythonVersion = "3.10"
@@ -90,6 +80,9 @@ reportGeneralTypeIssues = "none"       # -> raises 218 errors (usage of literal 
 reportOptionalMemberAccess = "warning" # -> raises 8 errors
 reportPrivateUsage = "warning"
 
+# extraPaths = ["${workspaceFolder}/source/extensions/omni.isaac.lab_tasks",
+#                 "${workspaceFolder}/source/extensions/omni.isaac.lab",
+#                 "${workspaceFolder}/source/extensions/omni.isaac.lab_assets"]
 
 [tool.codespell]
 skip = '*.usd,*.svg,*.png,_isaac_sim*,*.bib,*.css,*/_build'
@@ -98,3 +91,20 @@ quiet-level = 0
 ignore-words-list = "haa,slq,collapsable,buss"
 # todo: this is hack to deal with incorrect spelling of "Environment" in the Isaac Sim grid world asset
 exclude-file = "source/isaaclab/isaaclab/sim/spawners/from_files/from_files.py"
+
+[tool.ruff]
+lint.ignore = [
+    "PLR09",   # Too many X
+    "PLR2004", # Magic comparison
+    "PGH003",  # PGH003 error
+    "E402",    # Module level import not at top of file
+]
+
+[tool.pyrefly]
+search-path = [
+    "source/isaaclab_tasks",
+    "source/isaaclab",
+    "source/isaaclab_rl",
+    "source/isaaclab_mimic",
+    "source/isaaclab_assets",
+]

@@ -73,7 +73,9 @@ class JointAction(ActionTerm):
             self._joint_ids = slice(None)
 
         # create tensors for raw and processed actions
-        self._raw_actions = torch.zeros(self.num_envs, self.action_dim, device=self.device)
+        self._raw_actions = torch.zeros(
+            self.num_envs, self.action_dim, device=self.device
+        )
         self._processed_actions = torch.zeros_like(self.raw_actions)
 
         # parse scale
@@ -82,30 +84,42 @@ class JointAction(ActionTerm):
         elif isinstance(cfg.scale, dict):
             self._scale = torch.ones(self.num_envs, self.action_dim, device=self.device)
             # resolve the dictionary config
-            index_list, _, value_list = string_utils.resolve_matching_names_values(self.cfg.scale, self._joint_names)
+            index_list, _, value_list = string_utils.resolve_matching_names_values(
+                self.cfg.scale, self._joint_names
+            )
             self._scale[:, index_list] = torch.tensor(value_list, device=self.device)
         else:
-            raise ValueError(f"Unsupported scale type: {type(cfg.scale)}. Supported types are float and dict.")
+            raise ValueError(
+                f"Unsupported scale type: {type(cfg.scale)}. Supported types are float and dict."
+            )
         # parse offset
         if isinstance(cfg.offset, (float, int)):
             self._offset = float(cfg.offset)
         elif isinstance(cfg.offset, dict):
             self._offset = torch.zeros_like(self._raw_actions)
             # resolve the dictionary config
-            index_list, _, value_list = string_utils.resolve_matching_names_values(self.cfg.offset, self._joint_names)
+            index_list, _, value_list = string_utils.resolve_matching_names_values(
+                self.cfg.offset, self._joint_names
+            )
             self._offset[:, index_list] = torch.tensor(value_list, device=self.device)
         else:
-            raise ValueError(f"Unsupported offset type: {type(cfg.offset)}. Supported types are float and dict.")
+            raise ValueError(
+                f"Unsupported offset type: {type(cfg.offset)}. Supported types are float and dict."
+            )
         # parse clip
         if self.cfg.clip is not None:
             if isinstance(cfg.clip, dict):
-                self._clip = torch.tensor([[-float("inf"), float("inf")]], device=self.device).repeat(
-                    self.num_envs, self.action_dim, 1
+                self._clip = torch.tensor(
+                    [[-float("inf"), float("inf")]], device=self.device
+                ).repeat(self.num_envs, self.action_dim, 1)
+                index_list, _, value_list = string_utils.resolve_matching_names_values(
+                    self.cfg.clip, self._joint_names
                 )
-                index_list, _, value_list = string_utils.resolve_matching_names_values(self.cfg.clip, self._joint_names)
                 self._clip[:, index_list] = torch.tensor(value_list, device=self.device)
             else:
-                raise ValueError(f"Unsupported clip type: {type(cfg.clip)}. Supported types are dict.")
+                raise ValueError(
+                    f"Unsupported clip type: {type(cfg.clip)}. Supported types are dict."
+                )
 
     """
     Properties.
@@ -135,7 +149,9 @@ class JointAction(ActionTerm):
         # clip actions
         if self.cfg.clip is not None:
             self._processed_actions = torch.clamp(
-                self._processed_actions, min=self._clip[:, :, 0], max=self._clip[:, :, 1]
+                self._processed_actions,
+                min=self._clip[:, :, 0],
+                max=self._clip[:, :, 1],
             )
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
@@ -153,11 +169,15 @@ class JointPositionAction(JointAction):
         super().__init__(cfg, env)
         # use default joint positions as offset
         if cfg.use_default_offset:
-            self._offset = self._asset.data.default_joint_pos[:, self._joint_ids].clone()
+            self._offset = self._asset.data.default_joint_pos[
+                :, self._joint_ids
+            ].clone()
 
     def apply_actions(self):
         # set position targets
-        self._asset.set_joint_position_target(self.processed_actions, joint_ids=self._joint_ids)
+        self._asset.set_joint_position_target(
+            self.processed_actions, joint_ids=self._joint_ids
+        )
 
 
 class RelativeJointPositionAction(JointAction):
@@ -179,7 +199,9 @@ class RelativeJointPositionAction(JointAction):
     cfg: actions_cfg.RelativeJointPositionActionCfg
     """The configuration of the action term."""
 
-    def __init__(self, cfg: actions_cfg.RelativeJointPositionActionCfg, env: ManagerBasedEnv):
+    def __init__(
+        self, cfg: actions_cfg.RelativeJointPositionActionCfg, env: ManagerBasedEnv
+    ):
         # initialize the action term
         super().__init__(cfg, env)
         # use zero offset for relative position
@@ -188,9 +210,13 @@ class RelativeJointPositionAction(JointAction):
 
     def apply_actions(self):
         # add current joint positions to the processed actions
-        current_actions = self.processed_actions + self._asset.data.joint_pos[:, self._joint_ids]
+        current_actions = (
+            self.processed_actions + self._asset.data.joint_pos[:, self._joint_ids]
+        )
         # set position targets
-        self._asset.set_joint_position_target(current_actions, joint_ids=self._joint_ids)
+        self._asset.set_joint_position_target(
+            current_actions, joint_ids=self._joint_ids
+        )
 
 
 class JointVelocityAction(JointAction):
@@ -204,11 +230,15 @@ class JointVelocityAction(JointAction):
         super().__init__(cfg, env)
         # use default joint velocity as offset
         if cfg.use_default_offset:
-            self._offset = self._asset.data.default_joint_vel[:, self._joint_ids].clone()
+            self._offset = self._asset.data.default_joint_vel[
+                :, self._joint_ids
+            ].clone()
 
     def apply_actions(self):
         # set joint velocity targets
-        self._asset.set_joint_velocity_target(self.processed_actions, joint_ids=self._joint_ids)
+        self._asset.set_joint_velocity_target(
+            self.processed_actions, joint_ids=self._joint_ids
+        )
 
 
 class JointEffortAction(JointAction):
@@ -222,4 +252,6 @@ class JointEffortAction(JointAction):
 
     def apply_actions(self):
         # set joint effort targets
-        self._asset.set_joint_effort_target(self.processed_actions, joint_ids=self._joint_ids)
+        self._asset.set_joint_effort_target(
+            self.processed_actions, joint_ids=self._joint_ids
+        )

@@ -20,6 +20,7 @@ class H1FlatEnvCfg(H1RoughEnvCfg):
         # no height scan
         self.scene.height_scanner = None
         self.observations.policy.height_scan = None
+        self.observations.observation.height_scan = None
         # no terrain curriculum
         self.curriculum.terrain_levels = None
         self.rewards.feet_air_time.weight = 1.0

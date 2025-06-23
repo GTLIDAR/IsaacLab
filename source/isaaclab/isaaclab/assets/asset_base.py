@@ -92,16 +92,23 @@ class AssetBase(ABC):
         # note: Use weakref on all callbacks to ensure that this object can be deleted when its destructor is called.
         # add callbacks for stage play/stop
         # The order is set to 10 which is arbitrary but should be lower priority than the default order of 0
-        timeline_event_stream = omni.timeline.get_timeline_interface().get_timeline_event_stream()
-        self._initialize_handle = timeline_event_stream.create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.PLAY),
-            lambda event, obj=weakref.proxy(self): obj._initialize_callback(event),
-            order=10,
+        timeline_event_stream = (
+            omni.timeline.get_timeline_interface().get_timeline_event_stream()
         )
-        self._invalidate_initialize_handle = timeline_event_stream.create_subscription_to_pop_by_type(
-            int(omni.timeline.TimelineEventType.STOP),
-            lambda event, obj=weakref.proxy(self): obj._invalidate_initialize_callback(event),
-            order=10,
+        self._initialize_handle = (
+            timeline_event_stream.create_subscription_to_pop_by_type(
+                int(omni.timeline.TimelineEventType.PLAY),
+                lambda event, obj=weakref.proxy(self): obj._initialize_callback(event),
+                order=10,
+            )
+        )
+        self._invalidate_initialize_handle = (
+            timeline_event_stream.create_subscription_to_pop_by_type(
+                int(omni.timeline.TimelineEventType.STOP),
+                lambda event,
+                obj=weakref.proxy(self): obj._invalidate_initialize_callback(event),
+                order=10,
+            )
         )
         self._prim_deletion_callback_id = SimulationManager.register_callback(
             self._on_prim_deletion, event=IsaacEvents.PRIM_DELETION
@@ -210,7 +217,9 @@ class AssetBase(ABC):
             if self._debug_vis_handle is None:
                 app_interface = omni.kit.app.get_app_interface()
                 self._debug_vis_handle = app_interface.get_post_update_event_stream().create_subscription_to_pop(
-                    lambda event, obj=weakref.proxy(self): obj._debug_vis_callback(event)
+                    lambda event, obj=weakref.proxy(self): obj._debug_vis_callback(
+                        event
+                    )
                 )
         else:
             # remove the subscriber if it exists
@@ -262,14 +271,18 @@ class AssetBase(ABC):
         and input ``debug_vis`` is True. If the visualization objects exist, the function should
         set their visibility into the stage.
         """
-        raise NotImplementedError(f"Debug visualization is not implemented for {self.__class__.__name__}.")
+        raise NotImplementedError(
+            f"Debug visualization is not implemented for {self.__class__.__name__}."
+        )
 
     def _debug_vis_callback(self, event):
         """Callback for debug visualization.
 
         This function calls the visualization objects and sets the data to visualize into them.
         """
-        raise NotImplementedError(f"Debug visualization is not implemented for {self.__class__.__name__}.")
+        raise NotImplementedError(
+            f"Debug visualization is not implemented for {self.__class__.__name__}."
+        )
 
     """
     Internal simulation callbacks.
@@ -315,7 +328,10 @@ class AssetBase(ABC):
             self._clear_callbacks()
             return
         result = re.match(
-            pattern="^" + "/".join(self.cfg.prim_path.split("/")[: prim_path.count("/") + 1]) + "$", string=prim_path
+            pattern="^"
+            + "/".join(self.cfg.prim_path.split("/")[: prim_path.count("/") + 1])
+            + "$",
+            string=prim_path,
         )
         if result:
             self._clear_callbacks()

@@ -1,0 +1,92 @@
+# # Reference: https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/ppo.yml#L161
+# seed: 42
+
+# n_timesteps: !!float 5e8
+# policy: 'MlpPolicy'
+# batch_size: 16384
+# n_steps: 12
+# gamma: 0.99
+# gae_lambda: 0.9
+# n_epochs: 5
+# ent_coef: 0.01
+# sde_sample_freq: 4
+# max_grad_norm: 0.5
+# vf_coef: 1.0
+# learning_rate: !!float 3e-4
+# use_sde: False
+# clip_range: 0.2
+# device: "cuda:0"
+# policy_kwargs: "dict(
+#                   log_std_init=-1,
+#                   ortho_init=True,
+#                   activation_fn=nn.ELU,
+#                   net_arch=[256,128]
+#                 )"
+
+# task and env
+env:
+  env_name: Isaac-Velocity-Rough-Digit-V3-v0
+  device: "cuda:0"
+  num_envs:
+
+# collector
+collector:
+  num_collectors: 1
+  frames_per_batch: 49152
+  total_frames: 1_000_000_000
+
+# logger
+logger:
+  backend: wandb
+  project_name: torchrl_isaaclab
+  group_name: null
+  exp_name: Isaac-Velocity-Rough-Digit-V3-v0
+  test_interval: 1_000_000
+  num_test_episodes: 5
+  video: False
+
+# Optim
+optim:
+  lr: !!float 3e-4
+  weight_decay: 0.0
+  anneal_lr: True
+  device: "cuda:0"
+
+# loss
+loss:
+  gamma: 0.99
+  mini_batch_size: 9830
+  epochs: 10
+  gae_lambda: 0.95
+  clip_epsilon: 0.2
+  anneal_clip_epsilon: False
+  critic_coef: 0.25
+  entropy_coef: 0.01
+  loss_critic_type: l2
+
+# torch compile
+compile:
+  compile: True
+  compile_mode: default
+  cudagraphs: False
+
+# actor and critic
+policy:
+  num_cells: [256, 256]
+
+value_net:
+  num_cells: [256, 256]
+
+# trainer
+trainer:
+  optim_steps_per_batch: 10
+  clip_grad_norm: True
+  clip_norm: 0.5
+  progress_bar: True
+  save_trainer_interval: 10_000
+  log_interval: 1000
+  save_trainer_file: None
+  frame_skip: 1
+
+device: auto
+seed: 0
