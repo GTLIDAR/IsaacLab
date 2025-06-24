@@ -118,6 +118,12 @@ class IsaacLabWrapper(GymWrapper):
         done = terminated | truncated
         reward = reward.clone().unsqueeze(-1)  # to get to (num_envs, 1)
 
+        # warn if reward is less than -100
+        if reward.min() < -100:
+            print(
+                f"Warning: Reward is less than -100: {reward.min()}. This is likely due to an error in the environment or the model."
+            )
+
         self.log_infos.append(info["log"])
 
         observations = CloneObsBuf(observations)
@@ -353,6 +359,16 @@ class RLOptPPOConfig:
         """Number of cells in each layer."""
 
     @configclass
+    class FeatureExtractorConfig:
+        """Feature extractor configuration for RLOpt PPO."""
+
+        num_cells: list[int] = [512, 256, 128]
+        """Number of cells in each layer."""
+
+        output_dim: int = 128
+        """Output dimension of the feature extractor."""
+
+    @configclass
     class TrainerConfig:
         """Trainer configuration for RLOpt PPO."""
 
@@ -404,8 +420,14 @@ class RLOptPPOConfig:
     value_net: ValueNetConfig = ValueNetConfig()
     """Value network configuration."""
 
+    feature_extractor: FeatureExtractorConfig = FeatureExtractorConfig()
+    """Feature extractor configuration."""
+
     trainer: TrainerConfig = TrainerConfig()
     """Trainer configuration."""
+
+    use_feature_extractor: bool = True
+    """Whether to use a feature extractor."""
 
     device: str = "cuda:0"
     """Device for training."""
@@ -413,8 +435,11 @@ class RLOptPPOConfig:
     seed: int = 0
     """Random seed."""
 
-    policy_in_keys: list[str] = ["policy"]
+    policy_in_keys: list[str] = ["hidden"]
     """Keys to use for the policy."""
 
-    value_net_in_keys: list[str] = ["policy"]
+    value_net_in_keys: list[str] = ["hidden"]
     """Keys to use for the value network."""
+
+    total_input_keys: list[str] = ["policy"]
+    """Keys to use for the total input."""
