@@ -91,7 +91,6 @@ from isaaclab.utils.dict import print_dict
 from isaaclab.utils.io import dump_pickle, dump_yaml
 from isaaclab_rl.torchrl import (
     IsaacLabWrapper,
-    PatchTerminalObs,
     RLOptPPOConfig,
     IsaacLabTerminalObsReader,
 )
@@ -144,7 +143,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RLOptPPOConfig):  # type: ign
     # The Ray Tune workflow extracts experiment name using the logging line below, hence, do not change it (see PR #2346, comment-2819298849)
     print(f"Exact experiment name requested from command line: {run_info}")
     log_dir = os.path.join(log_root_path, run_info)
-    agent_cfg.logger.exp_name = args_cli.task + "_" + run_info
+    agent_cfg.logger.exp_name = args_cli.task
     # dump the configuration into log-directory
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)

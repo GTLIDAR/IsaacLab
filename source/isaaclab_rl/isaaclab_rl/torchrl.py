@@ -116,22 +116,21 @@ class IsaacLabWrapper(GymWrapper):
             )
 
         done = terminated | truncated
-        reward = reward.unsqueeze(-1)  # to get to (num_envs, 1)
+        reward = reward.clone().unsqueeze(-1)  # to get to (num_envs, 1)
 
         self.log_infos.append(info["log"])
 
+        observations = CloneObsBuf(observations)
+
         if "final_obs_buf" in info:
+            info = {"final_obs_buf": CloneObsBuf(info["final_obs_buf"])}
             return (
                 observations,
                 reward,
                 terminated.clone(),
                 truncated.clone(),
                 done.clone(),
-                {
-                    "final_obs_buf": {
-                        k: v.clone() for k, v in info["final_obs_buf"].items()
-                    }
-                },
+                info,
             )
         else:
             return (
@@ -149,27 +148,29 @@ class IsaacLabWrapper(GymWrapper):
         return (observations, {})
 
 
-# we need to patch the terminal observation to the next observation
-class PatchTerminalObs(Transform):
-    def __init__(self):
-        super().__init__()
+def CloneObsBuf(
+    obs_buf: dict[str, torch.Tensor | dict],
+) -> dict[str, torch.Tensor | dict]:
+    """Clone the observation buffer.
 
-    def forward(self, td: TensorDict) -> TensorDict:
-        done = td.get("done")
-        info = td.get("info")
-        if info is not None and "terminal_obs" in info:
-            # if the terminal observation is an empty dict, then we don't need to patch
-            if info["terminal_obs"] == {}:
-                return td
-            # read the terminal observation
-            term_obs = info["terminal_obs"]
-            # get the next observation
-            next_obs = td.get("next_observation")
-            # patch the terminal observation to the next observation
-            mask = done.to(torch.bool)  # type: ignore
-            next_obs[mask] = term_obs[mask]  # type: ignore
-            td.set("next_observation", next_obs)
-        return td
+    Args:
+        obs_buf: Dictionary that can contain tensors or nested dictionaries of tensors.
+
+    Returns:
+        Cloned dictionary with the same structure as obs_buf.
+    """
+    cloned = {}
+    for k, v in obs_buf.items():
+        if isinstance(v, dict):
+            # Recursively clone nested dictionaries
+            cloned[k] = CloneObsBuf(v)
+        elif isinstance(v, torch.Tensor):
+            # Clone tensors
+            cloned[k] = v.clone()
+        else:
+            # For other types, just copy the reference
+            cloned[k] = v
+    return cloned
 
 
 class IsaacLabTerminalObsReader(terminal_obs_reader):
@@ -240,7 +241,7 @@ class RLOptPPOConfig:
         num_collectors: int = 1
         """Number of data collectors."""
 
-        frames_per_batch: int = 49150
+        frames_per_batch: int = 98304
         """Number of frames per batch."""
 
         total_frames: int = 100_000_000
@@ -309,7 +310,7 @@ class RLOptPPOConfig:
         clip_epsilon: float = 0.2
         """Clipping epsilon for PPO."""
 
-        clip_value: bool = True
+        clip_value: bool = False
         """Whether to clip value function."""
 
         anneal_clip_epsilon: bool = False
@@ -411,3 +412,9 @@ class RLOptPPOConfig:
 
     seed: int = 0
     """Random seed."""
+
+    policy_in_keys: list[str] = ["policy"]
+    """Keys to use for the policy."""
+
+    value_net_in_keys: list[str] = ["policy"]
+    """Keys to use for the value network."""
