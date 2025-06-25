@@ -88,10 +88,8 @@ import random
 from datetime import datetime
 
 from isaaclab_rl.sb3 import (
-    Sb3VecEnvWrapper,
     process_sb3_cfg,
     L2tSb3VecEnvGPUWrapper,
-    Sb3VecEnvGPUWrapper,
 )
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
@@ -120,7 +118,7 @@ from rlopt.agent import RecurrentL2T, RecurrentStudent
 from rlopt.common import RLOptDictRecurrentReplayBuffer
 
 
-@hydra_task_config(args_cli.task, "sb3_cfg_entry_point")
+@hydra_task_config(args_cli.task, "rlopt_cfg_entry_point")
 def main(
     env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: dict
 ):
@@ -160,7 +158,7 @@ def main(
     note = "_" + args_cli.note if args_cli.note else ""
     log_time_note = log_time + note
     # directory for logging into
-    log_dir = os.path.join("logs", "sb3", args_cli.task, log_time_note)
+    log_dir = os.path.join("logs", "rlopt", args_cli.task, log_time_note)
     # dump the configuration into log-directory
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
@@ -206,12 +204,12 @@ def main(
             clip_reward=np.inf,
         )
 
-    wandb.tensorboard.patch(root_logdir=log_dir)
+    wandb.tensorboard.patch(root_logdir=log_dir)  # type: ignore
 
     # initialize wandb and make callback
     run = wandb.init(
-        project="L2T Digit flat" if "flat" in args_cli.task else "L2T Digit",
-        entity="rl-digit",
+        project="L2T G1 flat" if "flat" in args_cli.task else "L2T G1",
+        entity="fywu",
         name=log_time_note,
         config=agent_cfg | class_to_dict(env_cfg),
         sync_tensorboard=True,
@@ -231,7 +229,7 @@ def main(
 
     # load the model if required
     if args_cli.resume_training:
-        agent.set_parameters(checkpoint_path)
+        agent.set_parameters(checkpoint_path)  # type: ignore
 
     # configure the logger
     new_logger = configure(log_dir, ["tensorboard"])
@@ -296,7 +294,7 @@ def student_only(
                 checkpoint = "model.zip"
             checkpoint_path = get_checkpoint_path(log_root_path, ".*", checkpoint)
         else:
-            checkpoint_path = args_cli.checkpoint
+            checkpoint_path = args_cli.checkpoint  # type: ignore
 
     log_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     note = "_" + args_cli.note if args_cli.note else ""
@@ -348,7 +346,7 @@ def student_only(
             clip_reward=np.inf,
         )
 
-    wandb.tensorboard.patch(root_logdir=log_dir)
+    wandb.tensorboard.patch(root_logdir=log_dir)  # type: ignore
 
     # initialize wandb and make callback
     run = wandb.init(
