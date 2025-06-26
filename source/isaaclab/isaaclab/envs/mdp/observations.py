@@ -393,7 +393,12 @@ def image(
             images -= mean_tensor
         elif "distance_to" in data_type or "depth" in data_type:
             images[images == float("inf")] = 0
-
+            
+    if images.shape[-1] == 1:
+        images = images.squeeze(-1)  # becomes (num, 480, 640)
+    
+    images = images.reshape(images.shape[0], -1)  # becomes (num, 480 * 640)
+    
     return images.clone()
 
 

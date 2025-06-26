@@ -318,6 +318,15 @@ class StudentObsCfg(ObsGroup):
     )
     actions = ObsTerm(func=mdp.last_action)
 
+    forward_chest_realsense_d435_depth = ObsTerm(
+        func=mdp.image,
+        params={
+            "sensor_cfg": SceneEntityCfg("forward_chest_realsense_d435"),
+            "data_type": "depth",
+            "normalize": True,
+        },
+    )
+    
     def __post_init__(self):
         self.enable_corruption = True
         self.concatenate_terms = True
