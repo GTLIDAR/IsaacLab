@@ -2,14 +2,14 @@
 cat <<EOT > job.sh
 #!/bin/bash
 
-#SBATCH --partition=overcap
-#SBATCH --account=overcap
-#SBATCH --gpus-per-node="rtx_6000:1"
+#SBATCH --partition=wu-lab
+#SBATCH --account=fwu91
+#SBATCH --gpus-per-node="a40:1"
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem-per-gpu=48G
 #SBATCH --cpus-per-task=15
-#SBATCH --time=1:00:00
+#SBATCH --time=12:00:00
 #SBATCH --qos=short
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=fwu91@gatech.edu
