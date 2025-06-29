@@ -37,6 +37,9 @@ INSTALL_REQUIRES = [
     "moviepy",
     # make sure this is consistent with isaac sim version
     "pillow==11.0.0",
+    
+    'rlopt @ git+https://github.com/fei-yang-wu/RLOpt.git@feature/sensor#egg=rlopt'
+
 ]
 
 PYTORCH_INDEX_URL = ["https://download.pytorch.org/whl/cu118"]

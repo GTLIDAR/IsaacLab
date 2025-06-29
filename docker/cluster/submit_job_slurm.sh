@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 cat <<EOT > job.sh
 #!/bin/bash
-#SBATCH --partition="wu-lab"
+
+#SBATCH --partition=wu-lab
 #SBATCH --gpus-per-node="a40:1"
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --mem-per-gpu=48G 
+#SBATCH --mem-per-gpu=48G
 #SBATCH --cpus-per-task=15
-#SBATCH --time=23:00:00
+#SBATCH --time=12:00:00
 #SBATCH --qos=short
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=fwu91@gatech.edu
