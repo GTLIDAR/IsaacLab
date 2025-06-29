@@ -260,7 +260,7 @@ def main(
     run.finish()  # type: ignore
 
 
-@hydra_task_config(args_cli.task, "sb3_cfg_entry_point")
+@hydra_task_config(args_cli.task, "rlopt_cfg_entry_point")
 def student_only(
     env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: dict
 ):
@@ -284,7 +284,7 @@ def student_only(
 
     if args_cli.resume_training:
         # directory for logging into
-        log_root_path = os.path.join("logs", "sb3", args_cli.task)
+        log_root_path = os.path.join("logs", "rlopt", args_cli.task)
         log_root_path = os.path.abspath(log_root_path)
         # check checkpoint is valid
         if args_cli.checkpoint is None:
@@ -350,7 +350,9 @@ def student_only(
 
     # initialize wandb and make callback
     run = wandb.init(
-        project="L2T Digit Perception flat" if "flat" in args_cli.task else "L2T Digit Perception",
+        project="L2T Digit Perception flat"
+        if "flat" in args_cli.task
+        else "L2T Digit Perception",
         entity="rl-digit",
         name=log_time_note,
         config=agent_cfg | class_to_dict(env_cfg),
