@@ -77,9 +77,6 @@ Fixed
 0.39.1 (2025-05-14)
 ~~~~~~~~~~~~~~~~~~~
 
-Added
-^^^^^
-
 * Added a new attribute :attr:`articulation_root_prim_path` to the :class:`~isaaclab.assets.ArticulationCfg` class
   to allow explicitly specifying the prim path of the articulation root.
 

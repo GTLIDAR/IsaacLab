@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
+# Copyright (c) 2022-2025, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -13,9 +13,14 @@ import torch
 from collections.abc import Sequence
 from typing import Any, ClassVar
 
-from isaacsim.core.version import get_version
+from isaacsim.core.version import get_version  # type: ignore[import-untyped]
 
-from isaaclab.managers import CommandManager, CurriculumManager, RewardManager, TerminationManager
+from isaaclab.managers import (
+    CommandManager,
+    CurriculumManager,
+    RewardManager,
+    TerminationManager,
+)
 from isaaclab.ui.widgets import ManagerLiveVisualizer
 
 from .common import VecEnvStepReturn
@@ -58,7 +63,10 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
     metadata: ClassVar[dict[str, Any]] = {
         "render_modes": [None, "human", "rgb_array"],
         "isaac_sim_version": get_version(),
+        "autoreset_mode": "SameStep",
     }
+    autoreset_mode = "SameStep"
+
     """Metadata for the environment."""
 
     cfg: ManagerBasedRLEnvCfg
@@ -77,16 +85,17 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # -- counter for curriculum
         self.common_step_counter = 0
 
+        # initialize the episode length buffer BEFORE loading the managers to use it in mdp functions.
+        self.episode_length_buf = torch.zeros(
+            cfg.scene.num_envs, device=cfg.sim.device, dtype=torch.long
+        )
+
         # initialize the base class to setup the scene.
         super().__init__(cfg=cfg)
         # store the render mode
         self.render_mode = render_mode
 
         # initialize data and constants
-        # -- init buffers
-        self.episode_length_buf = torch.zeros(
-            self.num_envs, device=self.device, dtype=torch.long
-        )
         # -- set the framerate of the gym video recorder wrapper so that the playback speed of the produced video matches the simulation
         self.metadata["render_fps"] = 1 / self.step_dt
         # -- starting leg
@@ -192,7 +201,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
         return self.starting_leg
 
-    def step(self, action: torch.Tensor) -> VecEnvStepReturn:
+    def step(self, action: torch.Tensor) -> VecEnvStepReturn:  # type: ignore
         """Execute one time-step of the environment's dynamics and reset terminated environments.
 
         Unlike the :class:`ManagerBasedEnv.step` class, the function performs the following operations:
@@ -258,7 +267,14 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
         # -- reset envs that terminated/timed-out and log the episode information
         reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
+
         if len(reset_env_ids) > 0:
+            # record the final observation
+            self.final_obs_buf: dict = self.observation_manager.compute()
+
+            # add the final observation to the extras
+            self.extras["final_obs_buf"] = self.final_obs_buf
+
             # trigger recorder terms for pre-reset calls
             self.recorder_manager.record_pre_reset(reset_env_ids)
 
@@ -292,7 +308,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
             self.extras,
         )
 
-    def render(self, recompute: bool = False) -> np.ndarray | None:
+    def render(self, recompute: bool = False) -> np.ndarray | None:  # type: ignore
         """Run rendering without stepping through the physics.
 
         By convention, if mode is:
@@ -392,13 +408,17 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
             # if not concatenated, then we need to add each term separately as a dictionary
             if has_concatenated_obs:
                 self.single_observation_space[group_name] = gym.spaces.Box(
-                    low=-np.inf, high=np.inf, shape=group_dim  # type: ignore
+                    low=-np.inf,
+                    high=np.inf,
+                    shape=group_dim,  # type: ignore
                 )
             else:
                 self.single_observation_space[group_name] = gym.spaces.Dict(
                     {
                         term_name: gym.spaces.Box(
-                            low=-np.inf, high=np.inf, shape=term_dim  # type: ignore
+                            low=-np.inf,
+                            high=np.inf,
+                            shape=term_dim,  # type: ignore
                         )
                         for term_name, term_dim in zip(group_term_names, group_dim)
                     }
@@ -406,7 +426,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # action space (unbounded since we don't impose any limits)
         action_dim = sum(self.action_manager.action_term_dim)
         self.single_action_space = gym.spaces.Box(
-            low=-np.inf, high=np.inf, shape=(action_dim,)
+            low=-1.0, high=1.0, shape=(action_dim,)
         )
 
         # batch the spaces for vectorized environments
@@ -465,8 +485,3 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
         # reset the episode length buffer
         self.episode_length_buf[env_ids] = 0
-
-        # # reset the starting leg
-        # self.starting_leg[env_ids] = torch.randint(
-        #     0, 2, (len(env_ids),), device=self.device
-        # )
