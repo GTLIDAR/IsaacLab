@@ -20,7 +20,7 @@ gym.register(
         "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.DigitV3FlatPPORunnerCfg,
         "skrl_cfg_entry_point": f"{agents.__name__}:skrl_flat_ppo_cfg.yaml",
         "sb3_cfg_entry_point": f"{agents.__name__}:sb3_ppo_cfg.yaml",
-        "rlopt_cfg_entry_point": f"{agents.__name__}.rlopt_ppo_cfg:DigitV3FlatRLOptPPOConfig",
+        "rlopt_cfg_entry_point": f"{agents.__name__}:rlopt_ppo_cfg.yaml",
     },
 )
 
@@ -68,7 +68,7 @@ gym.register(
         "env_cfg_entry_point": l2t_env_cfg.DigitV3L2TFlatEnvCfg,
         "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.DigitV3FlatPPORunnerCfg,
         "skrl_cfg_entry_point": f"{agents.__name__}:skrl_flat_ppo_cfg.yaml",
-        "sb3_cfg_entry_point": f"{agents.__name__}:sb3_l2t_cfg.yaml",
+        "rlopt_cfg_entry_point": f"{agents.__name__}:rlopt_l2t_cfg.yaml",
     },
 )
 
@@ -80,7 +80,7 @@ gym.register(
         "env_cfg_entry_point": l2t_env_cfg.DigitV3L2TFlatEnvCfg_PLAY,
         "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.DigitV3FlatPPORunnerCfg,
         "skrl_cfg_entry_point": f"{agents.__name__}:skrl_flat_ppo_cfg.yaml",
-        "sb3_cfg_entry_point": f"{agents.__name__}:sb3_l2t_cfg.yaml",
+        "rlopt_cfg_entry_point": f"{agents.__name__}:rlopt_l2t_cfg.yaml",
     },
 )
 
@@ -92,7 +92,7 @@ gym.register(
         "env_cfg_entry_point": l2t_env_cfg.DigitV3L2TRoughEnvCfg,
         "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.DigitV3RoughPPORunnerCfg,
         "skrl_cfg_entry_point": f"{agents.__name__}:skrl_rough_ppo_cfg.yaml",
-        "sb3_cfg_entry_point": f"{agents.__name__}:sb3_l2t_cfg.yaml",
+        "rlopt_cfg_entry_point": f"{agents.__name__}:rlopt_l2t_cfg.yaml",
     },
 )
 
