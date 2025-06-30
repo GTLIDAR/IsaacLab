@@ -25,6 +25,23 @@ from isaaclab.envs.mdp import (
     time_out,
 )
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
+from isaaclab_tasks.manager_based.locomotion.velocity.config.g1.rough_env_cfg import (
+    G1Rewards,
+    G1ObservationsCfg,
+    G1ActionsCfg,
+)
+from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
+    CommandsCfg,
+    TerminationsCfg,
+)
+from isaaclab.managers import (
+    RewardTermCfg as RewTerm,
+    SceneEntityCfg,
+    ObservationTermCfg as ObsTerm,
+    ObservationGroupCfg as ObsGroup,
+)
+from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
+from .mdp import qpos_imitation_l2
 
 from . import mdp
 
@@ -96,21 +113,6 @@ class ImitationG1SceneCfg(InteractiveSceneCfg):
 # MDP settings
 ##
 
-# --- Borrowed and extended from velocity G1 task ---
-from isaaclab_tasks.manager_based.locomotion.velocity.config.g1.rough_env_cfg import (
-    G1Rewards,
-    G1ObservationsCfg,
-    G1ActionsCfg,
-)
-from isaaclab.managers import (
-    RewardTermCfg as RewTerm,
-    SceneEntityCfg,
-    ObservationTermCfg as ObsTerm,
-    ObservationGroupCfg as ObsGroup,
-)
-from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
-from .mdp import qpos_imitation_l2
-
 
 # --- Rewards ---
 @configclass
@@ -119,7 +121,6 @@ class RewardsCfg(G1Rewards):
     qpos_imitation_l2 = RewTerm(
         func=qpos_imitation_l2, weight=5.0
     )  # New imitation reward
-    # You can adjust the weight as needed
 
 
 # --- Observations ---
@@ -162,8 +163,14 @@ class EventCfg:
 class TerminationsCfg:
     """Termination terms for the MDP."""
 
-    # (1) Time out
-    time_out = DoneTerm(func=time_out, time_out=True)
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    base_contact = DoneTerm(
+        func=mdp.illegal_contact,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"),
+            "threshold": 1.0,
+        },
+    )
 
 
 ##
@@ -179,6 +186,7 @@ class ImitationG1EnvCfg(ManagerBasedRLEnvCfg):
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
     events: EventCfg = EventCfg()
+    commands: CommandsCfg = CommandsCfg()
     # MDP settings
     rewards: RewardsCfg = RewardsCfg()
     terminations: TerminationsCfg = TerminationsCfg()
@@ -244,6 +252,52 @@ class ImitationG1EnvCfg(ManagerBasedRLEnvCfg):
             self.scene.height_scanner.update_period = self.decimation * self.sim.dt
         if self.scene.contact_forces is not None:
             self.scene.contact_forces.update_period = self.sim.dt
+        # post init of parent
+        super().__post_init__()
+        # Scene
+        self.scene.robot = G1_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/torso_link"
+
+        # # Randomization
+        # self.events.push_robot = None
+        # self.events.add_base_mass = None
+        self.events.reset_robot_joints.params["position_range"] = (1.0, 1.0)
+        # self.events.base_external_force_torque.params["asset_cfg"].body_names = [
+        #     "torso_link"
+        # ]
+        # self.events.reset_base.params = {
+        #     "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
+        #     "velocity_range": {
+        #         "x": (0.0, 0.0),
+        #         "y": (0.0, 0.0),
+        #         "z": (0.0, 0.0),
+        #         "roll": (0.0, 0.0),
+        #         "pitch": (0.0, 0.0),
+        #         "yaw": (0.0, 0.0),
+        #     },
+        # }
+
+        # Rewards
+        self.rewards.lin_vel_z_l2.weight = 0.0
+        self.rewards.undesired_contacts = None
+        self.rewards.flat_orientation_l2.weight = -1.0
+        self.rewards.action_rate_l2.weight = -0.005
+        self.rewards.dof_acc_l2.weight = -1.25e-7
+        self.rewards.dof_acc_l2.params["asset_cfg"] = SceneEntityCfg(
+            "robot", joint_names=[".*_hip_.*", ".*_knee_joint"]
+        )
+        self.rewards.dof_torques_l2.weight = -1.5e-7
+        self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
+            "robot", joint_names=[".*_hip_.*", ".*_knee_joint", ".*_ankle_.*"]
+        )
+
+        # Commands
+        self.commands.base_velocity.ranges.lin_vel_x = (0.0, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_y = (-0.0, 0.0)
+        self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
+
+        # terminations
+        self.terminations.base_contact.params["sensor_cfg"].body_names = "torso_link"
 
         # check if terrain levels curriculum is enabled - if so, enable curriculum for terrain generator
         # this generates terrains with increasing difficulty and is useful for training
