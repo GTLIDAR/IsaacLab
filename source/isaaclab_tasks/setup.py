@@ -31,6 +31,7 @@ INSTALL_REQUIRES = [
     # automate
     "scikit-learn",
     "numba",
+    "iltools",
 ]
 
 PYTORCH_INDEX_URL = ["https://download.pytorch.org/whl/cu118"]
