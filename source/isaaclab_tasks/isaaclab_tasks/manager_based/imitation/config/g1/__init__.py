@@ -1,16 +1,8 @@
-# Copyright (c) 2022-2025, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
-# All rights reserved.
-#
-# SPDX-License-Identifier: BSD-3-Clause
-
 import gymnasium as gym
 
-from . import agents
+from . import agents, imitation_g1_env_cfg
 
-##
-# Register Gym environments.
-##
-
+__all__ = ["imitation_g1_env_cfg", "agents"]
 
 gym.register(
     id="Isaac-Imitation-G1-v0",
