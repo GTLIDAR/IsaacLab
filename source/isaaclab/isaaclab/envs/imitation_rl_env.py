@@ -1,16 +1,15 @@
 import os
-import torch
 import threading
-from concurrent.futures import ThreadPoolExecutor, Future
+from concurrent.futures import Future, ThreadPoolExecutor
 
-from .manager_based_rl_env import ManagerBasedRLEnv
+import torch
 
 # Import dataset utilities from ImitationLearningTools
 from iltools_datasets import ZarrBackedTrajectoryDataset, export_trajectories_to_zarr
 from iltools_datasets.utils import ZarrTrajectoryWindowCache
-import logging
 
-logging.getLogger("jax").disabled = True
+from .common import VecEnvStepReturn
+from .manager_based_rl_env import ManagerBasedRLEnv
 
 
 class ImitationRLEnv(ManagerBasedRLEnv):
@@ -73,7 +72,16 @@ class ImitationRLEnv(ManagerBasedRLEnv):
                 loader = TrajoptLoader(**loader_kwargs)
             else:
                 raise ValueError(f"Unknown loader_type: {loader_type}")
-            export_trajectories_to_zarr(loader, dataset_path, window_size=window_size)
+            export_trajectories_to_zarr(
+                loader,
+                dataset_path,
+                window_size=window_size,
+                control_freq=1.0 / (self.cfg.sim.dt * self.cfg.decimation),
+                desired_horizon_steps=int(
+                    self.cfg.episode_length_s / (self.cfg.sim.dt * self.cfg.decimation)
+                ),
+                horizon_multiplier=2.0,
+            )
         # Now load the Zarr dataset
         self.dataset = ZarrBackedTrajectoryDataset(
             dataset_path,
@@ -81,16 +89,30 @@ class ImitationRLEnv(ManagerBasedRLEnv):
             device=device,
             batch_size=batch_size,
         )
-        self.num_trajectories = len(self.dataset.lengths)
+        # --- Per-trajectory window counts ---
         self.traj_lengths = torch.tensor(
             self.dataset.lengths, device=device, dtype=torch.long
         )
-        self.env2traj = torch.randint(
-            0, self.num_trajectories, (self.num_envs,), device=device, dtype=torch.long
-        )
-        self.env2step = torch.zeros(self.num_envs, device=device, dtype=torch.long)
-        # Efficient per-env window cache
+        self.num_trajectories = len(self.traj_lengths)
         self.window_size = window_size
+        # Compute number of windows per trajectory
+        self.traj_num_windows = torch.tensor(
+            [max(1, int(length) - window_size + 1) for length in self.traj_lengths],
+            device=device,
+            dtype=torch.long,
+        )
+        self.traj_window_offsets = torch.cat(
+            [
+                torch.tensor([0], device=device, dtype=torch.long),
+                torch.cumsum(self.traj_num_windows, dim=0)[:-1],
+            ]
+        )
+        self.total_windows = int(self.traj_num_windows.sum().item())
+        # Assign each env a trajectory and a step within that trajectory
+        self.env2traj = torch.empty(self.num_envs, dtype=torch.long, device=device)
+        self.env2step = torch.zeros(self.num_envs, device=device, dtype=torch.long)
+        self.assign_trajectories(torch.arange(self.num_envs, device=device))
+        # Efficient per-env window cache
         self.cache = ZarrTrajectoryWindowCache(
             self.dataset, window_size=window_size, device=device
         )
@@ -100,13 +122,51 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         self._prefetch_lock = threading.Lock()
         # --- Add replay_reference option ---
         self.replay_reference = getattr(cfg, "replay_reference", False)
+        # --- Initialize attributes for linter/type safety ---
+        self.ref_qpos = None
+        self.ref_root_pos = None  # NEW: reference root position
+        self.ref_root_rot = None  # NEW: reference root orientation
+        self._qpos_mapping: list[int] = []
+        self._qpos_inv_mapping: list[int] = []
+        self._root_pos_idx: list[int] = []
+        self._root_rot_idx: list[int] = []
+        # --- Debug flag for reference check ---
+        self.debug_reference_check = (
+            False  # Set to True to enable debug check in step()
+        )
+        self._debug_loader = (
+            None  # Set this to your loader instance if you want to check
+        )
+        if self.debug_reference_check:
+            loader_type = getattr(cfg, "loader_type", None)
+            loader_kwargs = getattr(cfg, "loader_kwargs", None)
+            # Import only the required loader
+            if loader_type == "loco_mujoco":
+                from iltools_datasets.loco_mujoco.loader import LocoMuJoCoLoader
 
-    def _reset_idx(self, env_ids):
-        super()._reset_idx(env_ids)
-        # Assign new random trajectory to each reset env
+                self._debug_loader = LocoMuJoCoLoader(**loader_kwargs)  # type: ignore
+            elif loader_type == "amass":
+                from iltools_datasets.amass.loader import AmassLoader
+
+                self._debug_loader = AmassLoader(**loader_kwargs)  # type: ignore
+            elif loader_type == "trajopt":
+                from iltools_datasets.trajopt.loader import TrajoptLoader
+
+                self._debug_loader = TrajoptLoader(**loader_kwargs)  # type: ignore
+            else:
+                raise ValueError(f"Unknown loader_type: {loader_type}")
+
+    def assign_trajectories(self, env_ids):
+        # Default: random assignment
         self.env2traj[env_ids] = torch.randint(
             0, self.num_trajectories, (len(env_ids),), device=self.device
         )
+        # Optionally: implement round-robin, curriculum, or fixed assignment here
+
+    def _reset_idx(self, env_ids):
+        super()._reset_idx(env_ids)
+        # Assign new trajectory to each reset env
+        self.assign_trajectories(env_ids)
         self.env2step[env_ids] = 0
         # Cancel any outstanding prefetches for these envs
         with self._prefetch_lock:
@@ -119,64 +179,140 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         for env in env_ids:
             self._maybe_prefetch(env, self.env2traj[env].item(), 0)
 
-    def step(self, actions):
-        # Advance time for each env
-        self.env2step += 1
-        # Clamp to valid range (0 to min(traj_length-1, window_size-1))
-        max_step = self.traj_lengths[self.env2traj] - 1
-        max_window = torch.full_like(max_step, self.window_size - 1)
-        self.env2step = torch.minimum(
-            self.env2step, torch.minimum(max_step, max_window)
-        )
-        # Async prefetch: if next step will move out of window, prefetch next window
-        next_step = self.env2step + 1
-        window_start = (self.env2step // self.window_size) * self.window_size
-        next_window_start = (next_step // self.window_size) * self.window_size
-        need_prefetch = next_window_start != window_start
-        envs_to_prefetch = torch.where(need_prefetch)[0]
-        for i in envs_to_prefetch:
-            self._maybe_prefetch(
-                i.item(), self.env2traj[i].item(), next_window_start[i].item()
-            )
-        # Compute and store the current reference qpos for all envs
-        self.ref_qpos = self.compute_reference(key="qpos")
-        # --- Replay reference if enabled ---
-        if self.replay_reference:
-            isaaclab_joint_names = self.scene["robot"].joint_names
-            reference_joint_names = self.get_reference_joint_names()
-            # Build mapping: for each reference joint, find its index in isaaclab_joint_names
-            mapping = [
-                isaaclab_joint_names.index(name)
-                for name in reference_joint_names
-                if name in isaaclab_joint_names
-            ]
-            # Create a zero vector for all joints
-            qpos_full = torch.zeros(
-                (self.ref_qpos.shape[0], len(isaaclab_joint_names)),
-                device=self.ref_qpos.device,
-            )
-            # Fill in the reference values at the mapped indices
-            qpos_full[:, mapping] = self.get_qpos_in_isaaclab_order(self.ref_qpos)
-            # Set the robot's joint positions to the full vector
-            self.scene["robot"].set_joint_position_target(qpos_full)
-            self.scene["robot"].write_data_to_sim()
-        # Call parent step
-        return super().step(actions)
+    def _get_window_index(self, traj_idx, step_idx):
+        # Map (traj_idx, step_idx) to global window index in the Zarr dataset
+        return self.traj_window_offsets[traj_idx] + step_idx
 
-    def _maybe_prefetch(self, env_idx, traj_idx, window_start):
+    def _maybe_prefetch(self, env_idx, traj_idx, step_idx):
         """
-        If not already prefetched, prefetch the window for (traj_idx, window_start) in a background thread.
+        If not already prefetched, prefetch the window for (traj_idx, step_idx) in a background thread.
         """
 
         def prefetch():
             # This will populate the cache for the next window
-            self.cache.dataset.get_window(traj_idx, window_start, self.window_size)
+            self.cache.dataset[self._get_window_index(traj_idx, step_idx)]
 
         with self._prefetch_lock:
             fut = self._prefetch_futures[env_idx]
             if fut is not None and not fut.done():
                 return  # Already prefetching
             self._prefetch_futures[env_idx] = self._prefetch_executor.submit(prefetch)
+
+    def step(self, action: torch.Tensor) -> VecEnvStepReturn:
+        # Advance time for each env
+        self.env2step += 1
+        # Clamp to valid range for each env (0 to num_windows-1 for that trajectory)
+        max_step = self.traj_num_windows[self.env2traj] - 1
+        self.env2step = torch.minimum(self.env2step, max_step)
+        # Async prefetch: if next step will move out of window, prefetch next window
+        next_step = self.env2step + 1
+        need_prefetch = next_step < self.traj_num_windows[self.env2traj]
+        envs_to_prefetch = torch.where(need_prefetch)[0]
+        for i in envs_to_prefetch:
+            self._maybe_prefetch(i.item(), self.env2traj[i].item(), next_step[i].item())
+        # Compute and store the current reference qpos for all envs
+        self.ref_qpos = self.compute_reference(key="qpos")
+        # Also extract and store reference root position and orientation for all envs
+        if self._root_pos_idx:
+            self.ref_root_pos = self.ref_qpos[:, self._root_pos_idx]
+        else:
+            self.ref_root_pos = None
+        if self._root_rot_idx:
+            self.ref_root_rot = self.ref_qpos[:, self._root_rot_idx]
+        else:
+            self.ref_root_rot = None
+
+        # --- Replay reference if enabled ---
+        if self.replay_reference:
+            isaaclab_joint_names = self.scene["robot"].joint_names
+            reference_joint_names = self.get_reference_joint_names()
+            if not hasattr(self, "_qpos_mapping") or not self._qpos_mapping:
+                self.compute_qpos_mapping(reference_joint_names)
+            # --- Robust root pose construction ---
+            canonical_root_order = [
+                "root_x",
+                "root_y",
+                "root_z",
+                "root_qw",
+                "root_qx",
+                "root_qy",
+                "root_qz",
+            ]
+            root_pose_list = []
+            for root_name in canonical_root_order:
+                if root_name in reference_joint_names:
+                    idx = reference_joint_names.index(root_name)
+                    root_pose_list.append(
+                        self.ref_qpos[:, idx : idx + 1]
+                    )  # (num_envs, 1)
+                else:
+                    # Fill with sensible default
+                    if root_name == "root_x":
+                        # Use env origin x if available, else 0
+                        default_val = (
+                            self.scene.env_origins[:, 0:1]
+                            if hasattr(self.scene, "env_origins")
+                            else torch.zeros((self.num_envs, 1), device=self.device)
+                        )
+                    elif root_name == "root_y":
+                        # Use env origin y if available, else 0
+                        default_val = (
+                            self.scene.env_origins[:, 1:2]
+                            if hasattr(self.scene, "env_origins")
+                            else torch.zeros((self.num_envs, 1), device=self.device)
+                        )
+                    elif root_name == "root_z":
+                        # Use env origin z if available, else 0
+                        default_val = (
+                            self.scene.env_origins[:, 2:3]
+                            if hasattr(self.scene, "env_origins")
+                            else torch.zeros((self.num_envs, 1), device=self.device)
+                        )
+                    elif root_name == "root_qw":
+                        default_val = torch.ones((self.num_envs, 1), device=self.device)
+                    else:
+                        default_val = torch.zeros(
+                            (self.num_envs, 1), device=self.device
+                        )
+                    root_pose_list.append(default_val)
+            root_pose = torch.cat(root_pose_list, dim=1)  # (num_envs, 7)
+            default_root_state = self.scene["robot"].data.default_root_state.clone()
+            default_root_state[..., :7] = root_pose
+            default_root_state[..., :3] += self.scene.env_origins
+            self.scene["robot"].write_root_state_to_sim(default_root_state)
+            # --- Set joint positions from reference (excluding root states) ---
+            # Find indices in reference_joint_names that are actual joints (not root states)
+            root_names = [
+                reference_joint_names[i]
+                for i in (self._root_pos_idx + self._root_rot_idx)
+            ]
+            joint_indices_ref = [
+                i for i, n in enumerate(reference_joint_names) if n not in root_names
+            ]
+            joint_names_ref = [reference_joint_names[i] for i in joint_indices_ref]
+            # Map these to IsaacLab joint indices (only those present in isaaclab_joint_names)
+            joint_indices_isaac = [
+                isaaclab_joint_names.index(n)
+                for n in joint_names_ref
+                if n in isaaclab_joint_names
+            ]
+            # Prepare joint position array (num_envs, num_joints)
+            qpos_joints = torch.zeros(
+                (self.ref_qpos.shape[0], len(isaaclab_joint_names)),
+                device=self.ref_qpos.device,
+            )
+            # Fill in the mapped joint positions
+            for idx_ref, name in zip(joint_indices_ref, joint_names_ref):
+                if name in isaaclab_joint_names:
+                    idx_isaac = isaaclab_joint_names.index(name)
+                    qpos_joints[:, idx_isaac] = self.ref_qpos[:, idx_ref]
+            self.scene["robot"].write_joint_state_to_sim(
+                qpos_joints,
+                self.scene["robot"].data.default_joint_vel.clone(),
+            )
+            self.scene.write_data_to_sim()
+        # Call parent step
+        return super().step(action)
 
     def compute_reference(self, key="qpos"):
         """
@@ -186,14 +322,23 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         Returns:
             refs: torch.Tensor of shape (num_envs, ...)
         """
-        # Use batch_get for maximum efficiency (no Python loop)
-        return self.cache.batch_get(
-            self.env2traj, self.env2step, key=key, data_type="observations"
+        traj_indices = self.env2traj
+        window_indices = self.env2step
+        # Always use the first step in the window for standard imitation
+        step_indices = torch.zeros_like(window_indices)
+        # Use the underlying dataset's batch_get directly for (window_idx, step_in_window)
+        batch = self.cache.dataset.batch_get(
+            window_indices, step_indices, key=key, data_type="observations"
         )
+        # Defensive: ensure output is always 2D (num_envs, qpos_dim)
+        if batch.ndim == 1:
+            batch = batch.unsqueeze(0)
+        return batch
 
     def compute_qpos_mapping(self, reference_joint_names=None):
         """
         Compute mapping between IsaacLab qpos order and a reference qpos order (configurable).
+        Also separates root position and orientation indices for convenience.
         Args:
             reference_joint_names: list of joint names in reference qpos order. If None, uses cfg.reference_joint_names or self.get_loco_joint_names().
         Returns:
@@ -220,6 +365,35 @@ class ImitationRLEnv(ManagerBasedRLEnv):
             inv_mapping.append(reference_joint_names.index(name))
         self._qpos_mapping = mapping
         self._qpos_inv_mapping = inv_mapping
+        # Identify root position and orientation indices (assume standard naming)
+        root_pos_names = ["root_x", "root_y", "root_z"]
+        root_rot_names = ["root_qw", "root_qx", "root_qy", "root_qz"]
+        self._root_pos_idx = [
+            i for i, name in enumerate(reference_joint_names) if name in root_pos_names
+        ]
+        self._root_rot_idx = [
+            i for i, name in enumerate(reference_joint_names) if name in root_rot_names
+        ]
+        # --- Debug printouts for mapping verification ---
+        missing_in_isaac = [
+            name for name in reference_joint_names if name not in isaaclab_joint_names
+        ]
+        missing_in_ref = [
+            name for name in isaaclab_joint_names if name not in reference_joint_names
+        ]
+        # if missing_in_isaac:
+        #     print(
+        #         f"[WARNING] Joints in reference but not in IsaacLab: {missing_in_isaac}"
+        #     )
+        # if missing_in_ref:
+        #     print(
+        #         f"[WARNING] Joints in IsaacLab but not in reference: {missing_in_ref}"
+        #     )
+        # print(f"[DEBUG] Reference joint order: {reference_joint_names}")
+        # print(f"[DEBUG] IsaacLab joint order: {isaaclab_joint_names}")
+        # print(f"[DEBUG] Reference->IsaacLab mapping indices: {mapping}")
+        # print(f"[DEBUG] IsaacLab->Reference mapping indices: {inv_mapping}")
+        # ---
         return mapping, inv_mapping
 
     def get_loco_joint_names(self):
@@ -230,10 +404,10 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         # Example for UnitreeG1 (should generalize for other robots)
         return [
             "root_z",
-            "root_qw",
             "root_qx",
             "root_qy",
             "root_qz",
+            "root_qw",
             "left_hip_pitch_joint",
             "left_hip_roll_joint",
             "left_hip_yaw_joint",
@@ -309,19 +483,37 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         inv_mapping = self._qpos_inv_mapping
         return qpos_loco[..., inv_mapping]
 
-    # ---
-    # More advanced batching (future):
-    # If your Zarr dataset supports batch access for arbitrary (traj_idx, step_idx) pairs,
-    # you could implement a batch_get method in the dataset/cache, e.g.:
-    #   refs = self.cache.batch_get(env_indices, traj_indices, step_indices, key=key, data_type="observations")
-    # This would allow a single disk read for all required data, further reducing I/O.
-    # For multi-step RL (e.g., n-step returns), you could also batch fetch [step_idx:step_idx+n] for each env.
-
-    # --- Hooks for custom observation/reward logic ---
-    # def _get_observations(self):
-    #     # Use self.compute_reference() as needed
-    #     pass
-    #
-    # def _get_rewards(self):
-    #     # Use self.compute_reference() as needed
-    #     pass
+    def debug_reference_vs_loader(
+        self, loader, num_envs_to_check=3, num_steps=10, key="qpos"
+    ):
+        """
+        Debug utility to compare reference data fetched from the Zarr dataset (via env) and the original loader.
+        Args:
+            loader: The original trajectory loader (e.g., LocoMuJoCoLoader).
+            num_envs_to_check: Number of environments to check.
+            num_steps: Number of steps to check for each env.
+            key: Which observation key to check (e.g., 'qpos').
+        """
+        print("=== Debug: Reference vs Loader ===")
+        for env_id in range(min(num_envs_to_check, self.num_envs)):
+            traj_idx = self.env2traj[env_id].item()
+            print(f"\n[Env {env_id}] Trajectory index: {traj_idx}")
+            # Get the original trajectory from the loader
+            orig_traj = loader[traj_idx]
+            orig_qpos = orig_traj.observations[key]
+            orig_dt = orig_traj.dt
+            print(f"  Loader qpos shape: {orig_qpos.shape}, dt: {orig_dt}")
+            # For each step, compare the reference from env and the loader
+            for step in range(
+                min(num_steps, self.traj_num_windows[traj_idx].item())  # type: ignore
+            ):
+                # Set env2step for this env to the step we want to check
+                self.env2step[env_id] = step
+                ref_qpos = self.compute_reference(key=key)[env_id].cpu().numpy()
+                # The Zarr window starts at 'step', so the first element should match orig_qpos[step]
+                orig_qpos_step = orig_qpos[step]
+                diff = ((ref_qpos - orig_qpos_step) ** 2).mean() ** 0.5
+                print(f"    Step {step}: RMSE={diff:.6f}")
+                if diff > 1e-5:
+                    print(f"      [WARNING] Mismatch at step {step} (env {env_id})")
+        print("=== End Debug ===")

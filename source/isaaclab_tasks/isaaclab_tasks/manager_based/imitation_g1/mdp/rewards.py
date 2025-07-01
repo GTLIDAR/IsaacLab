@@ -39,25 +39,26 @@ def qpos_imitation_l2(
     Returns:
         Tensor of shape (num_envs,) with the L2 error for each environment.
     """
-    # Get actual qpos from the robot (IsaacLab order)
-    qpos_actual = env.scene["robot"].data.joint_pos
-    # Get reference qpos from the dataset (reference order)
-    qpos_reference = env.compute_reference(key="qpos")
-    # Compute mapping between IsaacLab and reference order
-    isaaclab_joint_names = env.scene["robot"].joint_names
-    if reference_joint_names is None:
-        reference_joint_names = getattr(env.cfg, "reference_joint_names", None)
-    if reference_joint_names is None:
-        reference_joint_names = env.get_loco_joint_names()
-    # Find common joints and their indices in both orders
-    common_names = [
-        name for name in reference_joint_names if name in isaaclab_joint_names
-    ]
-    idx_actual = [isaaclab_joint_names.index(name) for name in common_names]
-    idx_reference = [reference_joint_names.index(name) for name in common_names]
-    # Select only the common joints
-    qpos_actual_common = qpos_actual[:, idx_actual]
-    qpos_reference_common = qpos_reference[:, idx_reference]
-    # Compute L2 error
-    l2_error = torch.sum((qpos_actual_common - qpos_reference_common) ** 2, dim=1)
-    return -l2_error  # Negative for reward (higher is better)
+    return torch.zeros(env.num_envs, device=env.device)
+    # # Get actual qpos from the robot (IsaacLab order)
+    # qpos_actual = env.scene["robot"].data.joint_pos
+    # # Get reference qpos from the dataset (reference order)
+    # qpos_reference = env.compute_reference(key="qpos")
+    # # Compute mapping between IsaacLab and reference order
+    # isaaclab_joint_names = env.scene["robot"].joint_names
+    # if reference_joint_names is None:
+    #     reference_joint_names = getattr(env.cfg, "reference_joint_names", None)
+    # if reference_joint_names is None:
+    #     reference_joint_names = env.get_loco_joint_names()
+    # # Find common joints and their indices in both orders
+    # common_names = [
+    #     name for name in reference_joint_names if name in isaaclab_joint_names
+    # ]
+    # idx_actual = [isaaclab_joint_names.index(name) for name in common_names]
+    # idx_reference = [reference_joint_names.index(name) for name in common_names]
+    # # Select only the common joints
+    # qpos_actual_common = qpos_actual[:, idx_actual]
+    # qpos_reference_common = qpos_reference[:, idx_reference]
+    # # Compute L2 error
+    # l2_error = torch.sum((qpos_actual_common - qpos_reference_common) ** 2, dim=1)
+    # return -l2_error  # Negative for reward (higher is better)

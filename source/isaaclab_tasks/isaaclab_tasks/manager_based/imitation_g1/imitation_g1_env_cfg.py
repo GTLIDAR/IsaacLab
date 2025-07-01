@@ -8,6 +8,11 @@ import math
 import isaaclab.sim as sim_utils
 from isaaclab.assets import ArticulationCfg, AssetBaseCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
+from isaaclab.envs.mdp import (
+    JointPositionActionCfg,
+    JointPositionToLimitsActionCfg,
+    reset_joints_by_offset,
+)
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
 from isaaclab.managers import ObservationTermCfg as ObsTerm
@@ -15,35 +20,24 @@ from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.scene import InteractiveSceneCfg
-from isaaclab.utils import configclass
 from isaaclab.sensors import ContactSensorCfg, RayCasterCfg, patterns
 from isaaclab.terrains import TerrainImporterCfg
-from isaaclab.envs.mdp import (
-    JointPositionActionCfg,
-    JointPositionToLimitsActionCfg,
-    reset_joints_by_offset,
-    time_out,
-)
+from isaaclab.utils import configclass
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
+from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
+
 from isaaclab_tasks.manager_based.locomotion.velocity.config.g1.rough_env_cfg import (
-    G1Rewards,
-    G1ObservationsCfg,
     G1ActionsCfg,
+    G1ObservationsCfg,
+    G1Rewards,
 )
 from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
     CommandsCfg,
     TerminationsCfg,
 )
-from isaaclab.managers import (
-    RewardTermCfg as RewTerm,
-    SceneEntityCfg,
-    ObservationTermCfg as ObsTerm,
-    ObservationGroupCfg as ObsGroup,
-)
-from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
-from .mdp import qpos_imitation_l2
 
 from . import mdp
+from .mdp import qpos_imitation_l2
 
 ##
 # Pre-defined configs
@@ -100,7 +94,7 @@ class ImitationG1SceneCfg(InteractiveSceneCfg):
         prim_path="{ENV_REGEX_NS}/Robot/torso_link",
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
         attach_yaw_only=True,
-        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
+        pattern_cfg=patterns.GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),  # type: ignore
         debug_vis=False,
         mesh_prim_paths=["/World/ground"],
     )
@@ -133,8 +127,6 @@ class ObservationsCfg:
         pass
 
     policy: PolicyCfg = PolicyCfg()
-    student: PolicyCfg = PolicyCfg()
-    teacher: PolicyCfg = PolicyCfg()
 
 
 # --- Actions ---
@@ -160,7 +152,7 @@ class EventCfg:
 
 
 @configclass
-class TerminationsCfg:
+class G1TerminationsCfg:
     """Termination terms for the MDP."""
 
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
@@ -205,6 +197,8 @@ class ImitationG1EnvCfg(ManagerBasedRLEnvCfg):
     replay_reference: bool = True
     # Reference joint names for the robot from the reference qpos order (this is the order of G1 in loco-mujoco)
     reference_joint_names: list[str] = [
+        "root_x",
+        "root_y",
         "root_z",
         "root_qw",
         "root_qx",
@@ -253,9 +247,9 @@ class ImitationG1EnvCfg(ManagerBasedRLEnvCfg):
         if self.scene.contact_forces is not None:
             self.scene.contact_forces.update_period = self.sim.dt
         # post init of parent
-        super().__post_init__()
+        super().__post_init__()  # type: ignore
         # Scene
-        self.scene.robot = G1_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.scene.robot = G1_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/torso_link"
 
         # # Randomization
@@ -279,7 +273,7 @@ class ImitationG1EnvCfg(ManagerBasedRLEnvCfg):
 
         # Rewards
         self.rewards.lin_vel_z_l2.weight = 0.0
-        self.rewards.undesired_contacts = None
+        self.rewards.undesired_contacts = None  # type: ignore
         self.rewards.flat_orientation_l2.weight = -1.0
         self.rewards.action_rate_l2.weight = -0.005
         self.rewards.dof_acc_l2.weight = -1.25e-7
@@ -298,6 +292,11 @@ class ImitationG1EnvCfg(ManagerBasedRLEnvCfg):
 
         # terminations
         self.terminations.base_contact.params["sensor_cfg"].body_names = "torso_link"
+        self.scene.terrain.terrain_type = "plane"
+        self.scene.terrain.terrain_generator = None
+        # no height scan
+        self.scene.height_scanner = None
+        self.observations.policy.height_scan = None
 
         # check if terrain levels curriculum is enabled - if so, enable curriculum for terrain generator
         # this generates terrains with increasing difficulty and is useful for training
