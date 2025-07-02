@@ -6,18 +6,16 @@
 from __future__ import annotations
 
 import torch
-from typing import TYPE_CHECKING
 
 from isaaclab.assets import Articulation
 from isaaclab.managers import SceneEntityCfg
-from isaaclab.utils.math import wrap_to_pi
+from isaaclab.utils.math import wrap_to_pi, quat_error_magnitude, quat_mul, quat_inv
 
-if TYPE_CHECKING:
-    from isaaclab.envs import ManagerBasedRLEnv
+from isaaclab.envs import ImitationRLEnv
 
 
 def joint_pos_target_l2(
-    env: ManagerBasedRLEnv, target: float, asset_cfg: SceneEntityCfg
+    env: ImitationRLEnv, target: float, asset_cfg: SceneEntityCfg
 ) -> torch.Tensor:
     """Penalize joint position deviation from a target value."""
     # extract the used quantities (to enable type-hinting)
@@ -28,37 +26,150 @@ def joint_pos_target_l2(
     return torch.sum(torch.square(joint_pos - target), dim=1)
 
 
-def qpos_imitation_l2(
-    env: "ManagerBasedRLEnv", reference_joint_names=None
+def track_joint_reference(
+    env: ImitationRLEnv,
+    asset_cfg: SceneEntityCfg | None = None,
+    sigma: float = 0.25,
 ) -> torch.Tensor:
     """
-    Penalize L2 distance between the reference and actual qpos for joints that are in both the reference and the robot.
+    Reward for joint position imitation using a gaussian kernel.
+
     Args:
         env: The environment instance.
-        reference_joint_names: Optional list of joint names in reference order. If None, uses env.cfg.reference_joint_names or env.get_loco_joint_names().
+        asset_cfg: Scene entity configuration for the robot. If None, uses default robot config.
+        sigma: Standard deviation for the gaussian kernel (controls reward sharpness).
+
     Returns:
-        Tensor of shape (num_envs,) with the L2 error for each environment.
+        Tensor of shape (num_envs,) with the gaussian reward for each environment.
     """
-    return torch.zeros(env.num_envs, device=env.device)
-    # # Get actual qpos from the robot (IsaacLab order)
-    # qpos_actual = env.scene["robot"].data.joint_pos
-    # # Get reference qpos from the dataset (reference order)
-    # qpos_reference = env.compute_reference(key="qpos")
-    # # Compute mapping between IsaacLab and reference order
-    # isaaclab_joint_names = env.scene["robot"].joint_names
-    # if reference_joint_names is None:
-    #     reference_joint_names = getattr(env.cfg, "reference_joint_names", None)
-    # if reference_joint_names is None:
-    #     reference_joint_names = env.get_loco_joint_names()
-    # # Find common joints and their indices in both orders
-    # common_names = [
-    #     name for name in reference_joint_names if name in isaaclab_joint_names
-    # ]
-    # idx_actual = [isaaclab_joint_names.index(name) for name in common_names]
-    # idx_reference = [reference_joint_names.index(name) for name in common_names]
-    # # Select only the common joints
-    # qpos_actual_common = qpos_actual[:, idx_actual]
-    # qpos_reference_common = qpos_reference[:, idx_reference]
-    # # Compute L2 error
-    # l2_error = torch.sum((qpos_actual_common - qpos_reference_common) ** 2, dim=1)
-    # return -l2_error  # Negative for reward (higher is better)
+    # Use default asset config if none provided
+    if asset_cfg is None:
+        asset_cfg = SceneEntityCfg("robot")  # type: ignore
+
+    # Get actual qpos from the robot (IsaacLab order)
+    qpos_actual: torch.Tensor = env.scene[asset_cfg.name].data.joint_pos[
+        ..., asset_cfg.joint_ids
+    ]
+    # Get reference qpos from the dataset (reference order)
+    qpos_reference: torch.Tensor = env.compute_reference(key="qpos")
+    qpos_reference: torch.Tensor = env.get_qpos_in_isaaclab_order(qpos_reference)
+    assert qpos_reference.shape == qpos_actual.shape
+
+    # Compute mapping between IsaacLab and reference order
+    isaaclab_joint_names = env.scene[asset_cfg.name].joint_names
+    reference_joint_names = asset_cfg.joint_names
+    assert (
+        reference_joint_names is not None
+    ), "reference_joint_names must be provided in asset_cfg"
+
+    # Find common joints and their indices in both orders
+    common_names = [
+        name for name in reference_joint_names if name in isaaclab_joint_names
+    ]
+    idx_actual = [isaaclab_joint_names.index(name) for name in common_names]
+    idx_reference = [reference_joint_names.index(name) for name in common_names]
+
+    # Select only the common joints
+    qpos_actual_common = qpos_actual
+    qpos_reference_common = qpos_reference
+    # Compute squared L2 error
+    squared_error = torch.sum((qpos_actual_common - qpos_reference_common) ** 2, dim=1)
+
+    # Apply gaussian kernel: exp(-error^2 / (2 * sigma^2))
+    gaussian_reward = torch.exp(-squared_error / (2 * sigma**2))
+
+    return gaussian_reward
+
+
+def track_root_pos(
+    env: ImitationRLEnv, asset_cfg: SceneEntityCfg | None = None, sigma: float = 0.1
+) -> torch.Tensor:
+    """
+    Reward for root position imitation using a gaussian kernel.
+
+    Args:
+        env: The environment instance.
+        asset_cfg: Scene entity configuration for the robot. If None, uses default robot config.
+        sigma: Standard deviation for the gaussian kernel (controls reward sharpness).
+
+    Returns:
+        Tensor of shape (num_envs,) with the gaussian reward for each environment.
+    """
+    # Use default asset config if none provided
+    if asset_cfg is None:
+        asset_cfg = SceneEntityCfg("robot")  # type: ignore
+
+    # Extract the robot
+    asset: Articulation = env.scene[asset_cfg.name]
+
+    # Get actual root position (typically the base/pelvis position)
+    root_pos_actual = asset.data.root_pos_w[:, :3]  # x, y, z coordinates
+
+    # remove the default root position
+    root_pos_actual: torch.Tensor = (
+        root_pos_actual - asset.data.default_root_state[..., :3]
+    )
+
+    # Get reference root position from the dataset
+    root_pos_reference = env.compute_reference(key="root")[..., :3]
+
+    assert root_pos_actual.shape == root_pos_reference.shape, (
+        root_pos_actual.shape,
+        root_pos_reference.shape,
+    )
+
+    # Compute squared L2 error between actual and reference root position
+    squared_error = torch.sum((root_pos_actual - root_pos_reference) ** 2, dim=1)
+
+    # Apply gaussian kernel: exp(-error^2 / (2 * sigma^2))
+    gaussian_reward = torch.exp(-squared_error / (2 * sigma**2))
+
+    return gaussian_reward
+
+
+def track_root_ang(
+    env: ImitationRLEnv, asset_cfg: SceneEntityCfg | None = None, sigma: float = 0.1
+) -> torch.Tensor:
+    """
+    Reward for root orientation imitation using a gaussian kernel.
+
+    Args:
+        env: The environment instance.
+        asset_cfg: Scene entity configuration for the robot. If None, uses default robot config.
+        sigma: Standard deviation for the gaussian kernel (controls reward sharpness).
+
+    Returns:
+        Tensor of shape (num_envs,) with the gaussian reward for each environment.
+    """
+    # Use default asset config if none provided
+    if asset_cfg is None:
+        asset_cfg = SceneEntityCfg("robot")  # type: ignore
+
+    # Extract the robot
+    asset: Articulation = env.scene[asset_cfg.name]
+
+    # Get actual root orientation (quaternion in w,x,y,z format)
+    root_quat_actual = asset.data.root_quat_w
+
+    # Transform actual quaternion back to original reference frame
+    # q_relative = q_default^-1 * q_actual
+    root_quat_actual_relative = quat_mul(
+        quat_inv(asset.data.default_root_state[..., 3:7]), root_quat_actual
+    )
+
+    # Get reference root orientation from the dataset (quaternion in w,x,y,z format)
+    root_quat_reference = env.compute_reference(key="root")[..., 3:7]
+
+    assert root_quat_actual_relative.shape == root_quat_reference.shape, (
+        root_quat_actual_relative.shape,
+        root_quat_reference.shape,
+    )
+
+    # Compute quaternion error magnitude (angular error in radians)
+    angular_error = quat_error_magnitude(root_quat_actual_relative, root_quat_reference)
+
+    # Apply gaussian kernel: exp(-error^2 / (2 * sigma^2))
+    # Note: angular_error is already the magnitude, so we square it for the gaussian
+    gaussian_reward = torch.exp(-(angular_error**2) / (2 * sigma**2))
+
+    return gaussian_reward

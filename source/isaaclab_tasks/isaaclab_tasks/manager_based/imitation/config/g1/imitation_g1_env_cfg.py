@@ -6,28 +6,70 @@
 from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.utils import configclass
+from isaaclab_assets.robots.unitree import G1_CFG
 
-
-from . import mdp
-from .mdp import qpos_imitation_l2
 from ...imitation_env_cfg import (
     ImitationLearningEnvCfg,
-    ObservationsCfg,
-    ActionsCfg,
-    CommandsCfg,
     RewardsCfg,
-    EventCfg,
-    TerminationsCfg,
 )
-
-from isaaclab_assets.robots.unitree import G1_CFG
+from .mdp import track_joint_reference, track_root_pos, track_root_ang
 
 
 # --- Rewards ---
 @configclass
 class G1RewardsCfg(RewardsCfg):
     # Borrow all velocity task rewards, then add imitation-specific ones
-    qpos_imitation_l2 = RewTerm(func=qpos_imitation_l2, weight=5.0)
+    track_joint_reference = RewTerm(
+        func=track_joint_reference,
+        weight=0.1,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=[
+                    "left_hip_pitch_joint",
+                    "left_hip_roll_joint",
+                    "left_hip_yaw_joint",
+                    "left_knee_joint",
+                    "left_ankle_pitch_joint",
+                    "left_ankle_roll_joint",
+                    "right_hip_pitch_joint",
+                    "right_hip_roll_joint",
+                    "right_hip_yaw_joint",
+                    "right_knee_joint",
+                    "right_ankle_pitch_joint",
+                    "right_ankle_roll_joint",
+                    "torso_joint",
+                    "left_shoulder_pitch_joint",
+                    "left_shoulder_roll_joint",
+                    "left_shoulder_yaw_joint",
+                    "left_elbow_pitch_joint",
+                    "left_elbow_roll_joint",
+                    "right_shoulder_pitch_joint",
+                    "right_shoulder_roll_joint",
+                    "right_shoulder_yaw_joint",
+                    "right_elbow_pitch_joint",
+                    "right_elbow_roll_joint",
+                ],
+            ),
+            "sigma": 0.25,
+        },
+    )
+    track_root_pos = RewTerm(
+        func=track_root_pos,
+        weight=0.1,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+            "sigma": 0.1,
+        },
+    )
+    track_root_ang = RewTerm(
+        func=track_root_ang,
+        weight=0.1,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+            "sigma": 0.1,
+        },
+    )
 
 
 @configclass
@@ -47,6 +89,10 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
         "task": "walk",
     }  # Loader kwargs (required if Zarr does not exist)
     replay_reference: bool = True
+
+    # debug timing
+    debug_timing: bool = True
+
     # Reference joint names for the robot from the reference qpos order (this is the order of G1 in loco-mujoco)
     reference_joint_names: list[str] = [
         "root_x",
@@ -98,13 +144,18 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
         self.rewards.flat_orientation_l2.weight = -1.0
         self.rewards.action_rate_l2.weight = -0.005
         self.rewards.dof_acc_l2.weight = -1.25e-7
-        self.rewards.dof_acc_l2.params["asset_cfg"] = SceneEntityCfg(
-            "robot", joint_names=[".*_hip_.*", ".*_knee_joint"]
+        self.rewards.dof_acc_l2.params["asset_cfg"] = SceneEntityCfg(  # type: ignore
+            "robot",
+            joint_names=[".*_hip_.*", ".*_knee_joint"],  # type: ignore
         )
         self.rewards.dof_torques_l2.weight = -1.5e-7
-        self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
-            "robot", joint_names=[".*_hip_.*", ".*_knee_joint", ".*_ankle_.*"]
+        self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(  # type: ignore
+            "robot",
+            joint_names=[".*_hip_.*", ".*_knee_joint", ".*_ankle_.*"],  # type: ignore
         )
 
         # terminations
-        self.terminations.base_contact.params["sensor_cfg"].body_names = "torso_link"
+        self.terminations.base_contact.params["sensor_cfg"].body_names = "pelvis"
+        self.events.add_base_mass.params["asset_cfg"].body_names = "pelvis"
+        self.events.base_com.params["asset_cfg"].body_names = "pelvis"
+        self.events.base_external_force_torque.params["asset_cfg"].body_names = "pelvis"

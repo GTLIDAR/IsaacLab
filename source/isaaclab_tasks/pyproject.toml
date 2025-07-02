@@ -10,3 +10,8 @@ search-path = [
     "../isaaclab_mimic",
     "../isaaclab_tasks",
 ]
+[tool.pyrefly.errors]
+# ignore unexpected-keyword-arg
+unexpected-keyword = false
+bad-argument-type = false
+bad-override = false
