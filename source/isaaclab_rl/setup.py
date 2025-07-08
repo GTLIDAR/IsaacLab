@@ -21,12 +21,10 @@ EXTENSION_TOML_DATA = toml.load(
 # Minimum dependencies required prior to installation
 INSTALL_REQUIRES = [
     # generic
-    "numpy",
+    "numpy<2",
     "torch>=2.5.1",
     "torchvision>=0.14.1",  # ensure compatibility with torch 1.13.1
-    # 5.26.0 introduced a breaking change, so we restricted it for now.
-    # See issue https://github.com/tensorflow/tensorboard/issues/6808 for details.
-    "protobuf>=3.20.2, < 5.0.0",
+    "protobuf>=3.20.2,!=5.26.0",
     # configuration management
     "hydra-core",
     # data collection
@@ -43,7 +41,7 @@ PYTORCH_INDEX_URL = ["https://download.pytorch.org/whl/cu118"]
 
 # Extra dependencies for RL agents
 EXTRAS_REQUIRE = {
-    "sb3": ["stable-baselines3>=2.1"],
+    "sb3": ["stable-baselines3>=2.6", "tqdm", "rich"],  # tqdm/rich for progress bar
     "skrl": ["skrl>=1.4.2"],
     "rl-games": ["rl-games==1.6.1", "gym"],  # rl-games still needs gym :(
     "rsl-rl": ["rsl-rl-lib==2.3.3"],

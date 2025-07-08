@@ -264,16 +264,17 @@ def quat_conjugate(q: torch.Tensor) -> torch.Tensor:
 
 
 @torch.jit.script
-def quat_inv(q: torch.Tensor) -> torch.Tensor:
-    """Compute the inverse of a quaternion.
+def quat_inv(q: torch.Tensor, eps: float = 1e-9) -> torch.Tensor:
+    """Computes the inverse of a quaternion.
 
     Args:
         q: The quaternion orientation in (w, x, y, z). Shape is (N, 4).
+        eps: A small value to avoid division by zero. Defaults to 1e-9.
 
     Returns:
         The inverse quaternion in (w, x, y, z). Shape is (N, 4).
     """
-    return normalize(quat_conjugate(q))
+    return quat_conjugate(q) / q.pow(2).sum(dim=-1, keepdim=True).clamp(min=eps)
 
 
 @torch.jit.script
@@ -449,7 +450,7 @@ def matrix_from_euler(euler_angles: torch.Tensor, convention: str) -> torch.Tens
 
 @torch.jit.script
 def euler_xyz_from_quat(
-    quat: torch.Tensor,
+    quat: torch.Tensor, wrap_to_2pi: bool = False
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Convert rotations given as quaternions to Euler angles in radians.
 
@@ -458,6 +459,9 @@ def euler_xyz_from_quat(
 
     Args:
         quat: The quaternion orientation in (w, x, y, z). Shape is (N, 4).
+        wrap_to_2pi (bool): Whether to wrap output Euler angles into [0, 2π). If
+            False, angles are returned in the default range (−π, π]. Defaults to
+            False.
 
     Returns:
         A tuple containing roll-pitch-yaw. Each element is a tensor of shape (N,).
@@ -484,11 +488,9 @@ def euler_xyz_from_quat(
     cos_yaw = 1 - 2 * (q_y * q_y + q_z * q_z)
     yaw = torch.atan2(sin_yaw, cos_yaw)
 
-    return (
-        roll % (2 * torch.pi),
-        pitch % (2 * torch.pi),
-        yaw % (2 * torch.pi),
-    )  # TODO: why not wrap_to_pi here ?
+    if wrap_to_2pi:
+        return roll % (2 * torch.pi), pitch % (2 * torch.pi), yaw % (2 * torch.pi)
+    return roll, pitch, yaw
 
 
 @torch.jit.script
