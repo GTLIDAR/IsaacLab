@@ -42,6 +42,7 @@ def track_joint_reference(
     Returns:
         Tensor of shape (num_envs,) with the gaussian reward for each environment.
     """
+
     # Use default asset config if none provided
     if asset_cfg is None:
         asset_cfg = SceneEntityCfg("robot")  # type: ignore
@@ -58,9 +59,9 @@ def track_joint_reference(
     # Compute mapping between IsaacLab and reference order
     isaaclab_joint_names = env.scene[asset_cfg.name].joint_names
     reference_joint_names = asset_cfg.joint_names
-    assert (
-        reference_joint_names is not None
-    ), "reference_joint_names must be provided in asset_cfg"
+    assert reference_joint_names is not None, (
+        "reference_joint_names must be provided in asset_cfg"
+    )
 
     # Find common joints and their indices in both orders
     common_names = [
@@ -95,6 +96,7 @@ def track_root_pos(
     Returns:
         Tensor of shape (num_envs,) with the gaussian reward for each environment.
     """
+    pass
     # Use default asset config if none provided
     if asset_cfg is None:
         asset_cfg = SceneEntityCfg("robot")  # type: ignore
@@ -158,7 +160,7 @@ def track_root_ang(
     )
 
     # Get reference root orientation from the dataset (quaternion in w,x,y,z format)
-    root_quat_reference = env.compute_reference(key="root")[..., 3:7]
+    root_quat_reference = env.current_reference.get("root")
 
     assert root_quat_actual_relative.shape == root_quat_reference.shape, (
         root_quat_actual_relative.shape,

@@ -62,10 +62,11 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         # Call parent reset
         result = super()._reset_idx(env_ids)
 
+        if not isinstance(env_ids, torch.Tensor):
+            env_ids = torch.tensor(env_ids, device=self.device)
+
         # Reset trajectory tracking
-        self.trajectory_manager.reset_trajectories(
-            torch.tensor(env_ids, device=self.device)
-        )
+        self.trajectory_manager.reset_trajectories(env_ids)
 
         # Get initial reference data
         self.current_reference = self.trajectory_manager.get_reference_data()
@@ -75,22 +76,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         """Step the environment and update reference data."""
         # Get next reference data point
         self.current_reference = self.trajectory_manager.get_reference_data()
-        assert isinstance(self.current_reference, TensorDict)
-        assert self.current_reference.batch_size == self.num_envs
-        assert "root_pos" in self.current_reference
-        assert "root_quat" in self.current_reference
-        assert "joint_pos" in self.current_reference
-        assert "joint_vel" in self.current_reference
-        assert self.current_reference.get("joint_pos").shape == (
-            self.num_envs,
-            len(self.scene["robot"].joint_names),
-        )
-        assert self.current_reference.get("joint_vel").shape == (
-            self.num_envs,
-            len(self.scene["robot"].joint_names),
-        )
 
-        print(self.current_reference)
         # Call parent step
         return super().step(action)
 

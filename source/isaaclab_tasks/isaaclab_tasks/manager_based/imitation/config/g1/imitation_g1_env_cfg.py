@@ -16,73 +16,73 @@ from .mdp import track_joint_reference, track_root_pos, track_root_ang
 
 
 # --- Rewards ---
-@configclass
-class G1RewardsCfg(RewardsCfg):
-    # Borrow all velocity task rewards, then add imitation-specific ones
-    track_joint_reference = RewTerm(
-        func=track_joint_reference,
-        weight=0.1,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                joint_names=[
-                    "left_hip_pitch_joint",
-                    "left_hip_roll_joint",
-                    "left_hip_yaw_joint",
-                    "left_knee_joint",
-                    "left_ankle_pitch_joint",
-                    "left_ankle_roll_joint",
-                    "right_hip_pitch_joint",
-                    "right_hip_roll_joint",
-                    "right_hip_yaw_joint",
-                    "right_knee_joint",
-                    "right_ankle_pitch_joint",
-                    "right_ankle_roll_joint",
-                    "torso_joint",
-                    "left_shoulder_pitch_joint",
-                    "left_shoulder_roll_joint",
-                    "left_shoulder_yaw_joint",
-                    "left_elbow_pitch_joint",
-                    "left_elbow_roll_joint",
-                    "right_shoulder_pitch_joint",
-                    "right_shoulder_roll_joint",
-                    "right_shoulder_yaw_joint",
-                    "right_elbow_pitch_joint",
-                    "right_elbow_roll_joint",
-                ],
-            ),
-            "sigma": 0.25,
-        },
-    )
-    track_root_pos = RewTerm(
-        func=track_root_pos,
-        weight=0.1,
-        params={
-            "asset_cfg": SceneEntityCfg("robot"),
-            "sigma": 0.1,
-        },
-    )
-    track_root_ang = RewTerm(
-        func=track_root_ang,
-        weight=0.1,
-        params={
-            "asset_cfg": SceneEntityCfg("robot"),
-            "sigma": 0.1,
-        },
-    )
+# @configclass
+# class G1RewardsCfg(RewardsCfg):
+# Borrow all velocity task rewards, then add imitation-specific ones
+# track_joint_reference = RewTerm(
+#     func=track_joint_reference,
+#     weight=0.1,
+#     params={
+#         "asset_cfg": SceneEntityCfg(
+#             "robot",
+#             joint_names=[
+#                 "left_hip_pitch_joint",
+#                 "left_hip_roll_joint",
+#                 "left_hip_yaw_joint",
+#                 "left_knee_joint",
+#                 "left_ankle_pitch_joint",
+#                 "left_ankle_roll_joint",
+#                 "right_hip_pitch_joint",
+#                 "right_hip_roll_joint",
+#                 "right_hip_yaw_joint",
+#                 "right_knee_joint",
+#                 "right_ankle_pitch_joint",
+#                 "right_ankle_roll_joint",
+#                 "torso_joint",
+#                 "left_shoulder_pitch_joint",
+#                 "left_shoulder_roll_joint",
+#                 "left_shoulder_yaw_joint",
+#                 "left_elbow_pitch_joint",
+#                 "left_elbow_roll_joint",
+#                 "right_shoulder_pitch_joint",
+#                 "right_shoulder_roll_joint",
+#                 "right_shoulder_yaw_joint",
+#                 "right_elbow_pitch_joint",
+#                 "right_elbow_roll_joint",
+#             ],
+#         ),
+#         "sigma": 0.25,
+#     },
+# )
+# track_root_pos = RewTerm(
+#     func=track_root_pos,
+#     weight=0.1,
+#     params={
+#         "asset_cfg": SceneEntityCfg("robot"),
+#         "sigma": 0.1,
+#     },
+# )
+# track_root_ang = RewTerm(
+#     func=track_root_ang,
+#     weight=0.1,
+#     params={
+#         "asset_cfg": SceneEntityCfg("robot"),
+#         "sigma": 0.1,
+#     },
+# )
 
 
 @configclass
 class ImitationG1EnvCfg(ImitationLearningEnvCfg):
     # MDP settings
-    rewards: RewardsCfg = G1RewardsCfg()
+    rewards: RewardsCfg = RewardsCfg()
     # Dataset and cache settings for ImitationRLEnv
     device: str = "cuda"  # Torch device
     loader_type: str = "loco_mujoco"  # Loader type (required if Zarr does not exist)
     loader_kwargs: dict = {
         "env_name": "UnitreeG1",
-        "trajectories": {"default": ["walk"], "amass": [], "lafan1": []},
     }  # Loader kwargs (required if Zarr does not exist)
+    dataset: dict = {"trajectories": {"default": ["walk"], "amass": [], "lafan1": []}}
     replay_reference: bool = True
     # Reference joint names for the robot from the reference qpos order (this is the order of G1 in loco-mujoco)
     reference_joint_names: list[str] = [
@@ -114,21 +114,46 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
     # target joint names
     target_joint_names: list[str] = [
         "left_hip_pitch_joint",
-        "left_hip_roll_joint",
-        "left_hip_yaw_joint",
-        "left_knee_joint",
-        "left_ankle_pitch_joint",
-        "left_ankle_roll_joint",
         "right_hip_pitch_joint",
+        "torso_joint",
+        "left_hip_roll_joint",
         "right_hip_roll_joint",
+        "left_shoulder_pitch_joint",
+        "right_shoulder_pitch_joint",
+        "left_hip_yaw_joint",
         "right_hip_yaw_joint",
+        "left_shoulder_roll_joint",
+        "right_shoulder_roll_joint",
+        "left_knee_joint",
         "right_knee_joint",
+        "left_shoulder_yaw_joint",
+        "right_shoulder_yaw_joint",
+        "left_ankle_pitch_joint",
         "right_ankle_pitch_joint",
+        "left_elbow_pitch_joint",
+        "right_elbow_pitch_joint",
+        "left_ankle_roll_joint",
         "right_ankle_roll_joint",
+        "left_elbow_roll_joint",
+        "right_elbow_roll_joint",
+        "left_five_joint",
+        "left_three_joint",
+        "left_zero_joint",
+        "right_five_joint",
+        "right_three_joint",
+        "right_zero_joint",
+        "left_six_joint",
+        "left_four_joint",
+        "left_one_joint",
+        "right_six_joint",
+        "right_four_joint",
+        "right_one_joint",
+        "left_two_joint",
+        "right_two_joint",
     ]
 
     # n substep, unitree g1 has dt 0.001 in mujoco, and we have sim.dt * decimation = 0.02
-    num_substeps: int = 20
+    n_substeps: int = 20
 
     # Post initialization
     def __post_init__(self) -> None:
