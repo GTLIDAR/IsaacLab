@@ -1,12 +1,10 @@
-import os
-import json
-from typing import Any, Optional, Union, List
+from typing import Any, Optional, Union, Sequence
 
 import torch
 from tensordict import TensorDict
 
 # Import dataset utilities from ImitationLearningTools
-from iltools_datasets import TrajectoryDatasetManager
+from iltools_datasets.manager import TrajectoryDatasetManager
 
 from .common import VecEnvStepReturn
 from .manager_based_rl_env import ManagerBasedRLEnv
@@ -58,24 +56,16 @@ class ImitationRLEnv(ManagerBasedRLEnv):
 
         print("[ImitationRLEnv] Initialization complete")
 
-    def _reset_idx(self, env_ids: List[int]):
+    def _reset_idx(self, env_ids: Sequence[int]):
         """Reset the specified environments."""
-        # Convert to tensor if needed
-        if isinstance(env_ids, torch.Tensor):
-            env_ids_list = env_ids.cpu().tolist()
-        else:
-            env_ids_list = env_ids
 
         # Call parent reset
-        result = super()._reset_idx(env_ids_list)
+        result = super()._reset_idx(env_ids)
 
         # Reset trajectory tracking
-        if isinstance(env_ids, list):
-            env_ids_tensor = torch.tensor(env_ids, device=self.device)
-        else:
-            env_ids_tensor = env_ids
-
-        self.trajectory_manager.reset_trajectories(env_ids_tensor)
+        self.trajectory_manager.reset_trajectories(
+            torch.tensor(env_ids, device=self.device)
+        )
 
         # Get initial reference data
         self.current_reference = self.trajectory_manager.get_reference_data()
@@ -85,7 +75,22 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         """Step the environment and update reference data."""
         # Get next reference data point
         self.current_reference = self.trajectory_manager.get_reference_data()
+        assert isinstance(self.current_reference, TensorDict)
+        assert self.current_reference.batch_size == self.num_envs
+        assert "root_pos" in self.current_reference
+        assert "root_quat" in self.current_reference
+        assert "joint_pos" in self.current_reference
+        assert "joint_vel" in self.current_reference
+        assert self.current_reference.get("joint_pos").shape == (
+            self.num_envs,
+            len(self.scene["robot"].joint_names),
+        )
+        assert self.current_reference.get("joint_vel").shape == (
+            self.num_envs,
+            len(self.scene["robot"].joint_names),
+        )
 
+        print(self.current_reference)
         # Call parent step
         return super().step(action)
 
@@ -112,69 +117,3 @@ class ImitationRLEnv(ManagerBasedRLEnv):
             raise KeyError(f"Key '{key}' not found. Available keys: {available_keys}")
 
         return self.current_reference[key]
-
-    def get_joint_mapping(self) -> torch.Tensor:
-        """
-        Get mapping from reference joint order to robot joint order.
-
-        Returns:
-            Tensor of indices mapping reference joints to robot joints.
-            Shape: (num_reference_joints,)
-        """
-        if self._joint_mapping_cache is not None:
-            return self._joint_mapping_cache
-
-        # Get robot joint names from scene
-        robot_joint_names = self.scene["robot"].data.joint_names
-
-        # Create mapping
-        mapping_indices = []
-        for ref_joint in self.reference_joint_names:
-            if ref_joint.startswith("root_"):
-                # Skip root joints as they're handled separately
-                continue
-
-            try:
-                robot_idx = robot_joint_names.index(ref_joint)
-                mapping_indices.append(robot_idx)
-            except ValueError:
-                print(
-                    f"Warning: Reference joint '{ref_joint}' not found in robot joints"
-                )
-
-        self._joint_mapping_cache = torch.tensor(mapping_indices, device=self.device)
-        return self._joint_mapping_cache
-
-    def get_mapped_joint_positions(self) -> torch.Tensor:
-        """
-        Get reference joint positions mapped to robot joint order.
-
-        Returns:
-            Tensor of joint positions. Shape: (num_envs, num_mapped_joints)
-        """
-        reference_data = self.get_reference_data()
-        assert isinstance(reference_data, TensorDict)
-        joint_mapping = self.get_joint_mapping()
-        ref_joint_pos = reference_data.get(
-            "joint_pos", torch.zeros_like(joint_mapping, device=self.device)
-        )
-
-        # Map to robot joint order
-        return ref_joint_pos[:, joint_mapping]
-
-    def get_mapped_joint_velocities(self) -> torch.Tensor:
-        """
-        Get reference joint velocities mapped to robot joint order.
-
-        Returns:
-            Tensor of joint velocities. Shape: (num_envs, num_mapped_joints)
-        """
-        reference_data = self.get_reference_data()
-        assert isinstance(reference_data, TensorDict)
-        joint_mapping = self.get_joint_mapping()
-        ref_joint_vel = reference_data.get(
-            "joint_vel", torch.zeros_like(joint_mapping, device=self.device)
-        )
-
-        # Map to robot joint order
-        return ref_joint_vel[:, joint_mapping]

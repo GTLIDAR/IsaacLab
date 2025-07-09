@@ -76,32 +76,16 @@ class G1RewardsCfg(RewardsCfg):
 class ImitationG1EnvCfg(ImitationLearningEnvCfg):
     # MDP settings
     rewards: RewardsCfg = G1RewardsCfg()
-    # Dataset settings
-    dataset_type: str = "zarr"
     # Dataset and cache settings for ImitationRLEnv
-    dataset_path: str = "/tmp/iltools_zarr"
-    window_size: int = 64  # Window size for per-env cache
-    batch_size: int = 1  # Batch size for Zarr prefetching
     device: str = "cuda"  # Torch device
     loader_type: str = "loco_mujoco"  # Loader type (required if Zarr does not exist)
     loader_kwargs: dict = {
         "env_name": "UnitreeG1",
-        "task": "walk",
+        "trajectories": {"default": ["walk"], "amass": [], "lafan1": []},
     }  # Loader kwargs (required if Zarr does not exist)
     replay_reference: bool = True
-
-    # debug timing
-    debug_timing: bool = True
-
     # Reference joint names for the robot from the reference qpos order (this is the order of G1 in loco-mujoco)
     reference_joint_names: list[str] = [
-        "root_x",
-        "root_y",
-        "root_z",
-        "root_qw",
-        "root_qx",
-        "root_qy",
-        "root_qz",
         "left_hip_pitch_joint",
         "left_hip_roll_joint",
         "left_hip_yaw_joint",
@@ -126,6 +110,25 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
         "right_elbow_pitch_joint",
         "right_elbow_roll_joint",
     ]
+
+    # target joint names
+    target_joint_names: list[str] = [
+        "left_hip_pitch_joint",
+        "left_hip_roll_joint",
+        "left_hip_yaw_joint",
+        "left_knee_joint",
+        "left_ankle_pitch_joint",
+        "left_ankle_roll_joint",
+        "right_hip_pitch_joint",
+        "right_hip_roll_joint",
+        "right_hip_yaw_joint",
+        "right_knee_joint",
+        "right_ankle_pitch_joint",
+        "right_ankle_roll_joint",
+    ]
+
+    # n substep, unitree g1 has dt 0.001 in mujoco, and we have sim.dt * decimation = 0.02
+    num_substeps: int = 20
 
     # Post initialization
     def __post_init__(self) -> None:
