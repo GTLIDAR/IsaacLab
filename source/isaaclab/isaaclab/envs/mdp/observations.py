@@ -278,20 +278,6 @@ def height_scan(
     )
 
 
-def body_incoming_wrench(
-    env: ManagerBasedEnv, asset_cfg: SceneEntityCfg
-) -> torch.Tensor:
-    """Incoming spatial wrench on bodies of an articulation in the simulation world frame.
-
-    This is the 6-D wrench (force and torque) applied to the body link by the incoming joint force.
-    """
-    # extract the used quantities (to enable type-hinting)
-    asset: Articulation = env.scene[asset_cfg.name]
-    # obtain the link incoming forces in world frame
-    body_incoming_joint_wrench_b = asset.data.body_incoming_joint_wrench_b[
-        :, asset_cfg.body_ids
-    ]
-    return body_incoming_joint_wrench_b.view(env.num_envs, -1)
 
 
 def imu_orientation(
