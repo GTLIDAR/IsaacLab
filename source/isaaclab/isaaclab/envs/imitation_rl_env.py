@@ -1,4 +1,5 @@
 from typing import Any, Optional, Union, Sequence
+import time
 
 import torch
 from tensordict import TensorDict
@@ -48,7 +49,9 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         )
 
         # Current reference data cache
-        self.current_reference: Optional[TensorDict] = None
+        self.current_reference: TensorDict = TensorDict(
+            {}, batch_size=[self.num_envs], device=self.device
+        )
 
         # Store reference joint mapping
         self.reference_joint_names = getattr(cfg, "reference_joint_names", [])
@@ -74,6 +77,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
 
     def step(self, action: torch.Tensor) -> VecEnvStepReturn:
         """Step the environment and update reference data."""
+
         # Get next reference data point
         self.current_reference = self.trajectory_manager.get_reference_data()
 
@@ -81,7 +85,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         return super().step(action)
 
     def get_reference_data(
-        self, key: Optional[str] = None
+        self, key: Optional[str] = None, joint_indices: Optional[Sequence[int]] = None
     ) -> Union[TensorDict, torch.Tensor]:
         """
         Get the current reference data.
@@ -102,4 +106,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
             available_keys = [str(k) for k in self.current_reference.keys()]
             raise KeyError(f"Key '{key}' not found. Available keys: {available_keys}")
 
-        return self.current_reference[key]
+        if joint_indices is not None:
+            return self.current_reference[key][..., joint_indices]
+        else:
+            return self.current_reference[key]

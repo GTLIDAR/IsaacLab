@@ -52,8 +52,9 @@ def track_joint_reference(
         ..., asset_cfg.joint_ids
     ]
     # Get reference qpos from the dataset (reference order)
-    qpos_reference: torch.Tensor = env.compute_reference(key="qpos")
-    qpos_reference: torch.Tensor = env.get_qpos_in_isaaclab_order(qpos_reference)
+    qpos_reference = env.get_reference_data(
+        key="joint_pos", joint_indices=asset_cfg.joint_ids
+    )
     assert qpos_reference.shape == qpos_actual.shape
 
     # Compute mapping between IsaacLab and reference order
@@ -113,7 +114,7 @@ def track_root_pos(
     )
 
     # Get reference root position from the dataset
-    root_pos_reference = env.compute_reference(key="root")[..., :3]
+    root_pos_reference = env.get_reference_data(key="root_pos")
 
     assert root_pos_actual.shape == root_pos_reference.shape, (
         root_pos_actual.shape,
@@ -160,7 +161,7 @@ def track_root_ang(
     )
 
     # Get reference root orientation from the dataset (quaternion in w,x,y,z format)
-    root_quat_reference = env.current_reference.get("root")
+    root_quat_reference = env.get_reference_data(key="root_quat")
 
     assert root_quat_actual_relative.shape == root_quat_reference.shape, (
         root_quat_actual_relative.shape,
