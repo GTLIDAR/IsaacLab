@@ -177,7 +177,7 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
         "env_name": "UnitreeG1",
     }  # Loader kwargs (required if Zarr does not exist)
     dataset: dict = {"trajectories": {"default": ["walk"], "amass": [], "lafan1": []}}
-    replay_reference: bool = True
+    replay_reference: bool = False
     # Reference joint names for the robot from the reference qpos order (this is the order of G1 in loco-mujoco)
     reference_joint_names: list[str] = [
         "left_hip_pitch_joint",
@@ -261,7 +261,6 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
         # Randomization
         self.events.push_robot = None
         self.events.add_base_mass = None
-        self.events.reset_robot_joints.params["position_range"] = (1.0, 1.0)
         self.events.base_external_force_torque.params["asset_cfg"].body_names = [
             "torso_link"
         ]

@@ -21,7 +21,8 @@ from isaaclab.utils import configclass
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
 from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 
-import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
+import isaaclab_tasks.manager_based.imitation.mdp as mdp
+
 
 ##
 # Scene definition
@@ -197,13 +198,10 @@ class EventCfg:
         },
     )
 
-    reset_robot_joints = EventTerm(
-        func=mdp.reset_joints_by_scale,
+    reset_robot_joints_to_reference = EventTerm(
+        func=mdp.reset_joints_to_reference,
         mode="reset",
-        params={
-            "position_range": (0.5, 1.5),
-            "velocity_range": (0.0, 0.0),
-        },
+        params={"asset_cfg": SceneEntityCfg("robot", body_names=".*")},
     )
 
     # interval
@@ -255,9 +253,9 @@ class TerminationsCfg:
     )
 
 
-@configclass
-class CurriculumCfg:
-    """Curriculum terms for the MDP. None for the imitation abstract class."""
+# @configclass
+# class CurriculumCfg:
+#     """Curriculum terms for the MDP. None for the imitation abstract class."""
 
 
 ##
@@ -279,7 +277,7 @@ class ImitationLearningEnvCfg(ManagerBasedRLEnvCfg):
     rewards: RewardsCfg = RewardsCfg()
     terminations: TerminationsCfg = TerminationsCfg()
     events: EventCfg = EventCfg()
-    curriculum: CurriculumCfg = CurriculumCfg()
+    # curriculum: CurriculumCfg = CurriculumCfg()
 
     # Dataset settings
     dataset_type: str = "zarr"
@@ -345,14 +343,14 @@ class ImitationLearningEnvCfg(ManagerBasedRLEnvCfg):
         if self.scene.contact_forces is not None:
             self.scene.contact_forces.update_period = self.sim.dt
 
-        # check if terrain levels curriculum is enabled - if so, enable curriculum for terrain generator
-        # this generates terrains with increasing difficulty and is useful for training
-        if getattr(self.curriculum, "terrain_levels", None) is not None:
-            if self.scene.terrain.terrain_generator is not None:
-                self.scene.terrain.terrain_generator.curriculum = True
-        else:
-            if self.scene.terrain.terrain_generator is not None:
-                self.scene.terrain.terrain_generator.curriculum = False
+        # # check if terrain levels curriculum is enabled - if so, enable curriculum for terrain generator
+        # # this generates terrains with increasing difficulty and is useful for training
+        # if getattr(self.curriculum, "terrain_levels", None) is not None:
+        #     if self.scene.terrain.terrain_generator is not None:
+        #         self.scene.terrain.terrain_generator.curriculum = True
+        # else:
+        #     if self.scene.terrain.terrain_generator is not None:
+        #         self.scene.terrain.terrain_generator.curriculum = False
 
         # change terrain to flat
         self.scene.terrain.terrain_type = "plane"
@@ -361,4 +359,4 @@ class ImitationLearningEnvCfg(ManagerBasedRLEnvCfg):
         self.scene.height_scanner = None
         self.observations.policy.height_scan = None
         # no terrain curriculum
-        self.curriculum.terrain_levels = None
+        # self.curriculum.terrain_levels = None

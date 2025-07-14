@@ -68,9 +68,6 @@ class ImitationRLEnv(ManagerBasedRLEnv):
     def _reset_idx(self, env_ids: Sequence[int]):
         """Reset the specified environments."""
 
-        # Call parent reset
-        result = super()._reset_idx(env_ids)
-
         if not isinstance(env_ids, torch.Tensor):
             env_ids_tensor = torch.tensor(env_ids, device=self.device)
         else:
@@ -84,7 +81,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
 
         self._replay_reference(env_ids_tensor)
 
-        return result
+        return super()._reset_idx(env_ids_tensor)  # type: ignore
 
     def step(self, action: torch.Tensor) -> VecEnvStepReturn:
         """Step the environment and update reference data."""
