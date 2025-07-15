@@ -37,7 +37,8 @@ INSTALL_REQUIRES = [
     "moviepy",
     # make sure this is consistent with isaac sim version
     "pillow==11.0.0",
-    
+    "rich",
+    "tqdm",
     'rlopt @ git+https://github.com/fei-yang-wu/RLOpt.git@feature/sensor#egg=rlopt'
 
 ]

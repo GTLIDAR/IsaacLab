@@ -16,8 +16,6 @@ import argparse
 import sys
 
 from isaaclab.app import AppLauncher
-
-# add argparse arguments
 parser = argparse.ArgumentParser(
     description="Train an RL agent with Stable-Baselines3."
 )
@@ -135,7 +133,6 @@ def main(
         agent_cfg["n_timesteps"] = (
             args_cli.max_iterations * agent_cfg["n_steps"] * env_cfg.scene.num_envs
         )
-
     # set the environment seed
     # note: certain randomizations occur in the environment initialization so we set the seed here
     env_cfg.seed = agent_cfg["seed"]
@@ -215,6 +212,7 @@ def main(
         sync_tensorboard=True,
         monitor_gym=True if args_cli.video else False,
         save_code=False,
+        #mode="offline",
     )
     wandb_callback = WandbCallback()
 
