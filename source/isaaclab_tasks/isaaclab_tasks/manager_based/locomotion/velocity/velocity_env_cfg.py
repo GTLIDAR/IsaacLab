@@ -71,22 +71,6 @@ class MySceneCfg(InteractiveSceneCfg):
         debug_vis=False,
         mesh_prim_paths=["/World/ground"],
     )
-    forward_chest_realsense_d435 = CameraCfg(
-        prim_path="{ENV_REGEX_NS}/Robot/base/forward_chest_realsense_d435",
-        update_period=0.1,
-        height=480,
-        width=640,
-        data_types=["rgb", "depth"],
-        spawn=sim_utils.PinholeCameraCfg(
-            focal_length=13.10,
-            focus_distance=5.0,
-        ),
-        offset=CameraCfg.OffsetCfg(
-            pos=(0.093981, 0.0225, 0.426449),  
-            rot=(0.92387953, 0.0, 0.38268343, 0),  
-            convention="world",
-        ),
-    )
     contact_forces = ContactSensorCfg(
         prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True
     )

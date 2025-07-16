@@ -60,7 +60,6 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # Scene
         self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base"
-        self.scene.forward_chest_realsense_d435.prim_path="{ENV_REGEX_NS}/Robot/base/forward_chest_realsense_d435"
         self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
             "robot",
             joint_names=[

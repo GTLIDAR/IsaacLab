@@ -205,7 +205,7 @@ def main(
 
     # initialize wandb and make callback
     run = wandb.init(
-        project="L2T Digit flat" if "flat" in args_cli.task else "L2T Digit",
+        project="L2T Digit with Height Scanner in Student Observation",
         entity="rl-digit",
         name=log_time_note,
         config=agent_cfg | class_to_dict(env_cfg),
