@@ -14,4 +14,6 @@ search-path = [
 # ignore unexpected-keyword-arg
 unexpected-keyword = false
 bad-argument-type = false
+bad-argument-count = false
 bad-override = false
+bad-assignment = false

@@ -131,9 +131,9 @@ def track_root_pos(
     # Get actual root position (typically the base/pelvis position)
     root_pos_actual = asset.data.root_pos_w[:, :3]  # x, y, z coordinates
 
-    # remove the default root position
+    # remove the default root position and the env origin (default root pos is resulted from event reset)
     root_pos_actual: torch.Tensor = (
-        root_pos_actual - asset.data.default_root_state[..., :3]
+        root_pos_actual - asset.data.default_root_state[..., :3] - env.scene.env_origins
     )
 
     # Get reference root position from the dataset

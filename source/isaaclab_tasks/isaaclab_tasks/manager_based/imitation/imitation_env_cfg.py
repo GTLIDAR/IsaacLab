@@ -18,10 +18,38 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import ContactSensorCfg, RayCasterCfg, patterns
 from isaaclab.terrains import TerrainImporterCfg
 from isaaclab.utils import configclass
-from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
+from isaaclab.utils.assets import (
+    ISAAC_NUCLEUS_DIR,
+    ISAACLAB_NUCLEUS_DIR,
+    NVIDIA_NUCLEUS_DIR,
+)
 from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 
 import isaaclab_tasks.manager_based.imitation.mdp as mdp
+import isaaclab.terrains as terrain_gen
+
+##
+# Pre-defined configs
+##
+from isaaclab.terrains.config import TerrainGeneratorCfg  # isort: skip
+
+ImitationTerrainCfg = TerrainGeneratorCfg(
+    size=(8.0, 8.0),
+    border_width=20.0,
+    num_rows=10,
+    num_cols=20,
+    horizontal_scale=0.1,
+    vertical_scale=0.005,
+    slope_threshold=0.75,
+    use_cache=False,
+    sub_terrains={
+        "random_rough": terrain_gen.HfRandomUniformTerrainCfg(
+            proportion=1.0, noise_range=(0.00, 0.0), noise_step=0.1, border_width=0.25
+        ),
+    },
+    difficulty_range=(0.0, 0.0),
+    curriculum=True,
+)
 
 
 ##
@@ -36,8 +64,8 @@ class MySceneCfg(InteractiveSceneCfg):
     # ground terrain
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
-        terrain_type="plane",
-        terrain_generator=None,
+        terrain_type="generator",
+        terrain_generator=ImitationTerrainCfg,
         max_init_terrain_level=5,
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
@@ -48,6 +76,7 @@ class MySceneCfg(InteractiveSceneCfg):
         ),
         visual_material=sim_utils.MdlFileCfg(
             mdl_path=f"{ISAACLAB_NUCLEUS_DIR}/Materials/TilesMarbleSpiderWhiteBrickBondHoned/TilesMarbleSpiderWhiteBrickBondHoned.mdl",
+            # mdl_path=f"{NVIDIA_NUCLEUS_DIR}/Materials/Ceramic_smooth_Fired.mdl",
             project_uvw=True,
             texture_scale=(0.25, 0.25),
         ),
@@ -198,10 +227,19 @@ class EventCfg:
         },
     )
 
-    reset_robot_joints_to_reference = EventTerm(
-        func=mdp.reset_joints_to_reference,
+    # reset_robot_joints_to_reference = EventTerm(
+    #     func=mdp.reset_joints_to_reference,
+    #     mode="reset",
+    #     params={"asset_cfg": SceneEntityCfg("robot", body_names=".*")},
+    # )
+
+    reset_robot_joints = EventTerm(
+        func=mdp.reset_joints_by_offset,
         mode="reset",
-        params={"asset_cfg": SceneEntityCfg("robot", body_names=".*")},
+        params={
+            "position_range": (-0.2, 0.2),
+            "velocity_range": (-0.1, 0.1),
+        },
     )
 
     # interval
@@ -360,8 +398,20 @@ class ImitationLearningEnvCfg(ManagerBasedRLEnvCfg):
         #         self.scene.terrain.terrain_generator.curriculum = False
 
         # change terrain to flat
-        self.scene.terrain.terrain_type = "plane"
-        self.scene.terrain.terrain_generator = None
+        # self.scene.terrain.terrain_type = "plane"
+        # self.scene.terrain.terrain_generator = None
+        # self.scene.terrain.visual_material = sim_utils.PreviewSurfaceCfg(
+        #     diffuse_color=(0.2, 0.2, 0.2),  # Dark, neutral charcoal gray
+        #     emissive_color=(
+        #         1.0,
+        #         0.6,
+        #         0.0,
+        #     ),  # Functional, warm amber for guidance lights
+        #     roughness=0.55,  # Medium-high roughness for a non-slip, matte finish
+        #     metallic=0.4,  # Low-to-medium metallic to suggest conductive composites
+        #     opacity=1.0,  # Fully opaque as it is a solid floor
+        # )
+
         # no height scan
         self.scene.height_scanner = None
         self.observations.policy.height_scan = None

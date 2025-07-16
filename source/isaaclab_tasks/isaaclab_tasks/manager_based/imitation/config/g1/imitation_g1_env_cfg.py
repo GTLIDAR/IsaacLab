@@ -57,7 +57,7 @@ class G1RewardsCfg:
                     "right_elbow_roll_joint",
                 ],
             ),
-            "sigma": 5.0,
+            "sigma": 1.0,
         },
     )
     track_joint_vel = RewTerm(
@@ -92,25 +92,25 @@ class G1RewardsCfg:
                     "right_elbow_roll_joint",
                 ],
             ),
-            "sigma": 5.0,
+            "sigma": 1.0,
         },
     )
-    # track_root_pos = RewTerm(
-    #     func=track_root_pos,
-    #     weight=0.1,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg("robot"),
-    #         "sigma": 0.1,
-    #     },
-    # )
-    # track_root_ang = RewTerm(
-    #     func=track_root_ang,
-    #     weight=0.1,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg("robot"),
-    #         "sigma": 0.1,
-    #     },
-    # )
+    track_root_pos = RewTerm(
+        func=track_root_pos,
+        weight=1.0,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+            "sigma": 1.0,
+        },
+    )
+    track_root_ang = RewTerm(
+        func=track_root_ang,
+        weight=1.0,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+            "sigma": 1.0,
+        },
+    )
 
     """Reward terms from locomotion velocity task."""
 
@@ -216,8 +216,8 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
     loader_kwargs: dict = {
         "env_name": "UnitreeG1",
     }  # Loader kwargs (required if Zarr does not exist)
-    dataset: dict = {"trajectories": {"default": ["walk"], "amass": [], "lafan1": []}}
-    replay_reference: bool = False
+    dataset: dict = {}
+    replay_reference: bool = True
     # Reference joint names for the robot from the reference qpos order (this is the order of G1 in loco-mujoco)
     reference_joint_names: list[str] = [
         "left_hip_pitch_joint",
@@ -297,7 +297,11 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
         # Scene
         self.scene.robot = G1_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore
 
-        # Randomization
+        # specify the dataset
+        self.dataset = {
+            "trajectories": {"default": ["walk"], "amass": [], "lafan1": []}
+        }
+
         # Randomization
         self.events.push_robot = None
         self.events.add_base_mass = None

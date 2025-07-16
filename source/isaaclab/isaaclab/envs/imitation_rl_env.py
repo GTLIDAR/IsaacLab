@@ -63,6 +63,10 @@ class ImitationRLEnv(ManagerBasedRLEnv):
 
         self.robot: Articulation = self.scene["robot"]
 
+        # Store initial poses for replay
+        self._init_root_pos = torch.zeros((self.num_envs, 3), device=self.device)
+        self._init_root_quat = torch.zeros((self.num_envs, 4), device=self.device)
+
         print("[ImitationRLEnv] Initialization complete")
 
     def _reset_idx(self, env_ids: Sequence[int]):
@@ -79,9 +83,20 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         # Get initial reference data
         self.current_reference = self.trajectory_manager.get_reference_data()
 
+        # Trigger the reset events
+        result = super()._reset_idx(env_ids_tensor)  # type: ignore
+
+        # Store initial poses for replay
+        self._init_root_pos[env_ids_tensor] = self.robot.data.root_state_w[
+            env_ids_tensor, 0:3
+        ]
+        self._init_root_quat[env_ids_tensor] = self.robot.data.root_state_w[
+            env_ids_tensor, 3:7
+        ]
+
         self._replay_reference(env_ids_tensor)
 
-        return super()._reset_idx(env_ids_tensor)  # type: ignore
+        return result
 
     def step(self, action: torch.Tensor) -> VecEnvStepReturn:
         """Step the environment and update reference data."""
@@ -126,25 +141,28 @@ class ImitationRLEnv(ManagerBasedRLEnv):
             return
 
         if env_ids is None:
+            init_pos = self._init_root_pos
+            init_quat = self._init_root_quat
             ref = self.current_reference
             defaults_pos = self.robot.data.default_joint_pos
             defaults_vel = self.robot.data.default_joint_vel
             write_env_ids = None
-            offsets = self.scene.env_origins
-            default_quat = self.robot.data.default_root_state[:, 3:7]
         else:
             env_ids_tensor = env_ids
+            init_pos = self._init_root_pos[env_ids_tensor]
+            init_quat = self._init_root_quat[env_ids_tensor]
             ref = self.current_reference[env_ids_tensor]
             defaults_pos = self.robot.data.default_joint_pos[env_ids_tensor]
             defaults_vel = self.robot.data.default_joint_vel[env_ids_tensor]
             write_env_ids = env_ids_tensor
-            offsets = self.scene.env_origins[env_ids_tensor]
-            default_quat = self.robot.data.default_root_state[env_ids_tensor, 3:7]
 
-        root_pos = ref["root_pos"] + offsets
-        root_quat = math_utils.quat_mul(default_quat, ref["root_quat"])
-        root_lin_vel = math_utils.quat_rotate(default_quat, ref["root_lin_vel"])
-        root_ang_vel = math_utils.quat_rotate(default_quat, ref["root_ang_vel"])
+        # Rotate reference root_pos by initial orientation, then translate by initial position
+        root_pos = math_utils.quat_apply(init_quat, ref["root_pos"])
+        root_pos[..., :2] += init_pos[..., :2]
+        root_pos[..., 2] = init_pos[..., 2]
+        root_quat = math_utils.quat_mul(init_quat, ref["root_quat"])
+        root_lin_vel = math_utils.quat_apply(init_quat, ref["root_lin_vel"])
+        root_ang_vel = math_utils.quat_apply(init_quat, ref["root_ang_vel"])
         root_pose = torch.cat([root_pos, root_quat], dim=-1)
         root_vel = torch.cat([root_lin_vel, root_ang_vel], dim=-1)
         joint_pos = ref["joint_pos"].clone()
