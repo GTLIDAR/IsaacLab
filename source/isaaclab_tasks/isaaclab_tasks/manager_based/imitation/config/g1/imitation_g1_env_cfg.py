@@ -3,6 +3,12 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
+from isaaclab_tasks.manager_based.imitation.mdp import (
+    track_joint_pos,
+    track_joint_vel,
+    track_root_pos,
+    track_root_ang,
+)
 from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.utils import configclass
@@ -13,16 +19,15 @@ from ...imitation_env_cfg import (
     ImitationLearningEnvCfg,
     RewardsCfg,
 )
-from .mdp import track_joint_reference, track_root_pos, track_root_ang
 
 
 # --- Rewards ---
 @configclass
 class G1RewardsCfg:
     # Borrow all velocity task rewards, then add imitation-specific ones
-    track_joint_reference = RewTerm(
-        func=track_joint_reference,
-        weight=0.1,
+    track_joint_pos = RewTerm(
+        func=track_joint_pos,
+        weight=1.0,
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
@@ -52,7 +57,42 @@ class G1RewardsCfg:
                     "right_elbow_roll_joint",
                 ],
             ),
-            "sigma": 0.25,
+            "sigma": 5.0,
+        },
+    )
+    track_joint_vel = RewTerm(
+        func=track_joint_vel,
+        weight=1.0,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=[
+                    "left_hip_pitch_joint",
+                    "left_hip_roll_joint",
+                    "left_hip_yaw_joint",
+                    "left_knee_joint",
+                    "left_ankle_pitch_joint",
+                    "left_ankle_roll_joint",
+                    "right_hip_pitch_joint",
+                    "right_hip_roll_joint",
+                    "right_hip_yaw_joint",
+                    "right_knee_joint",
+                    "right_ankle_pitch_joint",
+                    "right_ankle_roll_joint",
+                    "torso_joint",
+                    "left_shoulder_pitch_joint",
+                    "left_shoulder_roll_joint",
+                    "left_shoulder_yaw_joint",
+                    "left_elbow_pitch_joint",
+                    "left_elbow_roll_joint",
+                    "right_shoulder_pitch_joint",
+                    "right_shoulder_roll_joint",
+                    "right_shoulder_yaw_joint",
+                    "right_elbow_pitch_joint",
+                    "right_elbow_roll_joint",
+                ],
+            ),
+            "sigma": 5.0,
         },
     )
     # track_root_pos = RewTerm(
@@ -295,3 +335,4 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
 
         # terminations
         self.terminations.base_contact.params["sensor_cfg"].body_names = "torso_link"
+        self.terminations.base_too_low.params["asset_cfg"].body_names = "torso_link"

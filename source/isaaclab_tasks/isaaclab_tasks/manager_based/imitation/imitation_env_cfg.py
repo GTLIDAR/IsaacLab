@@ -251,6 +251,13 @@ class TerminationsCfg:
             "threshold": 1.0,
         },
     )
+    base_too_low = DoneTerm(
+        func=mdp.root_height_below_minimum,
+        params={
+            "minimum_height": 0.5,
+            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+        },
+    )
 
 
 # @configclass
