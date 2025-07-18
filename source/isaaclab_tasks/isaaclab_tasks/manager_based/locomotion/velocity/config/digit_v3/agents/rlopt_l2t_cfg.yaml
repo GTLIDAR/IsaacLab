@@ -14,7 +14,7 @@ learning_rate: lin_3e-4
 use_sde: False
 clip_range: 0.2
 device: "cuda:0"
-mixture_coeff: 0.2
+mixture_coeff: 0
 target_kl: 0.01
 policy_kwargs: "dict(
   ortho_init=True,
