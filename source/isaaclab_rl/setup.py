@@ -39,7 +39,7 @@ INSTALL_REQUIRES = [
     "pillow==11.0.0",
     "rich",
     "tqdm",
-    'rlopt @ git+https://github.com/fei-yang-wu/RLOpt.git@feature/sensor#egg=rlopt'
+    'rlopt @ git+https://github.com/fei-yang-wu/RLOpt.git@main#egg=rlopt'
 
 ]
 

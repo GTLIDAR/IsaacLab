@@ -69,32 +69,6 @@ apptainer overlay create --size 4096 "$CLUSTER_ISAACLAB_DIR/$dir_name.img"
 # Main execution with fixed paths and debug env vars
 echo "Launching Singularity container..."
 singularity exec \
-<<<<<<< Updated upstream
-    -B "$TMPDIR/docker-isaac-sim/cache/ov:/nethome/fwu91/.cache/ov:rw" \
-    -B "$TMPDIR/docker-isaac-sim/cache/kit:${DOCKER_ISAACSIM_ROOT_PATH}/kit/cache:rw" \
-    -B "$TMPDIR/docker-isaac-sim/cache/pip:${DOCKER_USER_HOME}/.cache/pip:rw" \
-    -B "$TMPDIR/docker-isaac-sim/cache/glcache:${DOCKER_USER_HOME}/.cache/nvidia/GLCache:rw" \
-    -B "$TMPDIR/docker-isaac-sim/cache/computecache:${DOCKER_USER_HOME}/.nv/ComputeCache:rw" \
-    -B "$TMPDIR/docker-isaac-sim/logs:${DOCKER_USER_HOME}/.nvidia-omniverse/logs:rw" \
-    -B "$TMPDIR/docker-isaac-sim/data:${DOCKER_USER_HOME}/.local/share/ov/data:rw" \
-    -B "$TMPDIR/docker-isaac-sim/documents:${DOCKER_USER_HOME}/Documents:rw" \
-    -B "$TMPDIR/$dir_name:/workspace/isaaclab:rw" \
-    -B "$CLUSTER_ISAACLAB_DIR/logs:/workspace/isaaclab/logs:rw" \
-    --overlay "$CLUSTER_ISAACLAB_DIR/$dir_name.img" \
-    --nv --containall "$TMPDIR/$2.sif" \
-    bash -c "
-    export OV_CACHE=/nethome/fwu91/.cache/ov
-    export WANDB_API_KEY="2aad938943de58373db00ca95109cf2b510f0252" 
-    export NVIDIA_VERBOSE=1
-    export ISAACLAB_PATH=/workspace/isaaclab
-    echo 'Container environment:'
-    env | sort
-    echo 'Texture cache directory contents:'
-    ls -l /nethome/fwu91/.cache/ov/texturecache/
-    cd /workspace/isaaclab && \
-    /isaac-sim/python.sh ${CLUSTER_PYTHON_EXECUTABLE} ${@:3}
-    "
-=======
     -B $TMPDIR/docker-isaac-sim/cache/kit:${DOCKER_ISAACSIM_ROOT_PATH}/kit/cache:rw \
     -B $TMPDIR/docker-isaac-sim/cache/ov:${DOCKER_USER_HOME}/.cache/ov:rw \
     -B $TMPDIR/docker-isaac-sim/cache/pip:${DOCKER_USER_HOME}/.cache/pip:rw \
@@ -111,7 +85,6 @@ singularity exec \
             export ISAACLAB_PATH=/workspace/isaaclab && \
             cd /workspace/isaaclab && \
             /isaac-sim/python.sh ${CLUSTER_PYTHON_EXECUTABLE} ${@:3}"
->>>>>>> Stashed changes
 
 # sync back cache files
 echo "Syncing cache files back to host..."
