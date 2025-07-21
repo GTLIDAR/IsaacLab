@@ -76,7 +76,6 @@ class MySceneCfg(InteractiveSceneCfg):
         ),
         visual_material=sim_utils.MdlFileCfg(
             mdl_path=f"{ISAACLAB_NUCLEUS_DIR}/Materials/TilesMarbleSpiderWhiteBrickBondHoned/TilesMarbleSpiderWhiteBrickBondHoned.mdl",
-            # mdl_path=f"{NVIDIA_NUCLEUS_DIR}/Materials/Ceramic_smooth_Fired.mdl",
             project_uvw=True,
             texture_scale=(0.25, 0.25),
         ),
@@ -148,6 +147,7 @@ class ObservationsCfg:
             func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01)
         )
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
+        reference_joint_pos = ObsTerm(func=mdp.reference_joint_pos)
         actions = ObsTerm(func=mdp.last_action)
         height_scan = ObsTerm(
             func=mdp.height_scan,
@@ -387,30 +387,6 @@ class ImitationLearningEnvCfg(ManagerBasedRLEnvCfg):
             self.scene.height_scanner.update_period = self.decimation * self.sim.dt
         if self.scene.contact_forces is not None:
             self.scene.contact_forces.update_period = self.sim.dt
-
-        # # check if terrain levels curriculum is enabled - if so, enable curriculum for terrain generator
-        # # this generates terrains with increasing difficulty and is useful for training
-        # if getattr(self.curriculum, "terrain_levels", None) is not None:
-        #     if self.scene.terrain.terrain_generator is not None:
-        #         self.scene.terrain.terrain_generator.curriculum = True
-        # else:
-        #     if self.scene.terrain.terrain_generator is not None:
-        #         self.scene.terrain.terrain_generator.curriculum = False
-
-        # change terrain to flat
-        # self.scene.terrain.terrain_type = "plane"
-        # self.scene.terrain.terrain_generator = None
-        # self.scene.terrain.visual_material = sim_utils.PreviewSurfaceCfg(
-        #     diffuse_color=(0.2, 0.2, 0.2),  # Dark, neutral charcoal gray
-        #     emissive_color=(
-        #         1.0,
-        #         0.6,
-        #         0.0,
-        #     ),  # Functional, warm amber for guidance lights
-        #     roughness=0.55,  # Medium-high roughness for a non-slip, matte finish
-        #     metallic=0.4,  # Low-to-medium metallic to suggest conductive composites
-        #     opacity=1.0,  # Fully opaque as it is a solid floor
-        # )
 
         # no height scan
         self.scene.height_scanner = None

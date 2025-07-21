@@ -43,17 +43,17 @@ class ImitationRLEnv(ManagerBasedRLEnv):
             f"[ImitationRLEnv] Starting initialization with num_envs={cfg.scene.num_envs}"
         )
 
-        # Initialize parent class
-        super().__init__(cfg, render_mode, **kwargs)
-
         # Initialize the trajectory dataset manager
         self.trajectory_manager = TrajectoryDatasetManager(
-            cfg, self.num_envs, self.device
+            cfg, cfg.scene.num_envs, cfg.sim.device
         )
 
+        # needed to initialize the reference data
+        self.trajectory_manager.reset_trajectories()
+
         # Current reference data cache
-        self.current_reference: TensorDict = TensorDict(
-            {}, batch_size=[self.num_envs], device=self.device
+        self.current_reference: TensorDict = (
+            self.trajectory_manager.get_reference_data()
         )
 
         # Store reference joint mapping
@@ -61,11 +61,18 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         self._joint_mapping_cache: Optional[torch.Tensor] = None
         self.replay_reference = getattr(cfg, "replay_reference", False)
 
-        self.robot: Articulation = self.scene["robot"]
-
         # Store initial poses for replay
-        self._init_root_pos = torch.zeros((self.num_envs, 3), device=self.device)
-        self._init_root_quat = torch.zeros((self.num_envs, 4), device=self.device)
+        self._init_root_pos = torch.zeros(
+            (cfg.scene.num_envs, 3), device=cfg.sim.device
+        )
+        self._init_root_quat = torch.zeros(
+            (cfg.scene.num_envs, 4), device=cfg.sim.device
+        )
+
+        # Initialize parent class
+        super().__init__(cfg, render_mode, **kwargs)
+
+        self.robot: Articulation = self.scene["robot"]
 
         print("[ImitationRLEnv] Initialization complete")
 
@@ -137,6 +144,8 @@ class ImitationRLEnv(ManagerBasedRLEnv):
             return self.current_reference[key]
 
     def _replay_reference(self, env_ids: Optional[torch.Tensor] = None):
+        """Replay the reference data. If env_ids is provided, only replay the reference data for the given environments.
+        If env_ids is not provided, replay the reference data for all environments."""
         if not self.replay_reference:
             return
 
