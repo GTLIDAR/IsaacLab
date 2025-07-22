@@ -14,5 +14,6 @@ gym.register(
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:G1ImitationPPORunnerCfg",
         "skrl_cfg_entry_point": f"{agents.__name__}:skrl_ppo_cfg.yaml",
         "sb3_cfg_entry_point": f"{agents.__name__}:sb3_ppo_cfg.yaml",
+        "rlopt_cfg_entry_point": f"{agents.__name__}.rlopt_ppo_cfg:G1ImitationPPOConfig",
     },
 )

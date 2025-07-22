@@ -105,6 +105,10 @@ class IsaacLabWrapper(GymWrapper):
         observations, reward, terminated, truncated, info = step_outputs_tuple
         for k, v in observations.items():
             if torch.isnan(v).any():
+                # print the first row with nan
+                print(
+                    f"NaN values found in observation {k} during step. First row: {v[0]}"
+                )
                 raise ValueError(
                     f"NaN values found in observation {k} during step. "
                     "This is likely due to an error in the environment or the model."
@@ -247,7 +251,7 @@ class RLOptPPOConfig:
         num_collectors: int = 1
         """Number of data collectors."""
 
-        frames_per_batch: int = 98304
+        frames_per_batch: int = 4096 * 24
         """Number of frames per batch."""
 
         total_frames: int = 100_000_000
@@ -307,7 +311,7 @@ class RLOptPPOConfig:
         mini_batch_size: Any = MISSING
         """Mini-batch size for training."""
 
-        epochs: int = 5
+        epochs: int = 4
         """Number of training epochs."""
 
         gae_lambda: float = 0.95
@@ -335,13 +339,13 @@ class RLOptPPOConfig:
     class CompileConfig:
         """Compilation configuration for RLOpt PPO."""
 
-        compile: bool = False
+        compile: bool = True
         """Whether to compile the model."""
 
         compile_mode: str = "default"
         """Compilation mode."""
 
-        cudagraphs: bool = False
+        cudagraphs: bool = True
         """Whether to use CUDA graphs."""
 
     @configclass

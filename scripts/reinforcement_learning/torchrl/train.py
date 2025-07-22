@@ -176,7 +176,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RLOptPPOConfig):  # type: ign
         env=env,
         transform=Compose(
             # PatchTerminalObs(),
-            VecNormV2(in_keys=["policy"], decay=0.99999, eps=1e-2),
+            # VecNormV2(in_keys=["policy"], decay=0.99999, eps=1e-2),
             ClipTransform(in_keys=["reward"], low=-100, high=100),
             RewardSum(),
             StepCounter(1000),
