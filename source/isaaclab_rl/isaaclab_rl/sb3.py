@@ -31,6 +31,8 @@ from stable_baselines3.common.vec_env.base_vec_env import (
     VecEnvStepReturn,
 )
 
+from rlopt.agent.l2t.policies import HeightScanFeatureExtractor
+
 VecEnvObs = Union[
     np.ndarray,
     Dict[str, np.ndarray],
