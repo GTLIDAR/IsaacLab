@@ -178,6 +178,7 @@ class RigidObjectCollection(AssetBase):
         # reset external wrench
         self._external_force_b[env_ids[:, None], object_ids] = 0.0
         self._external_torque_b[env_ids[:, None], object_ids] = 0.0
+        self._external_wrench_positions_b[env_ids[:, None], object_ids] = 0.0
 
     def write_data_to_sim(self):
         """Write external wrench to the simulation.
@@ -188,15 +189,22 @@ class RigidObjectCollection(AssetBase):
         """
         # write external wrench
         if self.has_external_wrench:
-            self.root_physx_view.apply_forces_and_torques_at_position(
-                force_data=self.reshape_data_to_view(self._external_force_b),
-                torque_data=self.reshape_data_to_view(self._external_torque_b),
-                position_data=None,
-                indices=self._env_obj_ids_to_view_ids(
-                    self._ALL_ENV_INDICES, self._ALL_OBJ_INDICES
-                ),
-                is_global=False,
-            )
+            if self.uses_external_wrench_positions:
+                self.root_physx_view.apply_forces_and_torques_at_position(
+                    force_data=self.reshape_data_to_view(self._external_force_b),
+                    torque_data=self.reshape_data_to_view(self._external_torque_b),
+                    position_data=self.reshape_data_to_view(self._external_wrench_positions_b),
+                    indices=self._env_obj_ids_to_view_ids(self._ALL_ENV_INDICES, self._ALL_OBJ_INDICES),
+                    is_global=self._use_global_wrench_frame,
+                )
+            else:
+                self.root_physx_view.apply_forces_and_torques_at_position(
+                    force_data=self.reshape_data_to_view(self._external_force_b),
+                    torque_data=self.reshape_data_to_view(self._external_torque_b),
+                    position_data=None,
+                    indices=self._env_obj_ids_to_view_ids(self._ALL_ENV_INDICES, self._ALL_OBJ_INDICES),
+                    is_global=self._use_global_wrench_frame,
+                )
 
     def update(self, dt: float):
         self._data.update(dt)
@@ -565,6 +573,7 @@ class RigidObjectCollection(AssetBase):
         self,
         forces: torch.Tensor,
         torques: torch.Tensor,
+        positions: torch.Tensor | None = None,
         object_ids: slice | torch.Tensor | None = None,
         env_ids: torch.Tensor | None = None,
     ):
@@ -591,6 +600,7 @@ class RigidObjectCollection(AssetBase):
         Args:
             forces: External forces in bodies' local frame. Shape is (len(env_ids), len(object_ids), 3).
             torques: External torques in bodies' local frame. Shape is (len(env_ids), len(object_ids), 3).
+            positions: External wrench positions in bodies' local frame. Shape is (len(env_ids), len(object_ids), 3).
             object_ids: Object indices to apply external wrench to. Defaults to None (all objects).
             env_ids: Environment indices to apply external wrench to. Defaults to None (all instances).
         """
@@ -611,6 +621,12 @@ class RigidObjectCollection(AssetBase):
         # set into internal buffers
         self._external_force_b[env_ids[:, None], object_ids] = forces
         self._external_torque_b[env_ids[:, None], object_ids] = torques
+        if positions is not None:
+            self.uses_external_wrench_positions = True
+            self._external_wrench_positions_b[env_ids[:, None], object_ids] = positions
+        else:
+            if self.uses_external_wrench_positions:
+                self._external_wrench_positions_b[env_ids[:, None], object_ids] = 0.0
 
     """
     Helper functions.
@@ -746,6 +762,8 @@ class RigidObjectCollection(AssetBase):
             (self.num_instances, self.num_objects, 3), device=self.device
         )
         self._external_torque_b = torch.zeros_like(self._external_force_b)
+        self._external_wrench_positions_b = torch.zeros_like(self._external_force_b)
+        self.uses_external_wrench_positions = False
 
         # set information about rigid body into data
         self._data.object_names = self.object_names
@@ -780,31 +798,14 @@ class RigidObjectCollection(AssetBase):
         default_object_states = torch.cat(default_object_states, dim=1)
         self._data.default_object_state = default_object_states
 
-    def reshape_view_to_data(self, data: torch.Tensor) -> torch.Tensor:
-        """Reshapes and arranges the data coming from the :attr:`root_physx_view` to (num_instances, num_objects, data_size).
-
-        Args:
-            data: The data coming from the :attr:`root_physx_view`. Shape is (num_instances*num_objects, data_size).
-
-        Returns:
-            The reshaped data. Shape is (num_instances, num_objects, data_size).
-        """
-        return torch.einsum(
-            "ijk -> jik", data.reshape(self.num_objects, self.num_instances, -1)
-        )
-
-    def reshape_data_to_view(self, data: torch.Tensor) -> torch.Tensor:
-        """Reshapes and arranges the data to the be consistent with data from the :attr:`root_physx_view`.
-
-        Args:
-            data: The data to be reshaped. Shape is (num_instances, num_objects, data_size).
-
-        Returns:
-            The reshaped data. Shape is (num_instances*num_objects, data_size).
-        """
-        return torch.einsum("ijk -> jik", data).reshape(
-            self.num_objects * self.num_instances, *data.shape[2:]
-        )
+        # -- external wrench
+        external_wrench_frame = self.cfg.objects_external_wrench_frame
+        if external_wrench_frame == "local":
+            self._use_global_wrench_frame = False
+        elif external_wrench_frame == "world":
+            self._use_global_wrench_frame = True
+        else:
+            raise ValueError(f"Invalid external wrench frame: {external_wrench_frame}. Must be 'local' or 'world'.")
 
     def _env_obj_ids_to_view_ids(
         self, env_ids: torch.Tensor, object_ids: Sequence[int] | slice | torch.Tensor

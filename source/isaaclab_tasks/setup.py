@@ -21,7 +21,7 @@ EXTENSION_TOML_DATA = toml.load(
 INSTALL_REQUIRES = [
     # generic
     "numpy<2",
-    "torch==2.5.1",
+    "torch>=2.5.1",
     "torchvision>=0.14.1",  # ensure compatibility with torch 1.13.1
     "protobuf>=3.20.2,!=5.26.0",
     # basic logger
@@ -32,7 +32,7 @@ INSTALL_REQUIRES = [
     "iltools",
 ]
 
-PYTORCH_INDEX_URL = ["https://download.pytorch.org/whl/cu118"]
+PYTORCH_INDEX_URL = ["https://download.pytorch.org/whl/cu128"]
 
 # Installation operation
 setup(
