@@ -29,7 +29,7 @@ INSTALL_REQUIRES = [
     # devices
     "hidapi==0.14.0.post2",
     # reinforcement learning
-    "gymnasium>=1.0",
+    "gymnasium==1.2.0",
     # procedural-generation
     "trimesh",
     "pyglet<2",
@@ -38,7 +38,7 @@ INSTALL_REQUIRES = [
     "einops",  # needed for transformers, doesn't always auto-install
     "warp-lang",
     # make sure this is consistent with isaac sim version
-    "pillow==11.0.0",
+    "pillow==11.2.1",
     # livestream
     "starlette==0.46.0",
     # testing
@@ -55,7 +55,7 @@ if platform.system() == "Linux":
         "dex-retargeting==0.4.6",  # required by isaaclab.devices.openxr.retargeters.humanoid.fourier.gr1_t2_dex_retargeting_utils
     ]
 
-PYTORCH_INDEX_URL = ["https://download.pytorch.org/whl/cu118"]
+PYTORCH_INDEX_URL = ["https://download.pytorch.org/whl/cu128"]
 
 # Installation operation
 setup(
