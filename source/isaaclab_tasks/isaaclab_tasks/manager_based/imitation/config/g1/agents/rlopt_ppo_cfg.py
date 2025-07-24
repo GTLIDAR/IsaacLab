@@ -17,5 +17,5 @@ class G1ImitationPPOConfig(RLOptPPOConfig):
         self.policy.num_cells = [256, 256, 128]
         self.value_net.num_cells = [256, 256, 128]
         self.collector.total_frames = (
-            self.collector.frames_per_batch * 1500
+            self.collector.frames_per_batch * 5000
         )  # Fewer frames for flat terrain

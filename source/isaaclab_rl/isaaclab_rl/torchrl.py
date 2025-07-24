@@ -326,10 +326,10 @@ class RLOptPPOConfig:
         anneal_clip_epsilon: bool = False
         """Whether to anneal clip epsilon."""
 
-        critic_coef: float = 1.0
+        critic_coeff: float = 1.0
         """Critic coefficient."""
 
-        entropy_coef: float = 0.01
+        entropy_coeff: float = 0.01
         """Entropy coefficient."""
 
         loss_critic_type: str = "l2"
@@ -339,13 +339,13 @@ class RLOptPPOConfig:
     class CompileConfig:
         """Compilation configuration for RLOpt PPO."""
 
-        compile: bool = True
+        compile: bool = False
         """Whether to compile the model."""
 
         compile_mode: str = "default"
         """Compilation mode."""
 
-        cudagraphs: bool = True
+        cudagraphs: bool = False
         """Whether to use CUDA graphs."""
 
     @configclass
@@ -438,6 +438,9 @@ class RLOptPPOConfig:
 
     seed: int = 0
     """Random seed."""
+
+    save_interval: int = 500
+    """Interval for saving the model."""
 
     policy_in_keys: list[str] = ["hidden"]
     """Keys to use for the policy."""
