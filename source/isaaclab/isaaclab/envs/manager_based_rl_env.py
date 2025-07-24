@@ -208,6 +208,8 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         Returns:
             A tuple containing the observations, rewards, resets (terminated and truncated) and extras.
         """
+        if torch.isnan(action).any():
+            raise ValueError("Action contains NaN values.")
         # process actions
         self.action_manager.process_action(action.to(self.device))
 
@@ -260,8 +262,19 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
             # record the final observation
             self.final_obs_buf: dict = self.observation_manager.compute()
 
-            # add the final observation to the extras
-            self.extras["final_obs_buf"] = self.final_obs_buf
+            def _has_nan_in_obs(obs):
+                if isinstance(obs, torch.Tensor):
+                    return torch.isnan(obs).any()
+                elif isinstance(obs, dict):
+                    return any(_has_nan_in_obs(v) for v in obs.values())
+                return False
+
+            # add the final observation to the extras only if it does not contain NaNs
+            if not _has_nan_in_obs(self.final_obs_buf):
+                self.extras["final_obs_buf"] = self.final_obs_buf
+            else:
+                # Optionally, you can log or warn here
+                pass
 
             # trigger recorder terms for pre-reset calls
             self.recorder_manager.record_pre_reset(reset_env_ids)
@@ -401,8 +414,12 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
                     shape=group_dim,  # type: ignore
                 )
             else:
-                group_term_cfgs = self.observation_manager._group_obs_term_cfgs[group_name]
-                for term_name, term_dim, term_cfg in zip(group_term_names, group_dim, group_term_cfgs):
+                group_term_cfgs = self.observation_manager._group_obs_term_cfgs[
+                    group_name
+                ]
+                for term_name, term_dim, term_cfg in zip(
+                    group_term_names, group_dim, group_term_cfgs
+                ):
                     low = -np.inf if term_cfg.clip is None else term_cfg.clip[0]
                     high = np.inf if term_cfg.clip is None else term_cfg.clip[1]
                     self.single_observation_space[group_name] = gym.spaces.Dict(

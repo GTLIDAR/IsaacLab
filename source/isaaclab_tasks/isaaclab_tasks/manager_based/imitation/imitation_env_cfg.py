@@ -299,6 +299,12 @@ class TerminationsCfg:
             "asset_cfg": SceneEntityCfg("robot", body_names="base"),
         },
     )
+    nan_observation = DoneTerm(func=mdp.nan_observation, time_out=False)
+    joint_pos_out_of_limit = DoneTerm(func=mdp.joint_pos_out_of_limit, time_out=False)
+    joint_vel_out_of_limit = DoneTerm(func=mdp.joint_vel_out_of_limit, time_out=False)
+    joint_effort_out_of_limit = DoneTerm(
+        func=mdp.joint_effort_out_of_limit, time_out=False
+    )
 
 
 # @configclass
