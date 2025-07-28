@@ -166,7 +166,7 @@ def main(
     dump_pickle(os.path.join(log_dir, "params", "agent.pkl"), agent_cfg)
 
     # post-process agent configuration
-    agent_cfg = process_sb3_cfg(agent_cfg)  # type: ignore
+    agent_cfg = process_sb3_cfg(agent_cfg, env_cfg.scene.num_envs)  # type: ignore
     # read configurations about the agent-training
     policy_arch = agent_cfg.pop("policy")
     n_timesteps = agent_cfg.pop("n_timesteps")
@@ -208,8 +208,8 @@ def main(
 
     # initialize wandb and make callback
     run = wandb.init(
-        project="L2T G1 flat" if "flat" in args_cli.task else "L2T G1",
-        entity="fywu",
+        project="L2T flat" if "flat" in args_cli.task else "L2T",
+        entity="rl-digit",
         name=log_time_note,
         config=agent_cfg | class_to_dict(env_cfg),
         sync_tensorboard=True,
