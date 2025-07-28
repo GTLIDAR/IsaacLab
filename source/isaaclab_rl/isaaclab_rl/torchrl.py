@@ -155,7 +155,7 @@ class IsaacLabWrapper(GymWrapper):
     def _reset_output_transform(self, reset_data):
         """Transform the output of the reset method."""
         observations, info = reset_data
-        return (observations, {})
+        return (CloneObsBuf(observations), {})
 
 
 def CloneObsBuf(
@@ -251,7 +251,7 @@ class RLOptPPOConfig:
         num_collectors: int = 1
         """Number of data collectors."""
 
-        frames_per_batch: int = 4096 * 24
+        frames_per_batch: int = 4096 * 12
         """Number of frames per batch."""
 
         total_frames: int = 100_000_000

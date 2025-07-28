@@ -114,12 +114,12 @@ class MySceneCfg(InteractiveSceneCfg):
 class ActionsCfg:
     """Action specifications for the MDP."""
 
-    # joint_pos = mdp.JointPositionActionCfg(
-    #     asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True
-    # )
-    joint_pos = mdp.JointPositionToLimitsActionCfg(
-        asset_name="robot", joint_names=[".*"], scale=0.9
+    joint_pos = mdp.JointPositionActionCfg(
+        asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True
     )
+    # joint_pos = mdp.JointPositionToLimitsActionCfg(
+    #     asset_name="robot", joint_names=[".*"], scale=0.9
+    # )
 
 
 @configclass
@@ -300,11 +300,11 @@ class TerminationsCfg:
         },
     )
     nan_observation = DoneTerm(func=mdp.nan_observation, time_out=False)
-    joint_pos_out_of_limit = DoneTerm(func=mdp.joint_pos_out_of_limit, time_out=False)
-    joint_vel_out_of_limit = DoneTerm(func=mdp.joint_vel_out_of_limit, time_out=False)
-    joint_effort_out_of_limit = DoneTerm(
-        func=mdp.joint_effort_out_of_limit, time_out=False
-    )
+    # joint_pos_out_of_limit = DoneTerm(func=mdp.joint_pos_out_of_limit, time_out=False)
+    # joint_vel_out_of_limit = DoneTerm(func=mdp.joint_vel_out_of_limit, time_out=False)
+    # joint_effort_out_of_limit = DoneTerm(
+    #     func=mdp.joint_effort_out_of_limit, time_out=False
+    # )
 
 
 # @configclass

@@ -161,8 +161,8 @@ class G1ObservationsCfg:
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
-    student: PolicyCfg = PolicyCfg()
-    teacher: PolicyCfg = PolicyCfg()
+    # student: PolicyCfg = PolicyCfg()
+    # teacher: PolicyCfg = PolicyCfg()
 
 
 @configclass

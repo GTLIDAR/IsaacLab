@@ -261,20 +261,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         if len(reset_env_ids) > 0:
             # record the final observation
             self.final_obs_buf: dict = self.observation_manager.compute()
-
-            def _has_nan_in_obs(obs):
-                if isinstance(obs, torch.Tensor):
-                    return torch.isnan(obs).any()
-                elif isinstance(obs, dict):
-                    return any(_has_nan_in_obs(v) for v in obs.values())
-                return False
-
-            # add the final observation to the extras only if it does not contain NaNs
-            if not _has_nan_in_obs(self.final_obs_buf):
-                self.extras["final_obs_buf"] = self.final_obs_buf
-            else:
-                # Optionally, you can log or warn here
-                pass
+            self.extras["final_obs_buf"] = self.final_obs_buf
 
             # trigger recorder terms for pre-reset calls
             self.recorder_manager.record_pre_reset(reset_env_ids)
