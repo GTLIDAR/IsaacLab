@@ -345,6 +345,13 @@ class ImitationLearningEnvCfg(ManagerBasedRLEnvCfg):
         "env_name": "UnitreeG1",
         "n_substeps": 20,
     }  # Loader kwargs (required if Zarr does not exist)
+    dataset: dict = {
+        "trajectories": {
+            "default": ["walk"],
+            "amass": [],
+            "lafan1": [],
+        }
+    }
     replay_reference: bool = False
     # Reference joint names for the robot from the reference qpos order (this is the order of G1 in loco-mujoco)
     reference_joint_names: list[str] = [
