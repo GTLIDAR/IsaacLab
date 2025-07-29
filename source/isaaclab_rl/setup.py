@@ -21,10 +21,12 @@ EXTENSION_TOML_DATA = toml.load(
 # Minimum dependencies required prior to installation
 INSTALL_REQUIRES = [
     # generic
-    "numpy<2",
+    "numpy==1.26.4",
     "torch>=2.5.1",
     "torchvision>=0.14.1",  # ensure compatibility with torch 1.13.1
-    "protobuf>=3.20.2,!=5.26.0",
+    # 5.26.0 introduced a breaking change, so we restricted it for now.
+    # See issue https://github.com/tensorflow/tensorboard/issues/6808 for details.
+    "protobuf>=3.20.2, < 5.0.0",
     # configuration management
     "hydra-core",
     # data collection
@@ -34,14 +36,18 @@ INSTALL_REQUIRES = [
     # video recording
     "moviepy",
     # make sure this is consistent with isaac sim version
-    "pillow==11.2.1",
+    "pillow==11.0.0",
+    "rich",
+    "tqdm",
+    'rlopt @ git+https://github.com/fei-yang-wu/RLOpt.git@fix/teacher#egg=rlopt'
+
 ]
 
-PYTORCH_INDEX_URL = ["https://download.pytorch.org/whl/cu128"]
+PYTORCH_INDEX_URL = ["https://download.pytorch.org/whl/cu118"]
 
 # Extra dependencies for RL agents
 EXTRAS_REQUIRE = {
-    "sb3": ["stable-baselines3>=2.6", "tqdm", "rich"],  # tqdm/rich for progress bar
+    "sb3": ["stable-baselines3>=2.1"],
     "skrl": ["skrl>=1.4.2"],
     "rl-games": ["rl-games==1.6.1", "gym"],  # rl-games still needs gym :(
     "rsl-rl": ["rsl-rl-lib==2.3.3"],

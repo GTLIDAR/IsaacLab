@@ -7,7 +7,7 @@ echo "(run_singularity.py): Called on compute node from current isaaclab directo
 #==
 
 setup_directories() {
-    # Check and create directories
+    # Check and create directories with proper permissions
     for dir in \
         "${CLUSTER_ISAAC_SIM_CACHE_DIR}/cache/kit" \
         "${CLUSTER_ISAAC_SIM_CACHE_DIR}/cache/ov" \
@@ -19,9 +19,15 @@ setup_directories() {
         "${CLUSTER_ISAAC_SIM_CACHE_DIR}/documents"; do
         if [ ! -d "$dir" ]; then
             mkdir -p "$dir"
-            echo "Created directory: $dir"
+            chmod 777 "$dir"  
+            echo "Created directory with open permissions: $dir"
         fi
     done
+    
+    local texture_cache_dir="${CLUSTER_ISAAC_SIM_CACHE_DIR}/cache/ov/texturecache"
+    mkdir -p "$texture_cache_dir"
+    chmod 777 "$texture_cache_dir"
+    echo "Ensured texture cache directory exists: $texture_cache_dir"
 }
 
 
@@ -29,37 +35,39 @@ setup_directories() {
 # Main
 #==
 
-
 # get script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-# load variables to set the Isaac Lab path on the cluster
-source $SCRIPT_DIR/.env.cluster
-source $SCRIPT_DIR/../.env.base
+# load environment variables
+source "$SCRIPT_DIR/.env.cluster"
+source "$SCRIPT_DIR/../.env.base"
 
-# make sure that all directories exists in cache directory
+# setup directories with proper permissions
 setup_directories
-# copy all cache files
-cp -r $CLUSTER_ISAAC_SIM_CACHE_DIR $TMPDIR
 
-# make sure logs directory exists (in the permanent isaaclab directory)
+# copy all cache files to tmp
+echo "Copying cache files to $TMPDIR..."
+cp -r "$CLUSTER_ISAAC_SIM_CACHE_DIR" "$TMPDIR"
+
+# ensure logs directory exists
 mkdir -p "$CLUSTER_ISAACLAB_DIR/logs"
 touch "$CLUSTER_ISAACLAB_DIR/logs/.keep"
 
-# copy the temporary isaaclab directory with the latest changes to the compute node
-cp -r $1 $TMPDIR
-# Get the directory name
+# copy the isaaclab directory to compute node
+echo "Copying Isaac Lab directory to $TMPDIR..."
+cp -r "$1" "$TMPDIR"
 dir_name=$(basename "$1")
 
-# copy container to the compute node
-tar -xf $CLUSTER_SIF_PATH/$2.tar  -C $TMPDIR
+# extract container
+echo "Extracting container $2..."
+tar -xf "$CLUSTER_SIF_PATH/$2.tar" -C "$TMPDIR"
 
-# # create a persistant overlay using apptainer
-# apptainer overlay create --size 20480 $TMPDIR/$2.img
+# create persistent overlay
+echo "Creating overlay image..."
+apptainer overlay create --size 4096 "$CLUSTER_ISAACLAB_DIR/$dir_name.img"
 
-# execute command in singularity container
-# NOTE: ISAACLAB_PATH is normally set in `isaaclab.sh` but we directly call the isaac-sim python because we sync the entire
-# Isaac Lab directory to the compute node and remote the symbolic link to isaac-sim
+# Main execution with fixed paths and debug env vars
+echo "Launching Singularity container..."
 singularity exec \
     -B $TMPDIR/docker-isaac-sim/cache/kit:${DOCKER_ISAACSIM_ROOT_PATH}/kit/cache:rw \
     -B $TMPDIR/docker-isaac-sim/cache/ov:${DOCKER_USER_HOME}/.cache/ov:rw \
@@ -71,15 +79,26 @@ singularity exec \
     -B $TMPDIR/docker-isaac-sim/documents:${DOCKER_USER_HOME}/Documents:rw \
     -B $TMPDIR/$dir_name:/workspace/isaaclab:rw \
     -B $CLUSTER_ISAACLAB_DIR/logs:/workspace/isaaclab/logs:rw \
+    --overlay $CLUSTER_ISAACLAB_DIR/$dir_name.img \
     --nv --containall $TMPDIR/$2.sif \
-    bash -c "export ISAACLAB_PATH=/workspace/isaaclab && cd /workspace/isaaclab && /isaac-sim/python.sh ${CLUSTER_PYTHON_EXECUTABLE} ${@:3}"
+    bash -c "export WANDB_API_KEY=b2c00a2d706c11e8c3cca85ec3df3130f8dbf839 && \
+            export ISAACLAB_PATH=/workspace/isaaclab && \
+            cd /workspace/isaaclab && \
+            /isaac-sim/python.sh ${CLUSTER_PYTHON_EXECUTABLE} ${@:3}"
 
-# copy resulting cache files back to host
-rsync -azPv $TMPDIR/docker-isaac-sim $CLUSTER_ISAAC_SIM_CACHE_DIR/..
+# sync back cache files
+echo "Syncing cache files back to host..."
+rsync -azPv "$TMPDIR/docker-isaac-sim" "$CLUSTER_ISAAC_SIM_CACHE_DIR/.."
 
-# if defined, remove the temporary isaaclab directory pushed when the job was submitted
+# cleanup
 if $REMOVE_CODE_COPY_AFTER_JOB; then
-    rm -rf $1
+    echo "Removing temporary code copy..."
+    rm -rf "$1"
 fi
 
-echo "(run_singularity.py): Return"
+if $REMOVE_OVERLAY_AFTER_JOB; then
+    echo "Removing overlay image..."
+    rm -f "$CLUSTER_ISAACLAB_DIR/$dir_name.img"
+fi
+
+echo "(run_singularity.py): Execution completed"
