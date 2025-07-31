@@ -98,10 +98,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # initialize data and constants
         # -- set the framerate of the gym video recorder wrapper so that the playback speed of the produced video matches the simulation
         self.metadata["render_fps"] = 1 / self.step_dt
-        # -- starting leg
-        self.starting_leg = torch.zeros(
-            self.num_envs, device=self.device, dtype=torch.long
-        )
+
         print("[INFO]: Completed setting up the environment...")
 
     """
@@ -192,15 +189,6 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         )
         return phase
 
-    def get_starting_leg(self) -> torch.Tensor:
-        """Get the starting leg of the environment. 0 for left and 1 for right."""
-        if not hasattr(self, "starting_leg") or self.starting_leg is None:
-            self.starting_leg = torch.randint(
-                0, 2, (self.num_envs,), device=self.device
-            )
-
-        return self.starting_leg
-
     def step(self, action: torch.Tensor) -> VecEnvStepReturn:  # type: ignore
         """Execute one time-step of the environment's dynamics and reset terminated environments.
 
@@ -220,6 +208,8 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         Returns:
             A tuple containing the observations, rewards, resets (terminated and truncated) and extras.
         """
+        if torch.isnan(action).any():
+            raise ValueError("Action contains NaN values.")
         # process actions
         self.action_manager.process_action(action.to(self.device))
 
@@ -271,8 +261,6 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         if len(reset_env_ids) > 0:
             # record the final observation
             self.final_obs_buf: dict = self.observation_manager.compute()
-
-            # add the final observation to the extras
             self.extras["final_obs_buf"] = self.final_obs_buf
 
             # trigger recorder terms for pre-reset calls
@@ -413,8 +401,12 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
                     shape=group_dim,  # type: ignore
                 )
             else:
-                group_term_cfgs = self.observation_manager._group_obs_term_cfgs[group_name]
-                for term_name, term_dim, term_cfg in zip(group_term_names, group_dim, group_term_cfgs):
+                group_term_cfgs = self.observation_manager._group_obs_term_cfgs[
+                    group_name
+                ]
+                for term_name, term_dim, term_cfg in zip(
+                    group_term_names, group_dim, group_term_cfgs
+                ):
                     low = -np.inf if term_cfg.clip is None else term_cfg.clip[0]
                     high = np.inf if term_cfg.clip is None else term_cfg.clip[1]
                     self.single_observation_space[group_name] = gym.spaces.Dict(

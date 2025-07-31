@@ -44,6 +44,7 @@ For more information about the workflow design patterns, see the `Task Design Wo
 
 from . import mdp, ui
 from .common import VecEnvObs, VecEnvStepReturn, ViewerCfg
+from .imitation_rl_env import ImitationRLEnv
 from .direct_marl_env import DirectMARLEnv
 from .direct_marl_env_cfg import DirectMARLEnvCfg
 from .direct_rl_env import DirectRLEnv

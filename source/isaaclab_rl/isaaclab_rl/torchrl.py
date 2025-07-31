@@ -105,6 +105,10 @@ class IsaacLabWrapper(GymWrapper):
         observations, reward, terminated, truncated, info = step_outputs_tuple
         for k, v in observations.items():
             if torch.isnan(v).any():
+                # print the first row with nan
+                print(
+                    f"NaN values found in observation {k} during step. First row: {v[0]}"
+                )
                 raise ValueError(
                     f"NaN values found in observation {k} during step. "
                     "This is likely due to an error in the environment or the model."
@@ -151,7 +155,7 @@ class IsaacLabWrapper(GymWrapper):
     def _reset_output_transform(self, reset_data):
         """Transform the output of the reset method."""
         observations, info = reset_data
-        return (observations, {})
+        return (CloneObsBuf(observations), {})
 
 
 def CloneObsBuf(
@@ -247,7 +251,7 @@ class RLOptPPOConfig:
         num_collectors: int = 1
         """Number of data collectors."""
 
-        frames_per_batch: int = 98304
+        frames_per_batch: int = 4096 * 12
         """Number of frames per batch."""
 
         total_frames: int = 100_000_000
@@ -307,7 +311,7 @@ class RLOptPPOConfig:
         mini_batch_size: Any = MISSING
         """Mini-batch size for training."""
 
-        epochs: int = 5
+        epochs: int = 4
         """Number of training epochs."""
 
         gae_lambda: float = 0.95
@@ -322,10 +326,10 @@ class RLOptPPOConfig:
         anneal_clip_epsilon: bool = False
         """Whether to anneal clip epsilon."""
 
-        critic_coef: float = 1.0
+        critic_coeff: float = 1.0
         """Critic coefficient."""
 
-        entropy_coef: float = 0.01
+        entropy_coeff: float = 0.01
         """Entropy coefficient."""
 
         loss_critic_type: str = "l2"
@@ -434,6 +438,9 @@ class RLOptPPOConfig:
 
     seed: int = 0
     """Random seed."""
+
+    save_interval: int = 500
+    """Interval for saving the model."""
 
     policy_in_keys: list[str] = ["hidden"]
     """Keys to use for the policy."""

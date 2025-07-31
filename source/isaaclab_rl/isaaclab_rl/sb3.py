@@ -18,17 +18,15 @@ The following example shows how to wrap an environment for Stable-Baselines3:
 # needed to import for allowing type-hinting: torch.Tensor | dict[str, torch.Tensor]
 from __future__ import annotations
 
+import time
 import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn as nn  # noqa: F401
 import warnings
-from typing import Any, Union, Dict, Tuple
+from typing import Any
 
-from stable_baselines3.common.preprocessing import (
-    is_image_space,
-    is_image_space_channels_first,
-)
+from stable_baselines3.common.preprocessing import is_image_space, is_image_space_channels_first
 from stable_baselines3.common.utils import constant_fn
 from stable_baselines3.common.vec_env.base_vec_env import (
     VecEnv,
@@ -72,6 +70,7 @@ def process_sb3_cfg(cfg: dict, num_envs: int) -> dict:
     """
 
     def update_dict(hyperparams: dict[str, Any]) -> dict[str, Any]:
+
         for key, value in hyperparams.items():
             if isinstance(value, dict):
                 update_dict(value)
@@ -101,9 +100,7 @@ def process_sb3_cfg(cfg: dict, num_envs: int) -> dict:
 
         # Convert to a desired batch_size (n_steps=2048 by default for SB3 PPO)
         if "n_minibatches" in hyperparams:
-            hyperparams["batch_size"] = (
-                hyperparams.get("n_steps", 2048) * num_envs
-            ) // hyperparams["n_minibatches"]
+            hyperparams["batch_size"] = (hyperparams.get("n_steps", 2048) * num_envs) // hyperparams["n_minibatches"]
             del hyperparams["n_minibatches"]
 
         return hyperparams
@@ -259,9 +256,7 @@ class Sb3VecEnvWrapper(VecEnv):
 
     def step_wait(self) -> VecEnvStepReturn:  # noqa: D102
         # record step information
-        obs_dict, rew, terminated, truncated, extras = self.env.step(
-            self._async_actions
-        )
+        obs_dict, rew, terminated, truncated, extras = self.env.step(self._async_actions)
         # compute reset ids
         dones = terminated | truncated
 
@@ -308,7 +303,9 @@ class Sb3VecEnvWrapper(VecEnv):
     def set_attr(self, attr_name, value, indices=None):  # noqa: D102
         raise NotImplementedError("Setting attributes is not supported.")
 
-    def env_method(self, method_name: str, *method_args, indices=None, **method_kwargs):  # noqa: D102
+    def env_method(
+        self, method_name: str, *method_args, indices=None, **method_kwargs
+    ):  # noqa: D102
         if method_name == "render":
             # gymnasium does not support changing render mode at runtime
             return self.env.render()
@@ -337,12 +334,8 @@ class Sb3VecEnvWrapper(VecEnv):
                 processors: list[callable[[torch.Tensor], Any]] = []
                 # assume normalized, if not, it won't pass is_image_space, which check [0-255].
                 # for scale like image space that has right shape but not scaled, we will scale it later
-                if is_image_space(
-                    obs_space, check_channels=True, normalized_image=True
-                ):
-                    actually_normalized = np.all(obs_space.low == -1.0) and np.all(
-                        obs_space.high == 1.0
-                    )
+                if is_image_space(obs_space, check_channels=True, normalized_image=True):
+                    actually_normalized = np.all(obs_space.low == -1.0) and np.all(obs_space.high == 1.0)
                     if not actually_normalized:
                         if np.any(obs_space.low != 0) or np.any(obs_space.high != 255):
                             raise ValueError(
@@ -352,9 +345,7 @@ class Sb3VecEnvWrapper(VecEnv):
                         # sb3 will handle normalization and transpose, but sb3 expects uint8 images
                         if obs_space.dtype != np.uint8:
                             processors.append(lambda obs: obs.to(torch.uint8))
-                        observation_space.spaces[obs_key] = gym.spaces.Box(
-                            0, 255, obs_space.shape, np.uint8
-                        )
+                        observation_space.spaces[obs_key] = gym.spaces.Box(0, 255, obs_space.shape, np.uint8)
                     else:
                         # sb3 will NOT handle the normalization, while sb3 will transpose, its transpose applies to all
                         # image terms and maybe non-ideal, more, if we can do it in torch on gpu, it will be faster then
@@ -362,17 +353,11 @@ class Sb3VecEnvWrapper(VecEnv):
                         if not is_image_space_channels_first(obs_space):
 
                             def tranp(img: torch.Tensor) -> torch.Tensor:
-                                return (
-                                    img.permute(2, 0, 1)
-                                    if len(img.shape) == 3
-                                    else img.permute(0, 3, 1, 2)
-                                )
+                                return img.permute(2, 0, 1) if len(img.shape) == 3 else img.permute(0, 3, 1, 2)
 
                             processors.append(tranp)
                             h, w, c = obs_space.shape
-                            observation_space.spaces[obs_key] = gym.spaces.Box(
-                                -1.0, 1.0, (c, h, w), obs_space.dtype
-                            )
+                            observation_space.spaces[obs_key] = gym.spaces.Box(-1.0, 1.0, (c, h, w), obs_space.dtype)
 
                     def chained_processor(obs: torch.Tensor, procs=processors) -> Any:
                         for proc in procs:
@@ -387,17 +372,13 @@ class Sb3VecEnvWrapper(VecEnv):
         # note: stable-baselines3 does not like when we have unbounded action space so
         #   we set it to some high value here. Maybe this is not general but something to think about.
         action_space = self.unwrapped.single_action_space
-        if isinstance(action_space, gym.spaces.Box) and not action_space.is_bounded(
-            "both"
-        ):
+        if isinstance(action_space, gym.spaces.Box) and not action_space.is_bounded("both"):
             action_space = gym.spaces.Box(low=-100, high=100, shape=action_space.shape)
 
         # initialize vec-env
         VecEnv.__init__(self, self.num_envs, observation_space, action_space)
 
-    def _process_obs(
-        self, obs_dict: torch.Tensor | dict[str, torch.Tensor]
-    ) -> np.ndarray | dict[str, np.ndarray]:
+    def _process_obs(self, obs_dict: torch.Tensor | dict[str, torch.Tensor]) -> np.ndarray | dict[str, np.ndarray]:
         """Convert observations into NumPy data type."""
         # Sb3 doesn't support asymmetric observation spaces, so we only use "policy"
         obs = obs_dict["policy"]
@@ -434,9 +415,7 @@ class Sb3VecEnvWrapper(VecEnv):
                 }
 
                 # fill-in bootstrap information
-                infos[idx]["TimeLimit.truncated"] = (
-                    truncated[idx] and not terminated[idx]
-                )
+                infos[idx]["TimeLimit.truncated"] = truncated[idx] and not terminated[idx]
 
                 # add information about terminal observation separately
                 if isinstance(obs, dict):
@@ -642,6 +621,7 @@ class Sb3VecEnvGPUWrapper(VecEnv):
         self._async_actions = actions
 
     def step_wait(self) -> VecEnvStepReturn:  # noqa: D102
+
         # record step information
         obs_dict, rew, terminated, truncated, extras = self.env.step(
             self._async_actions
@@ -693,7 +673,9 @@ class Sb3VecEnvGPUWrapper(VecEnv):
     def set_attr(self, attr_name, value, indices=None):  # noqa: D102
         raise NotImplementedError("Setting attributes is not supported.")
 
-    def env_method(self, method_name: str, *method_args, indices=None, **method_kwargs):  # noqa: D102
+    def env_method(
+        self, method_name: str, *method_args, indices=None, **method_kwargs
+    ):  # noqa: D102
         if method_name == "render":
             # gymnasium does not support changing render mode at runtime
             return self.env.render()
