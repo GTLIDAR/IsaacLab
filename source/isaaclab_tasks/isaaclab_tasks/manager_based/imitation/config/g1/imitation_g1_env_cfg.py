@@ -337,7 +337,7 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
         "n_substeps": 20,
     }  # Loader kwargs (required if Zarr does not exist)
     dataset: dict = {
-        "trajectories": {"default": [], "amass": [], "lafan1": ["dance2_subject4"]}
+        "trajectories": {"default": [], "amass": [], "lafan1": ["walk1_subject1"]}
     }
     replay_reference: bool = False
     # Reference joint names for the robot from the reference qpos order (this is the order of G1 in loco-mujoco)

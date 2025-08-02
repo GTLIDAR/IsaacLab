@@ -99,3 +99,12 @@ lint.ignore = [
     "PGH003",  # PGH003 error
     "E402",    # Module level import not at top of file
 ]
+
+[tool.pyrefly]
+search-path = [
+    "source/isaaclab",
+    "source/isaaclab_assets",
+    "source/isaaclab_rl",
+    "source/isaaclab_mimic",
+    "source/isaaclab_tasks",
+]

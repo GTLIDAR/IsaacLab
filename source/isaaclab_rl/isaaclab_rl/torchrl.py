@@ -122,12 +122,6 @@ class IsaacLabWrapper(GymWrapper):
         done = terminated | truncated
         reward = reward.clone().unsqueeze(-1)  # to get to (num_envs, 1)
 
-        # warn if reward is less than -100
-        if reward.min() < -100:
-            print(
-                f"Warning: Reward is less than -100: {reward.min()}. This is likely due to an error in the environment or the model."
-            )
-
         self.log_infos.append(info["log"])
 
         observations = CloneObsBuf(observations)
@@ -320,7 +314,7 @@ class RLOptPPOConfig:
         clip_epsilon: float = 0.2
         """Clipping epsilon for PPO."""
 
-        clip_value: bool = False
+        clip_value: bool = True
         """Whether to clip value function."""
 
         anneal_clip_epsilon: bool = False
@@ -329,7 +323,7 @@ class RLOptPPOConfig:
         critic_coeff: float = 1.0
         """Critic coefficient."""
 
-        entropy_coeff: float = 0.01
+        entropy_coeff: float = 0.005
         """Entropy coefficient."""
 
         loss_critic_type: str = "l2"

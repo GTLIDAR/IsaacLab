@@ -106,6 +106,7 @@ from torchrl.envs import (
     ClipTransform,
     VecNorm,
     DoubleToFloat,
+    RewardClipping,
     IsaacLabWrapper as IsaacLabWrapperTorchRL,
 )
 
@@ -179,7 +180,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RLOptPPOConfig):  # type: ign
         transform=Compose(
             VecNorm(in_keys=["policy"], decay=0.99999, eps=1e-2),
             ClipTransform(in_keys=["policy"], low=-10, high=10),
-            ClipTransform(in_keys=["reward"], low=-100, high=100),
+            RewardClipping(clamp_min=-1, clamp_max=1),
             RewardSum(),
             StepCounter(),
         ),

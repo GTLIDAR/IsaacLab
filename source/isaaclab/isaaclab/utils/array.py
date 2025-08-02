@@ -93,3 +93,90 @@ def convert_to_torch(
         tensor = tensor.type(dtype)
 
     return tensor
+
+
+# -----------------------------------------------------------------------------
+# NaN checking utilities
+# -----------------------------------------------------------------------------
+
+
+def check_out_of_bounds(obs_buf, limit: float = 1e3):
+    """Recursively detect values with magnitude larger than ``limit``.
+
+    Returns a boolean mask of shape (num_envs,)."""
+    if isinstance(obs_buf, torch.Tensor):
+        if obs_buf.ndim == 0:
+            return (torch.abs(obs_buf) > limit).view(1)
+        elif obs_buf.ndim == 1:
+            return torch.abs(obs_buf) > limit
+        else:
+            reduce_dims = tuple(range(1, obs_buf.ndim))
+            return torch.any(torch.abs(obs_buf) > limit, dim=reduce_dims)
+    elif isinstance(obs_buf, dict):
+        mask = None
+        for v in obs_buf.values():
+            cur = check_out_of_bounds(v, limit)
+            mask = cur if mask is None else torch.logical_or(mask, cur)
+        if mask is None:
+            raise ValueError("Empty observation dictionary in check_out_of_bounds.")
+        return mask
+    else:
+        raise TypeError(f"Unsupported type in check_out_of_bounds: {type(obs_buf)}")
+
+
+def check_nan(obs_buf):
+    """Recursively check an observation buffer for NaNs.
+
+    The observation buffer can be one of the following:
+
+    1. ``torch.Tensor`` with leading dimension equal to number of environments.
+    2. ``dict`` mapping strings to tensors as described above.
+    3. ``dict`` that maps to other dictionaries of tensors (arbitrary depth).
+
+    In all cases, the function returns a 1-D boolean tensor of shape ``(num_envs,)``
+    where each element is ``True`` if *any* value belonging to that environment
+    contains ``NaN``.
+
+    Args:
+        obs_buf: Observation buffer that may contain tensors, dictionaries of
+            tensors, or nested dictionaries of tensors.
+
+    Returns:
+        torch.Tensor: 1-D boolean tensor indicating environments that contain
+        NaNs.
+    """
+    # Note: torch is already imported at module level.
+    if isinstance(obs_buf, torch.Tensor):
+        # Collapse all dimensions except the first (env) dimension and check for NaNs.
+        if obs_buf.ndim == 0:
+            # Scalar tensor – treat as single-env.
+            return torch.isnan(obs_buf).view(1)
+        elif obs_buf.ndim == 1:
+            # Vector per env (num_envs,)
+            return torch.isnan(obs_buf)
+        else:
+            # Any higher dim – reduce over all but env dimension.
+            reduce_dims = tuple(range(1, obs_buf.ndim))
+            return torch.any(torch.isnan(obs_buf), dim=reduce_dims)
+
+    elif isinstance(obs_buf, dict):
+        nan_mask = None
+        # Iterate over nested values and recursively accumulate NaN masks.
+        for value in obs_buf.values():
+            current_mask = check_nan(value)
+            nan_mask = (
+                current_mask
+                if nan_mask is None
+                else torch.logical_or(nan_mask, current_mask)
+            )
+        if nan_mask is None:
+            raise ValueError(
+                "Provided dictionary is empty – cannot determine num_envs for NaN check."
+            )
+        return nan_mask
+
+    else:
+        raise TypeError(
+            "obs_buf must be a torch.Tensor or a (nested) dictionary of tensors, "
+            f"got type {type(obs_buf)} instead."
+        )

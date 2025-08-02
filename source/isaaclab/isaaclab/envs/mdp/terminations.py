@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 from isaaclab.assets import Articulation, RigidObject
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.sensors import ContactSensor
+from isaaclab.utils import check_nan, check_out_of_bounds
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
@@ -46,7 +47,9 @@ def command_resample(
     )
 
 
-def nan_observation(env: ManagerBasedRLEnv) -> torch.Tensor:
+def nan_observation(
+    env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
+) -> torch.Tensor:
     """Terminate the episode when NaN values are detected in the observation buffer.
 
     This function checks for NaN values in the observation buffer and terminates episodes
@@ -54,25 +57,29 @@ def nan_observation(env: ManagerBasedRLEnv) -> torch.Tensor:
     or invalid states that could cause training issues.
     """
     # Check for NaN values in all observation tensors
-    has_nan = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+    obs = env.observation_manager.compute(update_history=False)
 
-    def check_dict_for_nan(data):
-        if isinstance(data, dict):
-            for value in data.values():
-                if isinstance(value, torch.Tensor):
-                    if len(value.shape) == 1:
-                        continue
-                    # Tensor is of shape (num_envs, feature_dim)
-                    # Check if any feature has NaN for any environment
-                    has_nan[:] = torch.logical_or(
-                        has_nan, torch.any(torch.isnan(value), dim=1)
-                    )
-                elif isinstance(value, dict):
-                    # Recursively check nested dictionary
-                    check_dict_for_nan(value)
+    has_nan = check_nan(obs)
 
-    check_dict_for_nan(env.obs_buf)
+    if has_nan.any():
+        print(f"NaN values found in observation buffer: {has_nan}")
+        # print out the env ids with nan
+        print(f"Env ids with nan: {has_nan.nonzero(as_tuple=False).squeeze(-1)}")
+
     return has_nan
+
+
+def out_of_range_observation(
+    env: ManagerBasedRLEnv,
+    limit: float = 1e3,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    """Terminate the episode when observation values exceed ``limit`` in magnitude."""
+    has_oob = torch.zeros(env.num_envs, dtype=torch.bool, device=env.device)
+    obs = env.observation_manager.compute(update_history=False)
+    for _, group_obs in obs.items():
+        has_oob = torch.logical_or(has_oob, check_out_of_bounds(group_obs, limit))
+    return has_oob
 
 
 """
@@ -203,6 +210,20 @@ def joint_effort_out_of_limit(
         asset.data.applied_torque[:, asset_cfg.joint_ids],
     )
     return torch.any(out_of_limits, dim=1)
+
+
+def root_vel_out_of_limit(
+    env: ManagerBasedRLEnv,
+    max_velocity: float = 100.0,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    """Terminate when the asset's root velocity is outside the provided limits."""
+    # extract the used quantities (to enable type-hinting)
+    asset: RigidObject = env.scene[asset_cfg.name]
+    out_of_limits: torch.Tensor = (
+        torch.norm(asset.data.root_lin_vel_w, dim=1) > max_velocity
+    )
+    return out_of_limits
 
 
 """
