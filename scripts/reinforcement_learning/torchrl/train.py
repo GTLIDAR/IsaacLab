@@ -96,7 +96,7 @@ from isaaclab_rl.torchrl import (
 )
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
-from rlopt.agent.ppo.ppo import PPO
+from rlopt.agent.ppo.ppo import PPO, PPORecurrent
 
 from torchrl.envs import (
     TransformedEnv,

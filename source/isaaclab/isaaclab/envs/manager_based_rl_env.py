@@ -22,6 +22,7 @@ from isaaclab.managers import (
     TerminationManager,
 )
 from isaaclab.ui.widgets import ManagerLiveVisualizer
+from isaaclab.utils import check_nan
 
 from .common import VecEnvStepReturn
 from .manager_based_env import ManagerBasedEnv
@@ -301,6 +302,8 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # -- compute observations
         # note: done after reset to get the correct observations for reset envs
         self.obs_buf = self.observation_manager.compute(update_history=True)
+
+        nan_mask = check_nan(self.obs_buf)
 
         # ------------------------------------------------------------------
         # Maintain a cache of the most recent NaN-free observation (per env)
