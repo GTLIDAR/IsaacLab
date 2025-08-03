@@ -76,6 +76,11 @@ class IsaacLabWrapper(GymWrapper):
             **kwargs,
         )
         self.log_infos = deque(maxlen=100)
+        
+        # NaN handling
+        self._obs_initialized = False
+        self._last_valid_obs = {}
+        self._nan_env_count = 0
 
     def seed(self, seed: int | None):
         self._set_seed(seed)
@@ -103,21 +108,90 @@ class IsaacLabWrapper(GymWrapper):
         #  in-place. We clone them here to make sure data doesn't inadvertently get modified.
         # The variable naming follows torchrl's convention here.
         observations, reward, terminated, truncated, info = step_outputs_tuple
+        
+        num_envs = observations[list(observations.keys())[0]].shape[0]
+        
+        # Store valid obs
+        if self._obs_initialized:
+            for k, v in observations.items():
+                # Update non-NaN obs
+                if v.dim() > 1:
+                    valid_mask = ~torch.any(torch.isnan(v), dim=1)
+                else:
+                    valid_mask = ~torch.isnan(v)
+                
+                if k not in self._last_valid_obs:
+                    self._last_valid_obs[k] = torch.zeros_like(v)
+                
+                # Update valid obs
+                if valid_mask.any():
+                    self._last_valid_obs[k][valid_mask] = v[valid_mask].clone()
+        
+        nan_env_mask = torch.zeros(num_envs, dtype=torch.bool, device=self.device)
+        nan_detected = False
+        
         for k, v in observations.items():
             if torch.isnan(v).any():
-                # print the first row with nan
-                print(
-                    f"NaN values found in observation {k} during step. First row: {v[0]}"
-                )
-                raise ValueError(
-                    f"NaN values found in observation {k} during step. "
-                    "This is likely due to an error in the environment or the model."
-                )
+                nan_detected = True
+                # Find envs has NaN in obs
+                if v.dim() > 1:
+                    env_nan_mask = torch.any(torch.isnan(v), dim=1)
+                else:
+                    env_nan_mask = torch.isnan(v)
+                nan_env_mask = nan_env_mask | env_nan_mask
+        
+        # Handle envs with NaN
+        if nan_detected and nan_env_mask.any():
+            num_nan_envs = nan_env_mask.sum().item()
+            self._nan_env_count += num_nan_envs
+            print(f"[INFO] Step: Detected NaN in {num_nan_envs} environments (Total: {self._nan_env_count}). Using historical valid observations and forcing reset.")
+            
+            # Force reset envs with NaN
+            terminated[nan_env_mask] = True
+            
+            # Replace NaN obs with historical obs
+            if self._obs_initialized:
+                for k, v in observations.items():
+                    if k in self._last_valid_obs:
+                        # NaN 
+                        observations[k][nan_env_mask] = self._last_valid_obs[k][nan_env_mask]
+                    else:
+                        # Replace with zeros if no history available
+                        observations[k] = torch.where(torch.isnan(v), torch.zeros_like(v), v)
+            else:
+                # worst case: replace with zeros
+                for k, v in observations.items():
+                    observations[k] = torch.where(torch.isnan(v), torch.zeros_like(v), v)
+            
+            # Handle final_obs_buf with historical values
+            if "final_obs_buf" in info:
+                for k, v in info["final_obs_buf"].items():
+                    if torch.isnan(v).any():
+                        if self._obs_initialized and k in self._last_valid_obs:
+                            # Use last valid obs as final_obs_buf for NaN envs
+                            if v.dim() > 1:
+                                final_nan_mask = torch.any(torch.isnan(v), dim=1)
+                            else:
+                                final_nan_mask = torch.isnan(v)
+                            info["final_obs_buf"][k][final_nan_mask] = self._last_valid_obs[k][final_nan_mask]
+                            print(f"[INFO] Replaced {final_nan_mask.sum().item()} NaN final_obs_buf['{k}'] with historical values")
+                        else:
+                            # Use zeros if no valid history
+                            info["final_obs_buf"][k] = torch.where(torch.isnan(v), torch.zeros_like(v), v)
+        
+        # NaN in reward
         if torch.isnan(reward).any():
-            raise ValueError(
-                "NaN values found in reward during step. "
-                "This is likely due to an error in the environment or the model."
-            )
+            nan_count = torch.isnan(reward).sum().item()
+            print(f"[WARNING] Found {nan_count} NaN values in reward. Replacing with zeros.")
+            reward = torch.where(torch.isnan(reward), torch.zeros_like(reward), reward)
+        
+        # Initialize buffer
+        if not self._obs_initialized:
+            self._obs_initialized = True
+            print("[INFO] Initializing NaN handling system with historical observation buffer")
+            # Initialize with current obs
+            for k, v in observations.items():
+                self._last_valid_obs[k] = v.clone()
 
         done = terminated | truncated
         reward = reward.clone().unsqueeze(-1)  # to get to (num_envs, 1)
