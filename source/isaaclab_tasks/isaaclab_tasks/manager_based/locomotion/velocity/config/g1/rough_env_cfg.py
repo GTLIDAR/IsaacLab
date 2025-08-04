@@ -170,7 +170,7 @@ class G1ActionsCfg:
     joint_pos = mdp.JointPositionActionCfg(
         asset_name="robot",
         joint_names=[".*"],
-        scale=0.5,
+        scale=0.3,  # Reduced from 0.5 to limit action magnitude
         use_default_offset=True,
     )
 
@@ -212,6 +212,11 @@ class G1RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # Scene
         self.scene.robot = G1_MINIMAL_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/torso_link"
+        
+        self.sim.dt = 0.002  
+        
+        self.sim.physx.max_position_iteration_count = 12  
+        self.sim.physx.max_velocity_iteration_count = 6   
 
         # Randomization
         self.events.push_robot = None
