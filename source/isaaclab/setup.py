@@ -22,8 +22,8 @@ EXTENSION_TOML_DATA = toml.load(
 INSTALL_REQUIRES = [
     # generic
     "numpy<2",
-    "torch>=2.5.1",
-    "onnx==1.16.1",  # 1.16.2 throws access violation on Windows
+    "torch>=2.7",
+    "onnx>=1.18.0",  # 1.16.2 throws access violation on Windows
     "prettytable==3.3.0",
     "toml",
     # devices
@@ -46,6 +46,7 @@ INSTALL_REQUIRES = [
     "pytest-mock",
     "junitparser",
     "flatdict==4.0.1",
+    "flaky",
 ]
 
 # Additional dependencies that are only available on Linux platforms
@@ -75,7 +76,9 @@ setup(
     classifiers=[
         "Natural Language :: English",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Isaac Sim :: 4.5.0",
+        "Isaac Sim :: 5.0.0",
     ],
     zip_safe=False,
 )
