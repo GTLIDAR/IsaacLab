@@ -35,7 +35,7 @@ INSTALL_REQUIRES = [
     "moviepy",
     # make sure this is consistent with isaac sim version
     "pillow==11.2.1",
-    "iltools @ git+https://github.com/GTLIDAR/ImitationLearningTools.git@py310",
+    "iltools @ git+https://github.com/GTLIDAR/ImitationLearningTools.git",
 ]
 
 PYTORCH_INDEX_URL = ["https://download.pytorch.org/whl/cu128"]
