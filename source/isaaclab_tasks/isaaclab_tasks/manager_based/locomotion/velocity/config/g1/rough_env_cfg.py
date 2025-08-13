@@ -15,7 +15,7 @@ from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
 from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
-
+from isaaclab.managers import TerminationTermCfg as DoneTerm
 
 ##
 # Pre-defined configs
@@ -161,17 +161,41 @@ class G1ObservationsCfg:
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
-    student: PolicyCfg = PolicyCfg()
-    teacher: PolicyCfg = PolicyCfg()
 
 
 @configclass
 class G1ActionsCfg:
     """Action specifications for the MDP."""
 
-    joint_pos = mdp.JointPositionToLimitsActionCfg(
+    joint_pos = mdp.JointPositionActionCfg(
         asset_name="robot",
         joint_names=[".*"],
+        scale=0.5,
+        use_default_offset=True,
+    )
+
+
+@configclass
+class G1TerminationsCfg:
+    """Termination terms for the MDP."""
+
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    base_contact = DoneTerm(
+        func=mdp.illegal_contact,
+        params={
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="base"),
+            "threshold": 1.0,
+        },
+    )
+    has_nan = DoneTerm(
+        func=mdp.nan_observation,
+        params={"asset_cfg": SceneEntityCfg("robot")},
+        time_out=False,
+    )
+    has_oob = DoneTerm(
+        func=mdp.out_of_range_observation,
+        params={"asset_cfg": SceneEntityCfg("robot")},
+        time_out=False,
     )
 
 
@@ -180,6 +204,7 @@ class G1RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     rewards: G1Rewards = G1Rewards()
     observations: G1ObservationsCfg = G1ObservationsCfg()
     actions: G1ActionsCfg = G1ActionsCfg()
+    terminations: G1TerminationsCfg = G1TerminationsCfg()
 
     def __post_init__(self):
         # post init of parent

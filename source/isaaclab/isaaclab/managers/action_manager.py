@@ -335,6 +335,24 @@ class ActionManager(ManagerBase):
         idx = 0
         for term in self._terms.values():
             term_actions = action[:, idx : idx + term.action_dim]
+            # ------------------------------------------------------------------
+            # Per-term NaN handling
+            #   • If the term provides `get_default_action`, use it to fill NaNs.
+            #   • Otherwise, fall back to zero.
+            # ------------------------------------------------------------------
+            if torch.isnan(term_actions).any():
+                if hasattr(term, "get_default_action"):
+                    default_vals = term.get_default_action().to(self.device)
+                    # Ensure same shape
+                    if default_vals.shape != term_actions.shape:
+                        default_vals = default_vals.expand_as(term_actions)
+                    nan_mask = torch.isnan(term_actions)
+                    term_actions = term_actions.clone()
+                    term_actions[nan_mask] = default_vals[nan_mask]
+                else:
+                    term_actions = torch.nan_to_num(
+                        term_actions, nan=0.0, posinf=0.0, neginf=0.0
+                    )
             term.process_actions(term_actions)
             idx += term.action_dim
 

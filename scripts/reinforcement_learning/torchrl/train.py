@@ -90,13 +90,13 @@ from isaaclab.envs import ManagerBasedRLEnvCfg
 from isaaclab.utils.dict import print_dict
 from isaaclab.utils.io import dump_pickle, dump_yaml
 from isaaclab_rl.torchrl import (
-    IsaacLabWrapper,
     RLOptPPOConfig,
     IsaacLabTerminalObsReader,
+    IsaacLabWrapper,
 )
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
-from rlopt.agent.ppo.ppo import PPO
+from rlopt.agent.ppo.ppo import PPO, PPORecurrent
 
 from torchrl.envs import (
     TransformedEnv,
@@ -104,7 +104,10 @@ from torchrl.envs import (
     RewardSum,
     StepCounter,
     ClipTransform,
-    VecNormV2,
+    VecNorm,
+    DoubleToFloat,
+    RewardClipping,
+    IsaacLabWrapper as IsaacLabWrapperTorchRL,
 )
 
 
@@ -166,7 +169,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RLOptPPOConfig):  # type: ign
         print_dict(video_kwargs, nesting=4)
         env = gym.wrappers.RecordVideo(env, **video_kwargs)  # type: ignore
 
-    env = IsaacLabWrapper(env)
+    env = IsaacLabWrapper(env, allow_done_after_reset=False, device=env_cfg.sim.device)  # type: ignore
     env = env.set_info_dict_reader(
         IsaacLabTerminalObsReader(
             observation_spec=env.observation_spec, backend="gymnasium"
@@ -175,11 +178,11 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RLOptPPOConfig):  # type: ign
     env = TransformedEnv(
         env=env,
         transform=Compose(
-            # PatchTerminalObs(),
-            VecNormV2(in_keys=["policy"], decay=0.99999, eps=1e-2),
-            ClipTransform(in_keys=["reward"], low=-100, high=100),
+            VecNorm(in_keys=["policy"], decay=0.99999, eps=1e-2),
+            ClipTransform(in_keys=["policy"], low=-10, high=10),
+            RewardClipping(clamp_min=-1, clamp_max=1),
             RewardSum(),
-            StepCounter(1000),
+            StepCounter(),
         ),
     )
 

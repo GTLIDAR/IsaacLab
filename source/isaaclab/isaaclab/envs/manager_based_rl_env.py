@@ -22,6 +22,7 @@ from isaaclab.managers import (
     TerminationManager,
 )
 from isaaclab.ui.widgets import ManagerLiveVisualizer
+from isaaclab.utils import check_nan
 
 from .common import VecEnvStepReturn
 from .manager_based_env import ManagerBasedEnv
@@ -92,16 +93,19 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
         # initialize the base class to setup the scene.
         super().__init__(cfg=cfg)
+        # buffer that stores the most recent NaN-free observation for each env
+        self._last_valid_obs_buf: dict | None = None
+
+        # buffer that stores the final observation for each env
+        self.final_obs_buf: dict | None = None
+
         # store the render mode
         self.render_mode = render_mode
 
         # initialize data and constants
         # -- set the framerate of the gym video recorder wrapper so that the playback speed of the produced video matches the simulation
         self.metadata["render_fps"] = 1 / self.step_dt
-        # -- starting leg
-        self.starting_leg = torch.zeros(
-            self.num_envs, device=self.device, dtype=torch.long
-        )
+
         print("[INFO]: Completed setting up the environment...")
 
     """
@@ -192,15 +196,6 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         )
         return phase
 
-    def get_starting_leg(self) -> torch.Tensor:
-        """Get the starting leg of the environment. 0 for left and 1 for right."""
-        if not hasattr(self, "starting_leg") or self.starting_leg is None:
-            self.starting_leg = torch.randint(
-                0, 2, (self.num_envs,), device=self.device
-            )
-
-        return self.starting_leg
-
     def step(self, action: torch.Tensor) -> VecEnvStepReturn:  # type: ignore
         """Execute one time-step of the environment's dynamics and reset terminated environments.
 
@@ -220,6 +215,12 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         Returns:
             A tuple containing the observations, rewards, resets (terminated and truncated) and extras.
         """
+        # quick validation to avoid silent NaNs propagating further; detailed
+        # per-term sanitization happens inside ActionManager.
+        if torch.isnan(action).any():
+            print(
+                "[WARN] NaNs detected in incoming actions – will be sanitized per ActionTerm."
+            )
         # process actions
         self.action_manager.process_action(action.to(self.device))
 
@@ -270,9 +271,12 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
         if len(reset_env_ids) > 0:
             # record the final observation
-            self.final_obs_buf: dict = self.observation_manager.compute()
-
-            # add the final observation to the extras
+            # Use the last known good observation to avoid propagating NaNs.
+            if self._last_valid_obs_buf is not None:
+                self.final_obs_buf: dict = self._clone_obs_buf(self._last_valid_obs_buf)
+            else:
+                # fallback (should not generally happen)
+                self.final_obs_buf: dict = self.observation_manager.compute()
             self.extras["final_obs_buf"] = self.final_obs_buf
 
             # trigger recorder terms for pre-reset calls
@@ -298,6 +302,26 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # -- compute observations
         # note: done after reset to get the correct observations for reset envs
         self.obs_buf = self.observation_manager.compute(update_history=True)
+
+        nan_mask = check_nan(self.obs_buf)
+
+        # ------------------------------------------------------------------
+        # Maintain a cache of the most recent NaN-free observation (per env)
+        # and sanitize the current obs before they leave the environment.
+        # ------------------------------------------------------------------
+        if not torch.any(nan_mask):
+            # All environments are clean – clone whole buffer.
+            self._last_valid_obs_buf = self._clone_obs_buf(self.obs_buf)
+        else:
+            # Update cache with currently valid envs (those _without_ NaNs).
+            valid_env_ids = (~nan_mask).nonzero(as_tuple=False).squeeze(-1)
+            if valid_env_ids.numel() > 0:
+                if self._last_valid_obs_buf is None:
+                    self._last_valid_obs_buf = self._clone_obs_buf(self.obs_buf)
+                else:
+                    self._update_obs_buf(
+                        self._last_valid_obs_buf, self.obs_buf, valid_env_ids
+                    )
 
         # return observations, rewards, resets and extras
         return (
@@ -390,6 +414,36 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
     """
     Helper functions.
     """
+
+    @staticmethod
+    def _clone_obs_buf(obs_buf: dict) -> dict:
+        """Deep-clone an observation buffer (tensors are `.clone()`)."""
+        cloned = {}
+        for k, v in obs_buf.items():
+            if isinstance(v, dict):
+                cloned[k] = ManagerBasedRLEnv._clone_obs_buf(v)
+            elif torch.is_tensor(v):
+                cloned[k] = v.clone()
+            else:
+                cloned[k] = v
+        return cloned
+
+    @staticmethod
+    def _update_obs_buf(dest: dict, src: dict, env_ids: torch.Tensor):
+        """Copy selected env rows (``env_ids``) from ``src`` into ``dest`` in-place."""
+        for k, v in src.items():
+            if isinstance(v, dict):
+                if k not in dest or not isinstance(dest[k], dict):
+                    dest[k] = {}
+                ManagerBasedRLEnv._update_obs_buf(dest[k], v, env_ids)
+            elif torch.is_tensor(v):
+                # ensure tensor exists and has same shape
+                if k not in dest or not torch.is_tensor(dest[k]):
+                    dest[k] = v.clone()
+                else:
+                    dest[k][env_ids] = v[env_ids]
+            else:
+                dest[k] = v
 
     def _configure_gym_env_spaces(self):
         """Configure the action and observation spaces for the Gym environment."""

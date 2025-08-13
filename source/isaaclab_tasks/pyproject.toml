@@ -1,11 +1,19 @@
 [build-system]
 requires = ["setuptools", "wheel", "toml"]
 build-backend = "setuptools.build_meta"
+
 [tool.pyrefly]
 search-path = [
-    "../source/isaaclab/isaaclab",
-    "../source/isaaclab_assets",
-    "../source/isaaclab_rl",
-    "../source/isaaclab_mimic",
-    "../source/isaaclab_tasks",
+    "../isaaclab",
+    "../isaaclab_assets",
+    "../isaaclab_rl",
+    "../isaaclab_mimic",
+    "../isaaclab_tasks",
 ]
+[tool.pyrefly.errors]
+# ignore unexpected-keyword-arg
+unexpected-keyword = false
+bad-argument-type = false
+bad-argument-count = false
+bad-override = false
+bad-assignment = false

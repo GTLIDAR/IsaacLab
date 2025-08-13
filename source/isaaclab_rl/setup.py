@@ -35,6 +35,7 @@ INSTALL_REQUIRES = [
     "moviepy",
     # make sure this is consistent with isaac sim version
     "pillow==11.2.1",
+    "iltools @ git+https://github.com/GTLIDAR/ImitationLearningTools.git@py310",
 ]
 
 PYTORCH_INDEX_URL = ["https://download.pytorch.org/whl/cu128"]
@@ -48,6 +49,7 @@ EXTRAS_REQUIRE = {
         "gym",
     ],  # rl-games still needs gym :(
     "rsl-rl": ["rsl-rl-lib==2.3.3"],
+    "rlopt": ["rlopt @ git+https://github.com/fei-yang-wu/RLOpt.git"],
 }
 # Add the names with hyphens as aliases for convenience
 EXTRAS_REQUIRE["rl_games"] = EXTRAS_REQUIRE["rl-games"]

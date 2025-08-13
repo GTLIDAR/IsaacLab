@@ -141,6 +141,11 @@ class JointAction(ActionTerm):
     Operations.
     """
 
+    def get_default_action(self) -> torch.Tensor:
+        """Return default joint position for the associated joints (per-env)."""
+        # default_joint_pos shape: (num_envs, total_joints)
+        return self._asset.data.default_joint_pos[:, self._joint_ids]
+
     def process_actions(self, actions: torch.Tensor):
         # store the raw actions
         self._raw_actions[:] = actions
