@@ -279,6 +279,9 @@ class RLOptPPOConfig:
         video: bool = False
         """Whether to record videos."""
 
+        log_dir: str = "logs"
+        """Directory to save logs."""
+
     @configclass
     class OptimConfig:
         """Optimizer configuration for RLOpt PPO."""
@@ -435,6 +438,9 @@ class RLOptPPOConfig:
 
     save_interval: int = 500
     """Interval for saving the model."""
+
+    save_path: str = "models"
+    """Path to save the model."""
 
     policy_in_keys: list[str] = ["hidden"]
     """Keys to use for the policy."""

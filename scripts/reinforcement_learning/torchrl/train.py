@@ -108,6 +108,7 @@ from torchrl.envs import (
     DoubleToFloat,
     RewardClipping,
     IsaacLabWrapper as IsaacLabWrapperTorchRL,
+    InitTracker,
 )
 
 
@@ -153,6 +154,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RLOptPPOConfig):  # type: ign
     dump_pickle(os.path.join(log_dir, "params", "env.pkl"), env_cfg)
     dump_pickle(os.path.join(log_dir, "params", "agent.pkl"), agent_cfg)
 
+    # change the save path to the log directory
+    os.makedirs(os.path.join(log_dir, "models"), exist_ok=True)
+    agent_cfg.logger.log_dir = log_dir
+
     # create isaac environment
     env = gym.make(
         args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None
@@ -186,7 +191,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RLOptPPOConfig):  # type: ign
         ),
     )
 
-    agent = PPO(
+    agent = PPORecurrent(
         env=env,
         config=OmegaConf.create(asdict(agent_cfg)),  # type: ignore
     )
