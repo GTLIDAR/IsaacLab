@@ -183,15 +183,12 @@ def main(env_cfg: ManagerBasedRLEnvCfg, agent_cfg: RLOptPPOConfig):  # type: ign
     env = TransformedEnv(
         env=env,
         transform=Compose(
-            VecNorm(in_keys=["policy"], decay=0.99999, eps=1e-2),
-            ClipTransform(in_keys=["policy"], low=-10, high=10),
-            RewardClipping(clamp_min=-1, clamp_max=1),
             RewardSum(),
-            StepCounter(),
+            StepCounter(1000),
         ),
     )
 
-    agent = PPORecurrent(
+    agent = PPO(
         env=env,
         config=OmegaConf.create(asdict(agent_cfg)),  # type: ignore
     )

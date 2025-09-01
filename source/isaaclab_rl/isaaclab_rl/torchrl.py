@@ -245,7 +245,7 @@ class RLOptPPOConfig:
         num_collectors: int = 1
         """Number of data collectors."""
 
-        frames_per_batch: int = 4096 * 12
+        frames_per_batch: int = 2048 * 12
         """Number of frames per batch."""
 
         total_frames: int = 100_000_000
