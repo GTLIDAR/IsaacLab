@@ -29,7 +29,6 @@ INSTALL_REQUIRES = [
     # automate
     "scikit-learn",
     "numba",
-    "iltools @ https://github.com/GTLIDAR/ImitationLearningTools.git#egg=iltools",
 ]
 
 PYTORCH_INDEX_URL = ["https://download.pytorch.org/whl/cu128"]
