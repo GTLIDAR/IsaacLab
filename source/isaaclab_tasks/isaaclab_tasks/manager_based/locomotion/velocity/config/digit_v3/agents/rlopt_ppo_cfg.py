@@ -35,3 +35,17 @@ class DigitV3FlatRLOptPPOConfig(DigitV3RLOptPPOConfig):
         self.policy.num_cells = [256, 256, 128]
         self.value_net.num_cells = [256, 256, 128]
         self.collector.total_frames = 300_000_000  # Fewer frames for flat terrain
+
+
+@configclass
+class DigitV3RoughRLOptPPOConfig(DigitV3RLOptPPOConfig):
+    """RLOpt PPO configuration for Digit V3 on rough terrain."""
+
+    def __post_init__(self):
+        """Post-initialization setup for rough terrain."""
+        super().__post_init__()
+
+        # Adjust configurations for rough terrain (typically more challenging)
+        self.policy.num_cells = [256, 256, 128]
+        self.value_net.num_cells = [256, 256, 128]
+        self.collector.total_frames = 300_000_000  # Fewer frames for rough terrain

@@ -34,23 +34,6 @@ class TeacherObsCfg(ObsGroup):
 
     actions = ObsTerm(func=mdp.last_action)
 
-    root_state_w = ObsTerm(func=digit_mdp.root_state_w)
-
-    root_lin_vel = ObsTerm(func=mdp.root_lin_vel_w)
-
-    root_ang_vel = ObsTerm(func=mdp.root_ang_vel_w)
-
-    root_pos = ObsTerm(func=mdp.root_pos_w)
-
-    root_quat = ObsTerm(func=mdp.root_quat_w)
-
-    env_params = ObsTerm(
-        func=digit_mdp.get_environment_parameters,
-        params={
-            "asset_cfg": SceneEntityCfg("robot"),
-        },
-    )
-
     # student specific observations
     student_base_lin_vel = ObsTerm(
         func=mdp.base_lin_vel,
@@ -159,38 +142,6 @@ class TeacherObsCfg(ObsGroup):
         },
     )
 
-    # pd_gain = ObsTerm(
-    #     func=mdp.pd_gain,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             joint_names=[
-    #                 "left_hip_roll",
-    #                 "left_hip_yaw",
-    #                 "left_hip_pitch",
-    #                 "left_knee",
-    #                 "left_toe_A",
-    #                 "left_toe_B",
-    #                 "right_hip_roll",
-    #                 "right_hip_yaw",
-    #                 "right_hip_pitch",
-    #                 "right_knee",
-    #                 "right_toe_A",
-    #                 "right_toe_B",
-    #                 "left_shoulder_roll",
-    #                 "left_shoulder_pitch",
-    #                 "left_shoulder_yaw",
-    #                 "left_elbow",
-    #                 "right_shoulder_roll",
-    #                 "right_shoulder_pitch",
-    #                 "right_shoulder_yaw",
-    #                 "right_elbow",
-    #             ],
-    #             preserve_order=True,
-    #         ),
-    #     },
-    # )
-
     height_scan = ObsTerm(
         func=mdp.height_scan,
         params={"sensor_cfg": SceneEntityCfg("height_scanner")},
@@ -198,7 +149,7 @@ class TeacherObsCfg(ObsGroup):
     )
 
     def __post_init__(self):
-        self.enable_corruption = True
+        self.enable_corruption = False
         self.concatenate_terms = True
 
 

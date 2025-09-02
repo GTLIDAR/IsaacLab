@@ -45,6 +45,7 @@ gym.register(
         "rsl_rl_cfg_entry_point": agents.rsl_rl_cfg.DigitV3RoughPPORunnerCfg,
         "skrl_cfg_entry_point": f"{agents.__name__}:skrl_rough_ppo_cfg.yaml",
         "sb3_cfg_entry_point": f"{agents.__name__}:sb3_ppo_cfg.yaml",
+        "rlopt_cfg_entry_point": f"{agents.__name__}.rlopt_ppo_cfg:DigitV3RoughRLOptPPOConfig",
     },
 )
 
