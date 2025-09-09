@@ -467,8 +467,12 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
                     shape=group_dim,  # type: ignore
                 )
             else:
-                group_term_cfgs = self.observation_manager._group_obs_term_cfgs[group_name]
-                for term_name, term_dim, term_cfg in zip(group_term_names, group_dim, group_term_cfgs):
+                group_term_cfgs = self.observation_manager._group_obs_term_cfgs[
+                    group_name
+                ]
+                for term_name, term_dim, term_cfg in zip(
+                    group_term_names, group_dim, group_term_cfgs
+                ):
                     low = -np.inf if term_cfg.clip is None else term_cfg.clip[0]
                     high = np.inf if term_cfg.clip is None else term_cfg.clip[1]
                     self.single_observation_space[group_name] = gym.spaces.Dict(

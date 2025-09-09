@@ -120,7 +120,9 @@ class IsaacLabWrapper(GymWrapper):
             )
 
         done = terminated | truncated
-        reward = reward.clone().unsqueeze(-1)  # to get to (num_envs, 1)
+        reward = (
+            reward.clone().unsqueeze(-1).to(dtype=torch.float32)
+        )  # to get to (num_envs, 1)
 
         self.log_infos.append(info["log"])
 
@@ -131,18 +133,18 @@ class IsaacLabWrapper(GymWrapper):
             return (
                 observations,
                 reward,
-                terminated.clone(),
-                truncated.clone(),
-                done.clone(),
+                terminated.clone().to(dtype=torch.bool),
+                truncated.clone().to(dtype=torch.bool),
+                done.clone().to(dtype=torch.bool),
                 info,
             )
         else:
             return (
                 observations,
                 reward,
-                terminated.clone(),
-                truncated.clone(),
-                done.clone(),
+                terminated.clone().to(dtype=torch.bool),
+                truncated.clone().to(dtype=torch.bool),
+                done.clone().to(dtype=torch.bool),
                 {},
             )
 
@@ -171,6 +173,7 @@ def CloneObsBuf(
         elif isinstance(v, torch.Tensor):
             # Clone tensors
             cloned[k] = v.clone()
+            assert v.dtype == torch.float32
         else:
             # For other types, just copy the reference
             cloned[k] = v
@@ -214,9 +217,11 @@ class IsaacLabTerminalObsReader(terminal_obs_reader):
         for key in self.info_spec[self.name].keys():
             tensordict.set(
                 (self.name, key),
-                terminal_obs[key]
-                if terminal_obs is not None
-                else self.info_spec[self.name, key].zero(),
+                (
+                    terminal_obs[key]
+                    if terminal_obs is not None
+                    else self.info_spec[self.name, key].zero()
+                ),
             )
         return tensordict
 
