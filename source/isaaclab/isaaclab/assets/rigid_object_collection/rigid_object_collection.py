@@ -575,6 +575,7 @@ class RigidObjectCollection(AssetBase):
             all the external wrenches will be applied in the frame specified by the last call.
 
             .. code-block:: python
+
                 # example of setting external wrench in the global frame
                 asset.set_external_force_and_torque(forces=torch.ones(1, 1, 3), env_ids=[0], is_global=True)
                 # example of setting external wrench in the link frame
@@ -677,6 +678,7 @@ class RigidObjectCollection(AssetBase):
             root_prims = sim_utils.get_all_matching_child_prims(
                 template_prim_path,
                 predicate=lambda prim: prim.HasAPI(UsdPhysics.RigidBodyAPI),
+                traverse_instance_prims=False,
             )
             if len(root_prims) == 0:
                 raise RuntimeError(
@@ -694,6 +696,7 @@ class RigidObjectCollection(AssetBase):
             articulation_prims = sim_utils.get_all_matching_child_prims(
                 template_prim_path,
                 predicate=lambda prim: prim.HasAPI(UsdPhysics.ArticulationRootAPI),
+                traverse_instance_prims=False,
             )
             if len(articulation_prims) != 0:
                 if (
