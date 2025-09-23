@@ -1,5 +1,5 @@
 seed: 42
-n_timesteps: !!float 5e8
+n_timesteps: !!float 2e8
 policy: "MlpPolicy"
 n_steps: 12
 gamma: 0.99
