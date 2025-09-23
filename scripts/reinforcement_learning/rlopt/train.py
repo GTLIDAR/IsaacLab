@@ -208,7 +208,7 @@ def main(
 
     # initialize wandb and make callback
     run = wandb.init(
-        project="L2T G1 flat" if "flat" in args_cli.task else "L2T G1",
+        project="L2T flat" if "flat" in args_cli.task else "L2T",
         entity="fywu",
         name=log_time_note,
         config=agent_cfg | class_to_dict(env_cfg),
