@@ -303,6 +303,9 @@ class RLOptPPOConfig:
         device: str = "cuda:0"
         """Device for optimizer."""
 
+        max_grad_norm: float = 0.5
+        """Maximum gradient norm for clipping."""
+
     @configclass
     class LossConfig:
         """Loss function configuration for RLOpt PPO."""
@@ -336,6 +339,9 @@ class RLOptPPOConfig:
 
         loss_critic_type: str = "l2"
         """Type of critic loss."""
+
+        max_loss: float | None = 50.0
+        """Maximum loss value to prevent exploding gradients."""
 
     @configclass
     class CompileConfig:
