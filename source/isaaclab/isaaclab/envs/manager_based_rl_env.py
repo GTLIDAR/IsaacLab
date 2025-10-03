@@ -90,6 +90,17 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         self.episode_length_buf = torch.zeros(
             cfg.scene.num_envs, device=cfg.sim.device, dtype=torch.long
         )
+        # -- dynamic phase buffers (seconds per phase cycle and optional per-step phase delta)
+        self._phase_period_s = torch.full(
+            (cfg.scene.num_envs,), 0.64, device=cfg.sim.device, dtype=torch.float
+        )
+        self._phase_time_accum_s = torch.zeros(
+            cfg.scene.num_envs, device=cfg.sim.device, dtype=torch.float
+        )
+        # optional external per-step phase delta (in cycles, i.e., [0,1) per env-step)
+        self._phase_delta_ext = torch.zeros(
+            cfg.scene.num_envs, device=cfg.sim.device, dtype=torch.float
+        )
 
         # initialize the base class to setup the scene.
         super().__init__(cfg=cfg)
@@ -114,7 +125,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
     @property
     def phase_dt(self) -> float:
-        """Phase time interval in seconds."""
+        """Phase time interval in seconds (default for new envs)."""
         return 0.64
 
     @property
@@ -182,18 +193,17 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
     """
 
     def get_phase(self) -> torch.Tensor:
-        """Get the phase of the environment."""
+        """Get the phase of the environment.
 
+        Returns a value in [0, 1) per environment, computed from accumulated phase time and optional external phase delta.
+        """
         if not hasattr(self, "episode_length_buf") or self.episode_length_buf is None:
             return torch.zeros(self.num_envs, device=self.device, dtype=torch.float)
-
-        phase = (
-            torch.fmod(
-                self.episode_length_buf.type(dtype=torch.float) * self.step_dt,
-                self.phase_dt,
-            )
-            / self.phase_dt
-        )
+        # compute phase from accumulated time and current period
+        period = torch.clamp(self._phase_period_s, min=1e-3)
+        phase = torch.fmod(self._phase_time_accum_s, period) / period
+        # add external delta (already in cycles), then wrap
+        phase = torch.fmod(phase + self._phase_delta_ext, 1.0)
         return phase
 
     def step(self, action: torch.Tensor) -> VecEnvStepReturn:  # type: ignore
@@ -255,6 +265,10 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # -- update env counters (used for curriculum generation)
         self.episode_length_buf += 1  # step in current episode (per env)
         self.common_step_counter += 1  # total step (common for all envs)
+        # -- advance phase accumulator by env step_dt
+        self._phase_time_accum_s += self.step_dt
+        # reset external phase delta until next action provides it
+        self._phase_delta_ext.zero_()
         # -- check terminations
         self.reset_buf = self.termination_manager.compute()
         self.reset_terminated = self.termination_manager.terminated
@@ -543,3 +557,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
         # reset the episode length buffer
         self.episode_length_buf[env_ids] = 0
+        # reset dynamic phase buffers for selected envs
+        self._phase_time_accum_s[env_ids] = 0.0
+        self._phase_delta_ext[env_ids] = 0.0
+        self._phase_period_s[env_ids] = self.phase_dt
