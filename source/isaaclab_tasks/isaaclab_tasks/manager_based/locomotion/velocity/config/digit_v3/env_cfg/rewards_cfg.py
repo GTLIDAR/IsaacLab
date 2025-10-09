@@ -149,3 +149,19 @@ class DigitV3RewardsCfg(RewardsCfg):
             "asset_cfg": SceneEntityCfg("robot", body_names=".*_toe_roll"),
         },
     )
+
+    
+    foot_flatness = RewTerm(
+        func=digit_mdp.foot_contact_surface_flatness_reward,
+        weight=0.25,  
+        params={
+            "foot_scanner_names": ("foot_scanner_left", "foot_scanner_right"),
+            "contact_sensor_cfg": SceneEntityCfg(
+                "contact_forces",
+                body_names=["left_toe_roll", "right_toe_roll"],
+                preserve_order=True,
+            ),
+            "std": 0.05,
+            "contact_force_threshold": 1.0,
+        },
+    )

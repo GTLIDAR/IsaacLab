@@ -4,6 +4,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 from isaaclab.managers import SceneEntityCfg
+from isaaclab.sensors import RayCasterCfg
+from isaaclab.sensors.ray_caster import patterns
 
 from isaaclab.utils import configclass
 
@@ -57,6 +59,34 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # Scene
         self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base"
+        
+        self.scene.foot_scanner_left = RayCasterCfg(
+            prim_path="{ENV_REGEX_NS}/Robot/left_toe_roll",
+            update_period=self.sim.dt * self.decimation,
+            offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.02)),  
+            attach_yaw_only=True, 
+            pattern_cfg=patterns.GridPatternCfg(
+                resolution=0.02,  
+                size=[0.15, 0.15]  
+            ),
+            max_distance=0.2,  
+            debug_vis=False,  
+            mesh_prim_paths=["/World/ground"],
+        )
+        self.scene.foot_scanner_right = RayCasterCfg(
+            prim_path="{ENV_REGEX_NS}/Robot/right_toe_roll",
+            update_period=self.sim.dt * self.decimation,
+            offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.02)), 
+            attach_yaw_only=True,  
+            pattern_cfg=patterns.GridPatternCfg(
+                resolution=0.02, 
+                size=[0.15, 0.15] 
+            ),
+            max_distance=0.2,  
+            debug_vis=False,  
+            mesh_prim_paths=["/World/ground"],
+        )
+
         self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
             "robot",
             joint_names=[
