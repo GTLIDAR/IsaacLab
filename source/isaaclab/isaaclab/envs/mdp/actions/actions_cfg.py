@@ -381,17 +381,14 @@ class SurfaceGripperBinaryActionCfg(ActionTermCfg):
 class GaitPhaseActionCfg(ActionTermCfg):
     """Configuration for gait phase action term.
 
-    mode: "period" or "delta" to control phase period or per-step phase delta.
-    - If "period": maps action in [-1,1] to [min_period_s, max_period_s]
-    - If "delta": maps action in [-1,1] to [-max_delta_per_step, max_delta_per_step] cycles
+    The action controls gait phase period (seconds per cycle) by mapping input
+    in [-1, 1] to [min_period_s, max_period_s].
     """
 
     class_type: type[ActionTerm] = None  # will be patched below to avoid circular import
 
-    mode: str = "period"
     min_period_s: float = 0.25
     max_period_s: float = 1.2
-    max_delta_per_step: float = 0.15
 
 
 # late import to set class_type to avoid circular import

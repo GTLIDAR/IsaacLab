@@ -11,11 +11,9 @@ if TYPE_CHECKING:
 
 
 class GaitPhaseAction(ActionTerm):
-    """Action term to control gait phase dynamics.
+    """Action term to control gait phase dynamics by period only.
 
-    Supports two modes via cfg.mode:
-    - "period": action controls phase period (seconds per cycle)
-    - "delta": action adds an external phase delta per environment step (in cycles)
+    Maps input action in [-1, 1] to period in [min_period_s, max_period_s].
     """
 
     cfg: GaitPhaseActionCfg
@@ -28,7 +26,6 @@ class GaitPhaseAction(ActionTerm):
         # ranges
         self._min_period = torch.tensor(cfg.min_period_s, device=self.device)
         self._max_period = torch.tensor(cfg.max_period_s, device=self.device)
-        self._max_delta = torch.tensor(cfg.max_delta_per_step, device=self.device)
 
     @property
     def action_dim(self) -> int:
@@ -50,21 +47,12 @@ class GaitPhaseAction(ActionTerm):
         # store and clamp to [-1, 1]
         self._raw_actions[:] = actions
         self._processed_actions = torch.clamp(self._raw_actions, -1.0, 1.0)
-        # map to either period or delta on apply
+        # processed value in [-1, 1]; mapping applied in apply_actions
 
     def apply_actions(self):
-        # write into environment buffers
-        if self.cfg.mode == "period":
-            # map [-1,1] to [min_period, max_period]
-            scale = (self._max_period - self._min_period) * 0.5
-            center = (self._max_period + self._min_period) * 0.5
-            period = center + scale * self._processed_actions.view(-1)
-            # clamp and assign
-            period = torch.clamp(period, min=self._min_period.item(), max=self._max_period.item())
-            self._env._phase_period_s[:] = period
-        elif self.cfg.mode == "delta":
-            # convert [-1,1] to [-max_delta, max_delta] cycles per step
-            delta = self._processed_actions.view(-1) * self._max_delta
-            self._env._phase_delta_ext[:] = delta
-        else:
-            raise ValueError(f"Unsupported GaitPhaseAction mode: {self.cfg.mode}") 
+        # write period into environment buffers
+        scale = (self._max_period - self._min_period) * 0.5
+        center = (self._max_period + self._min_period) * 0.5
+        period = center + scale * self._processed_actions.view(-1)
+        period = torch.clamp(period, min=self._min_period.item(), max=self._max_period.item())
+        self._env._phase_period_s[:] = period
