@@ -80,3 +80,78 @@ def get_environment_parameters(
     return torch.cat(
         [gravity, materials, masses, external_force, external_torque], dim=1
     )
+
+
+def _aggregate_ray_stats(scanner: RayCaster) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """
+    Compute terrain height statistics from raycaster.
+    """
+    ray_hits_w = scanner.data.ray_hits_w # shape: (num_envs, num_rays, 3)
+    
+    # Compute relative height
+    sensor_h = scanner.data.pos_w[:, 2].unsqueeze(1)  # shape: (num_envs, 1)
+    ray_hits_z = sensor_h - ray_hits_w[..., 2]  # shape: (num_envs, num_rays)
+
+    if hasattr(scanner.data, "ray_distances"):
+        dist_mask = scanner.data.ray_distances < scanner.cfg.max_distance
+    else:
+        dist_mask = torch.ones_like(ray_hits_z, dtype=torch.bool)
+    finite_mask = torch.isfinite(ray_hits_z)
+    valid_mask = dist_mask & finite_mask
+
+    # Compute mean
+    denom = valid_mask.sum(dim=1, keepdim=True).clamp(min=1)
+    masked_values = torch.where(valid_mask, ray_hits_z, torch.zeros_like(ray_hits_z))
+    mean_z = masked_values.sum(dim=1, keepdim=True) / denom
+    
+    # Fill invalid entries with per-env mean to avoid skewing statistics
+    ray_hits_z_filled = torch.where(valid_mask, ray_hits_z, mean_z.expand_as(ray_hits_z))
+    ray_hits_z_filled = torch.nan_to_num(ray_hits_z_filled, nan=0.0, posinf=0.0, neginf=0.0)
+
+    mean_val = torch.nan_to_num(mean_z, nan=0.0, posinf=0.0, neginf=0.0)
+    
+    # Compute variance
+    var_val = torch.var(ray_hits_z_filled, dim=1, keepdim=True)
+    var_val = torch.nan_to_num(var_val, nan=0.0, posinf=0.0, neginf=0.0)
+    
+    # Compute min and max values
+    min_val, _ = torch.min(ray_hits_z_filled, dim=1, keepdim=True)
+    max_val, _ = torch.max(ray_hits_z_filled, dim=1, keepdim=True)
+    min_val = torch.nan_to_num(min_val, nan=0.0, posinf=0.0, neginf=0.0)
+    max_val = torch.nan_to_num(max_val, nan=0.0, posinf=0.0, neginf=0.0)
+    
+    rng_val = torch.nan_to_num(max_val - min_val, nan=0.0, posinf=0.0, neginf=0.0)
+    
+    return mean_val, var_val, min_val, max_val, rng_val
+
+
+def foot_terrain_flatness_features(
+    env: ManagerBasedRLEnv,
+    foot_scanner_names: tuple[str, str],
+    safe_foot_scanner_names: tuple[str, str] | None = None,
+) -> torch.Tensor:
+    """
+    Aggregate dual-zone foot terrain features for flat surface detection.
+    """
+    feats = []
+    for i, name in enumerate(foot_scanner_names):
+        core_scanner: RayCaster = env.scene.sensors[name]
+        c_mean, c_var, _c_min, _c_max, c_rng = _aggregate_ray_stats(core_scanner)
+        
+        if safe_foot_scanner_names is not None:
+            safe_scanner: RayCaster = env.scene.sensors[safe_foot_scanner_names[i]]
+            s_mean, s_var, _s_min, _s_max, s_rng = _aggregate_ray_stats(safe_scanner)
+            mean_diff = c_mean - s_mean
+            
+            # Concatenate features in fixed order: [core(3), safe(3), diff(1)]
+            foot_feat = torch.cat([c_mean, c_var, c_rng, s_mean, s_var, s_rng, mean_diff], dim=1)
+        else:
+            # Core zone only: [core(3)]
+            foot_feat = torch.cat([c_mean, c_var, c_rng], dim=1)
+        
+        feats.append(foot_feat)
+    
+    feats_cat = torch.cat(feats, dim=1)
+    
+    return torch.nan_to_num(feats_cat, nan=0.0, posinf=0.0, neginf=0.0)
+

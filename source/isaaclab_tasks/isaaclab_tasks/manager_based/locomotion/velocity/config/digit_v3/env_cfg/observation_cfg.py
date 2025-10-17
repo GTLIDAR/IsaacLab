@@ -40,18 +40,15 @@ class TeacherObsCfg(ObsGroup):
         clip=(-1.0, 1.0),
     )
     
-    foot_scan_left = ObsTerm(
-        func=mdp.height_scan,
-        params={"sensor_cfg": SceneEntityCfg("foot_scanner_left"), "offset": 0.0},
+    foot_terrain_flatness = ObsTerm(
+        func=digit_mdp.foot_terrain_flatness_features,
+        params={
+            "foot_scanner_names": ("foot_scanner_left_core", "foot_scanner_right_core"),
+            "safe_foot_scanner_names": ("foot_scanner_left_safe", "foot_scanner_right_safe"),
+        },
         clip=(-1.0, 1.0),
     )
     
-    foot_scan_right = ObsTerm(
-        func=mdp.height_scan,
-        params={"sensor_cfg": SceneEntityCfg("foot_scanner_right"), "offset": 0.0},
-        clip=(-1.0, 1.0),
-    )
-
     def __post_init__(self):
         self.enable_corruption = False
         self.concatenate_terms = True

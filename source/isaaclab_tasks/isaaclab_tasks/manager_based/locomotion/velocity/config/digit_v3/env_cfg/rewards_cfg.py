@@ -150,18 +150,21 @@ class DigitV3RewardsCfg(RewardsCfg):
         },
     )
 
-    
     foot_flatness = RewTerm(
         func=digit_mdp.foot_contact_surface_flatness_reward,
-        weight=0.25,  
+        weight=0.3,
         params={
-            "foot_scanner_names": ("foot_scanner_left", "foot_scanner_right"),
+            "foot_scanner_names": ("foot_scanner_left_core", "foot_scanner_right_core"),
+            "safe_foot_scanner_names": ("foot_scanner_left_safe", "foot_scanner_right_safe"),
             "contact_sensor_cfg": SceneEntityCfg(
                 "contact_forces",
                 body_names=["left_toe_roll", "right_toe_roll"],
                 preserve_order=True,
             ),
             "std": 0.05,
+            "safe_std": 0.06,
+            "combine_mode": "product",
+            "safe_exponent": 1.0,
             "contact_force_threshold": 1.0,
         },
     )

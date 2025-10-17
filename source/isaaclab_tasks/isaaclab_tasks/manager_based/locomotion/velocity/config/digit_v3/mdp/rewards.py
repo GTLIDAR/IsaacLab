@@ -356,9 +356,13 @@ def foot_contact_surface_flatness_reward(
     contact_sensor_cfg: SceneEntityCfg,
     std: float = 0.05,
     contact_force_threshold: float = 1.0,
+    safe_foot_scanner_names: tuple[str, str] | None = None,
+    safe_std: float | None = None,
+    combine_mode: str = "product",
+    safe_exponent: float = 1.0,
 ) -> torch.Tensor:
     """
-    Reward feet contacting flat surfaces by penalizing height variation in raycast hits.
+    Reward stepping on flat surfaces using dual-zone raycaster terrain assessment.
     """
     contact_sensor: ContactSensor = env.scene.sensors[contact_sensor_cfg.name]
     net_contact_forces = contact_sensor.data.net_forces_w_history
@@ -375,30 +379,39 @@ def foot_contact_surface_flatness_reward(
     # is_contact shape: (num_envs, num_feet)
     is_contact = torch.max(contact_forces_norm, dim=1)[0] > contact_force_threshold
 
-    rewards = []
-    for i, scanner_name in enumerate(foot_scanner_names):
-
-        scanner: RayCaster = env.scene.sensors[scanner_name]
-        
-        #  shape (num_envs, num_rays, 3)
+    def _flatness_from_scanner(scanner: RayCaster, std_local: float) -> torch.Tensor:
         ray_hits_w = scanner.data.ray_hits_w
-        ray_hits_z = ray_hits_w[..., 2]  # Extract z-coordinates
-        
+        ray_hits_z = ray_hits_w[..., 2]
         if hasattr(scanner.data, 'ray_distances'):
             valid_mask = scanner.data.ray_distances < scanner.cfg.max_distance
         else:
             valid_mask = torch.ones_like(ray_hits_z, dtype=torch.bool)
-        
         mean_height = ray_hits_z.sum(dim=1, keepdim=True) / valid_mask.sum(dim=1, keepdim=True).clamp(min=1)
-
         ray_hits_z_masked = torch.where(valid_mask, ray_hits_z, mean_height.expand_as(ray_hits_z))
         ray_hits_z_masked = torch.nan_to_num(ray_hits_z_masked, nan=0.0, posinf=0.0, neginf=0.0)
-        
-        #  shape: (num_envs,)
-        height_variance = torch.var(ray_hits_z_masked, dim=1)  
+        height_variance = torch.var(ray_hits_z_masked, dim=1)
         height_variance = torch.clamp(height_variance, min=0.0, max=1.0)
-        
-        flatness_reward = torch.exp(-height_variance / (std ** 2))
+        return torch.exp(-height_variance / (std_local ** 2))
+
+    rewards = []
+    for i, scanner_name in enumerate(foot_scanner_names):
+
+        scanner: RayCaster = env.scene.sensors[scanner_name]
+        core_flatness = _flatness_from_scanner(scanner, std)
+
+        if safe_foot_scanner_names is not None:
+            safe_scanner: RayCaster = env.scene.sensors[safe_foot_scanner_names[i]]
+            safe_std_eff = safe_std if safe_std is not None else std
+            safe_flatness = _flatness_from_scanner(safe_scanner, safe_std_eff)
+            if combine_mode == "min":
+                flatness_reward = torch.minimum(core_flatness, torch.clamp(safe_flatness, 0.0, 1.0).pow(safe_exponent))
+            elif combine_mode == "mean":
+                flatness_reward = 0.5 * (core_flatness + torch.clamp(safe_flatness, 0.0, 1.0).pow(safe_exponent))
+            else:  # product
+                flatness_reward = core_flatness * torch.clamp(safe_flatness, 0.0, 1.0).pow(safe_exponent)
+        else:
+            flatness_reward = core_flatness
+
         foot_reward = torch.where(
             is_contact[:, i], 
             flatness_reward, 

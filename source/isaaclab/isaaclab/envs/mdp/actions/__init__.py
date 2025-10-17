@@ -12,5 +12,4 @@ from .joint_actions_to_limits import *  # noqa: F401, F403
 from .non_holonomic_actions import *  # noqa: F401, F403
 from .surface_gripper_actions import *  # noqa: F401, F403
 from .task_space_actions import *  # noqa: F401, F403
-from .pink_task_space_actions import *  # noqa: F401, F403
 from .gait_phase_actions import *  # noqa: F401, F403
