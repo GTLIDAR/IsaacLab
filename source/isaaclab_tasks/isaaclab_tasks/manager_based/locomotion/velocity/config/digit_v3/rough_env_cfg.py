@@ -114,7 +114,7 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
             ray_alignment="yaw",
             pattern_cfg=patterns.GridPatternCfg(
                 resolution=0.03,
-                size=[0.30, 0.30]
+                size=[0.24, 0.24]
             ),
             max_distance=0.25,
             debug_vis=self.enable_foot_terrain_vis,
@@ -129,7 +129,7 @@ class DigitV3RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
             ray_alignment="yaw",
             pattern_cfg=patterns.GridPatternCfg(
                 resolution=0.03,
-                size=[0.30, 0.30]
+                size=[0.24, 0.24]
             ),
             max_distance=0.25,
             debug_vis=self.enable_foot_terrain_vis,
