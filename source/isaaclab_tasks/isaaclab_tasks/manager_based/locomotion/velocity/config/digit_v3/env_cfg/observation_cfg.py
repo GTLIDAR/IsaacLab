@@ -43,8 +43,8 @@ class TeacherObsCfg(ObsGroup):
     foot_terrain_flatness = ObsTerm(
         func=digit_mdp.foot_terrain_flatness_features,
         params={
-            "foot_scanner_names": ("foot_scanner_left_core", "foot_scanner_right_core"),
-            "safe_foot_scanner_names": ("foot_scanner_left_safe", "foot_scanner_right_safe"),
+            "foot_scanner_core": ("foot_scanner_left_core", "foot_scanner_right_core"),
+            "foot_scanner_safe": ("foot_scanner_left_safe", "foot_scanner_right_safe"),
         },
         clip=(-1.0, 1.0),
     )
