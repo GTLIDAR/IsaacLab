@@ -154,8 +154,8 @@ class DigitV3RewardsCfg(RewardsCfg):
         func=digit_mdp.foot_contact_surface_flatness_reward,
         weight=0.3,
         params={
-            "foot_scanner_names": ("foot_scanner_left_core", "foot_scanner_right_core"),
-            "safe_foot_scanner_names": ("foot_scanner_left_safe", "foot_scanner_right_safe"),
+            "foot_scanner_core": ("foot_scanner_left_core", "foot_scanner_right_core"),
+            "foot_scanner_safe": ("foot_scanner_left_safe", "foot_scanner_right_safe"),
             "contact_sensor_cfg": SceneEntityCfg(
                 "contact_forces",
                 body_names=["left_toe_roll", "right_toe_roll"],

@@ -127,19 +127,19 @@ def _aggregate_ray_stats(scanner: RayCaster) -> tuple[torch.Tensor, torch.Tensor
 
 def foot_terrain_flatness_features(
     env: ManagerBasedRLEnv,
-    foot_scanner_names: tuple[str, str],
-    safe_foot_scanner_names: tuple[str, str] | None = None,
+    foot_scanner_core: tuple[str, str],
+    foot_scanner_safe: tuple[str, str] | None = None,
 ) -> torch.Tensor:
     """
     Aggregate dual-zone foot terrain features for flat surface detection.
     """
     feats = []
-    for i, name in enumerate(foot_scanner_names):
+    for i, name in enumerate(foot_scanner_core):
         core_scanner: RayCaster = env.scene.sensors[name]
         c_mean, c_var, _c_min, _c_max, c_rng = _aggregate_ray_stats(core_scanner)
         
-        if safe_foot_scanner_names is not None:
-            safe_scanner: RayCaster = env.scene.sensors[safe_foot_scanner_names[i]]
+        if foot_scanner_safe is not None:
+            safe_scanner: RayCaster = env.scene.sensors[foot_scanner_safe[i]]
             s_mean, s_var, _s_min, _s_max, s_rng = _aggregate_ray_stats(safe_scanner)
             mean_diff = c_mean - s_mean
             
