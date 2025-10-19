@@ -1,5 +1,9 @@
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.utils import configclass
+from isaaclab.sensors import RayCasterCfg
+from isaaclab.sensors.ray_caster import patterns
+from isaaclab.markers.config import RAY_CASTER_MARKER_CFG
+import isaaclab.sim as sim_utils
 from .env_cfg import (
     TeacherObsCfg,
     StudentObsCfg,
@@ -60,6 +64,81 @@ class DigitV3L2TRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # Scene
         self.scene.robot = DIGITV3_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore
         self.scene.height_scanner.prim_path = "{ENV_REGEX_NS}/Robot/base"
+
+        # Foot terrain scanners (core and safe zones) and visualizers
+        self.enable_foot_terrain_vis = False
+
+        core_ray_marker_cfg = RAY_CASTER_MARKER_CFG.copy()
+        core_ray_marker_cfg.prim_path = "/Visuals/FootRay/Core"
+        core_ray_marker_cfg.markers["hit"].visual_material = sim_utils.PreviewSurfaceCfg(
+            diffuse_color=(1.0, 0.0, 0.0)
+        )
+
+        safe_ray_marker_cfg = RAY_CASTER_MARKER_CFG.copy()
+        safe_ray_marker_cfg.prim_path = "/Visuals/FootRay/Safe"
+        safe_ray_marker_cfg.markers["hit"].visual_material = sim_utils.PreviewSurfaceCfg(
+            diffuse_color=(0.0, 0.5, 1.0)
+        )
+
+        self.scene.foot_scanner_left_core = RayCasterCfg(
+            prim_path="{ENV_REGEX_NS}/Robot/left_toe_roll",
+            update_period=self.sim.dt * self.decimation,
+            offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.02)),
+            ray_alignment="yaw",
+            pattern_cfg=patterns.GridPatternCfg(
+                resolution=0.02,
+                size=[0.15, 0.15]
+            ),
+            max_distance=0.2,
+            debug_vis=self.enable_foot_terrain_vis,
+            visualizer_cfg=core_ray_marker_cfg,
+            mesh_prim_paths=["/World/ground"],
+        )
+
+        self.scene.foot_scanner_right_core = RayCasterCfg(
+            prim_path="{ENV_REGEX_NS}/Robot/right_toe_roll",
+            update_period=self.sim.dt * self.decimation,
+            offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.02)),
+            ray_alignment="yaw",
+            pattern_cfg=patterns.GridPatternCfg(
+                resolution=0.02,
+                size=[0.15, 0.15]
+            ),
+            max_distance=0.2,
+            debug_vis=self.enable_foot_terrain_vis,
+            visualizer_cfg=core_ray_marker_cfg,
+            mesh_prim_paths=["/World/ground"],
+        )
+
+        self.scene.foot_scanner_left_safe = RayCasterCfg(
+            prim_path="{ENV_REGEX_NS}/Robot/left_toe_roll",
+            update_period=self.sim.dt * self.decimation,
+            offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.02)),
+            ray_alignment="yaw",
+            pattern_cfg=patterns.GridPatternCfg(
+                resolution=0.03,
+                size=[0.24, 0.24]
+            ),
+            max_distance=0.25,
+            debug_vis=self.enable_foot_terrain_vis,
+            visualizer_cfg=safe_ray_marker_cfg,
+            mesh_prim_paths=["/World/ground"],
+        )
+
+        self.scene.foot_scanner_right_safe = RayCasterCfg(
+            prim_path="{ENV_REGEX_NS}/Robot/right_toe_roll",
+            update_period=self.sim.dt * self.decimation,
+            offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 0.02)),
+            ray_alignment="yaw",
+            pattern_cfg=patterns.GridPatternCfg(
+                resolution=0.03,
+                size=[0.24, 0.24]
+            ),
+            max_distance=0.25,
+            debug_vis=self.enable_foot_terrain_vis,
+            visualizer_cfg=safe_ray_marker_cfg,
+            mesh_prim_paths=["/World/ground"],
+        )
         self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(
             "robot",
             joint_names=[
