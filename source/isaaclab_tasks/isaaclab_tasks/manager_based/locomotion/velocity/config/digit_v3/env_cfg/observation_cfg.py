@@ -39,7 +39,7 @@ class TeacherObsCfg(ObsGroup):
         params={"sensor_cfg": SceneEntityCfg("height_scanner")},
         clip=(-1.0, 1.0),
     )
-    
+    """
     foot_terrain_flatness = ObsTerm(
         func=digit_mdp.foot_terrain_flatness_features,
         params={
@@ -48,7 +48,7 @@ class TeacherObsCfg(ObsGroup):
         },
         clip=(-1.0, 1.0),
     )
-    
+    """
     def __post_init__(self):
         self.enable_corruption = False
         self.concatenate_terms = True
@@ -176,7 +176,17 @@ class StudentObsCfg(ObsGroup):
         clip=(-1.0, 1.0),
         noise=Gnoise(mean=0.0, std=0.175),
     )
-
+    """
+    foot_terrain_flatness = ObsTerm(
+        func=digit_mdp.foot_terrain_flatness_features,
+        params={
+            "foot_scanner_core": ("foot_scanner_left_core", "foot_scanner_right_core"),
+            "foot_scanner_safe": ("foot_scanner_left_safe", "foot_scanner_right_safe"),
+        },
+        clip=(-1.0, 1.0),
+        noise=Gnoise(mean=0.0, std=0.1),
+    )
+    """
     def __post_init__(self):
         self.enable_corruption = True
         self.concatenate_terms = True

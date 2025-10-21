@@ -352,11 +352,11 @@ def shoulder_center_deviation_foot_center_l2(
 
 def foot_contact_surface_flatness_reward(
     env: ManagerBasedRLEnv,
-    foot_scanner_names: tuple[str, str],
+    foot_scanner_core: tuple[str, str],
     contact_sensor_cfg: SceneEntityCfg,
     std: float = 0.05,
     contact_force_threshold: float = 1.0,
-    safe_foot_scanner_names: tuple[str, str] | None = None,
+    foot_scanner_safe: tuple[str, str] | None = None,
     safe_std: float | None = None,
     combine_mode: str = "product",
     safe_exponent: float = 1.0,
@@ -394,13 +394,13 @@ def foot_contact_surface_flatness_reward(
         return torch.exp(-height_variance / (std_local ** 2))
 
     rewards = []
-    for i, scanner_name in enumerate(foot_scanner_names):
+    for i, scanner_name in enumerate(foot_scanner_core):
 
         scanner: RayCaster = env.scene.sensors[scanner_name]
         core_flatness = _flatness_from_scanner(scanner, std)
 
-        if safe_foot_scanner_names is not None:
-            safe_scanner: RayCaster = env.scene.sensors[safe_foot_scanner_names[i]]
+        if foot_scanner_safe is not None:
+            safe_scanner: RayCaster = env.scene.sensors[foot_scanner_safe[i]]
             safe_std_eff = safe_std if safe_std is not None else std
             safe_flatness = _flatness_from_scanner(safe_scanner, safe_std_eff)
             if combine_mode == "min":
