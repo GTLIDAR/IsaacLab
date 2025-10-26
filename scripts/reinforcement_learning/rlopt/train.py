@@ -208,7 +208,7 @@ def main(
     # initialize wandb and make callback
     run = wandb.init(
         project="L2T flat" if "flat" in args_cli.task else "L2T",
-        entity="fywu",
+        entity="122090643-the-chinese-university-of-hong-kong-shenzhen",
         name=log_time_note,
         config=agent_cfg | class_to_dict(env_cfg),
         sync_tensorboard=True,
