@@ -55,11 +55,11 @@ class DigitV3ActionCfg:
         use_default_offset=True,
         preserve_order=True,
     )
-    """
+    
     gait_phase = mdp.GaitPhaseActionCfg(  # type: ignore
         asset_name="robot",
         class_type=mdp.GaitPhaseAction,  # type: ignore
         min_period_s=0.515,
         max_period_s=0.765,
     )
-    """
+    
