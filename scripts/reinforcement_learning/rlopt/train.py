@@ -14,10 +14,7 @@ there will be significant overhead in GPU->CPU transfer.
 
 import argparse
 import sys
-import os
 
-# Add RLOpt to Python path
-sys.path.insert(0, '/home/asus/Documents/Research/Test/RLOpt')
 from isaaclab.app import AppLauncher
 
 # add argparse arguments
