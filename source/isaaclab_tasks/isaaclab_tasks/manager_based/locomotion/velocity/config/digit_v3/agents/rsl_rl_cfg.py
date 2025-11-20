@@ -44,7 +44,43 @@ class DigitV3RoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     wandb_project = "RSL RL Teacher-Student"
 
     # load_run = "2024-08-21_21-11-05-ok-2-rnn"
-
+@configclass
+class DigitV3RoughL2TRunnerCfg(RslRlOnPolicyRunnerCfg):
+    num_steps_per_env = 12
+    max_iterations = 10200
+    save_interval = 600
+    experiment_name = "rsl_digit_v3_rough_l2t"
+    empirical_normalization = False
+    
+    obs_groups = {
+        "policy": ["teacher"], 
+        "critic": ["teacher"],
+    }
+    
+    policy = RslRlPpoActorCriticCfg(
+        class_name="ActorCriticRecurrent",
+        init_noise_std=1.0,
+        actor_hidden_dims=[512, 256, 128],
+        critic_hidden_dims=[512, 256, 128],
+        activation="elu",
+    )  # type: ignore
+    algorithm = RslRlPpoAlgorithmCfg(
+        class_name="RecurrentL2T",
+        value_loss_coef=1.0,
+        use_clipped_value_loss=True,
+        clip_param=0.2,
+        entropy_coef=0.01,
+        num_learning_epochs=5,
+        num_mini_batches=4,
+        learning_rate=1.0e-3,
+        schedule="adaptive",
+        gamma=0.99,
+        lam=0.95,
+        desired_kl=0.01,
+        max_grad_norm=1.0,
+    )
+    logger = "tensorboard"
+    wandb_project = "RSL RL L2T"
 
 @configclass
 class DigitV3FlatPPORunnerCfg(DigitV3RoughPPORunnerCfg):
@@ -53,5 +89,15 @@ class DigitV3FlatPPORunnerCfg(DigitV3RoughPPORunnerCfg):
 
         self.max_iterations = 6100
         self.experiment_name = "digit_v3_flat"
+        self.policy.actor_hidden_dims = [256, 256, 128]
+        self.policy.critic_hidden_dims = [256, 256, 128]
+
+@configclass
+class DigitV3FlatL2TRunnerCfg(DigitV3RoughL2TRunnerCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        
+        self.max_iterations = 6100
+        self.experiment_name = "digit_v3_flat_l2t"
         self.policy.actor_hidden_dims = [256, 256, 128]
         self.policy.critic_hidden_dims = [256, 256, 128]
