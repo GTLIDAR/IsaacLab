@@ -160,6 +160,26 @@ class PhysxCfg:
     gpu_max_particle_contacts: int = 2**20
     """Size of particle contacts stream buffer allocated in pinned host memory. Default is 2 ** 20."""
 
+    solve_articulation_contact_last: bool = False
+    """Changes the ordering inside the articulation solver. Default is False.
+
+    PhysX employs a strict ordering for handling constraints in an articulation. The outcome of
+    each constraint resolution modifies the joint and associated link speeds. However, the default
+    ordering may not be ideal for gripping scenarios because the solver favours the constraint
+    types that are resolved last. This is particularly true of stiff constraint systems that are hard
+    to resolve without resorting to vanishingly small simulation timesteps.
+
+    With dynamic contact resolution being such an important part of gripping, it may make
+    more sense to solve dynamic contact towards the end of the solver rather than at the
+    beginning. This parameter modifies the default ordering to enable this change.
+
+    For more information, please check `here <https://docs.omniverse.nvidia.com/kit/docs/omni_physics/107.3/dev_guide/guides/articulation_stability_guide.html#articulation-solver-order>`__.
+
+    .. versionadded:: v2.3
+        This parameter is only available with Isaac Sim 5.1.
+
+    """
+
 
 @configclass
 class RenderCfg:
@@ -272,6 +292,25 @@ class RenderCfg:
     This is set by the variable: ``/rtx/ambientOcclusion/enabled``.
     """
 
+    dome_light_upper_lower_strategy: Literal[0, 3, 4] | None = None
+    """Selects how to sample the Dome Light. Default is 0.
+    For more information, refer to the `documentation`_.
+
+    .. _documentation: https://docs.omniverse.nvidia.com/materials-and-rendering/latest/rtx-renderer_common.html#dome-light
+
+    Valid values are:
+
+    * 0: **Image-Based Lighting (IBL)** - Most accurate even for high-frequency Dome Light textures.
+      Can introduce sampling artifacts in real-time mode.
+    * 3: **Limited Image-Based Lighting** - Only sampled for reflection and refraction. Fastest, but least
+      accurate. Good for cases where the Dome Light contributes less than other light sources.
+    * 4: **Approximated Image-Based Lighting** - Fast and artifacts-free sampling in real-time mode but only
+      works well with a low-frequency texture (e.g., a sky with no sun disc where the sun is instead a separate
+      Distant Light). Requires enabling Direct Lighting denoiser.
+
+    This is set by the variable: ``/rtx/domeLight/upperLowerStrategy``.
+    """
+
     carb_settings: dict[str, Any] | None = None
     """A general dictionary for users to supply all carb rendering settings with native names.
 
@@ -371,3 +410,9 @@ class SimulationCfg:
 
     Creating the stage in memory can reduce start-up time.
     """
+
+    logging_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "WARNING"
+    """The logging level. Default is "WARNING"."""
+
+    save_logs_to_file: bool = True
+    """Save logs to a file. Default is True."""

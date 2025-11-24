@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 import asyncio
+import logging
 import os
 
 import omni
@@ -17,6 +18,9 @@ from isaaclab.sim.converters.mesh_converter_cfg import MeshConverterCfg
 from isaaclab.sim.schemas import schemas
 from isaaclab.sim.utils import export_prim_to_file
 
+# import logger
+logger = logging.getLogger(__name__)
+
 
 class MeshConverter(AssetConverterBase):
     """Converter for a mesh file in OBJ / STL / FBX format to a USD file.
@@ -29,7 +33,7 @@ class MeshConverter(AssetConverterBase):
     instancing and physics work. The rigid body component must be added to each instance and not the
     referenced asset (i.e. the prototype prim itself). This is because the rigid body component defines
     properties that are specific to each instance and cannot be shared under the referenced asset. For
-    more information, please check the `documentation <https://docs.omniverse.nvidia.com/extensions/latest/ext_physics/rigid-bodies.html#instancing-rigid-bodies>`_.
+    more information, please check the `documentation <https://docs.isaacsim.omniverse.nvidia.com/latest/physics/simulation_fundamentals.html#rigid-body>`_.
 
     Due to the above, we follow the following structure:
 
@@ -87,7 +91,7 @@ class MeshConverter(AssetConverterBase):
             # Correct the name to a valid identifier and update the basename
             mesh_file_basename_original = mesh_file_basename
             mesh_file_basename = Tf.MakeValidIdentifier(mesh_file_basename)
-            omni.log.warn(
+            logger.warning(
                 f"Input file name '{mesh_file_basename_original}' is an invalid identifier for the mesh prim path."
                 f" Renaming it to '{mesh_file_basename}' for the conversion."
             )
