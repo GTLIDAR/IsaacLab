@@ -24,7 +24,7 @@ import numpy as np
 import torch
 import torch.nn as nn  # noqa: F401
 import warnings
-from typing import Any, Union, Dict, Tuple
+from typing import Any
 
 from stable_baselines3.common.preprocessing import (
     is_image_space,
@@ -80,14 +80,7 @@ def process_sb3_cfg(cfg: dict, num_envs: int) -> dict:
                 if value.startswith("nn."):
                     hyperparams[key] = getattr(nn, value[3:])
             if depth == 0:
-                if key in [
-                    "policy_kwargs",
-                    "replay_buffer_class",
-                    "replay_buffer_kwargs",
-                    "student_policy_kwargs",
-                ]:
-                    hyperparams[key] = eval(value)
-                elif key in ["learning_rate", "clip_range", "clip_range_vf"]:
+                if key in ["learning_rate", "clip_range", "clip_range_vf"]:
                     if isinstance(value, str):
                         _, initial_value = value.split("_")
                         initial_value = float(initial_value)
@@ -263,9 +256,7 @@ class Sb3VecEnvWrapper(VecEnv):
 
     def step_wait(self) -> VecEnvStepReturn:  # noqa: D102
         # record step information
-        obs_dict, rew, terminated, truncated, extras = self.env.step(
-            self._async_actions
-        )
+        obs_dict, rew, terminated, truncated, extras = self.env.step(self._async_actions)
         # compute reset ids
         dones = terminated | truncated
 
@@ -401,9 +392,7 @@ class Sb3VecEnvWrapper(VecEnv):
         # initialize vec-env
         VecEnv.__init__(self, self.num_envs, observation_space, action_space)
 
-    def _process_obs(
-        self, obs_dict: torch.Tensor | dict[str, torch.Tensor]
-    ) -> np.ndarray | dict[str, np.ndarray]:
+    def _process_obs(self, obs_dict: torch.Tensor | dict[str, torch.Tensor]) -> np.ndarray | dict[str, np.ndarray]:
         """Convert observations into NumPy data type."""
         # Sb3 doesn't support asymmetric observation spaces, so we only use "policy"
         obs = obs_dict["policy"]

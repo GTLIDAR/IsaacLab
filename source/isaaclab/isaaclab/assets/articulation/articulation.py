@@ -2236,7 +2236,7 @@ class Articulation(AssetBase):
                     ]
                 )
             # convert table to string
-            logger.info(
+            omni.log.info(
                 f"Simulation parameters for fixed tendons in {self.cfg.prim_path}:\n" + tendon_table.get_string()
             )
 
