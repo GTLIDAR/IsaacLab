@@ -205,16 +205,12 @@ def test_movement_types(test_setup, test_name):
     requires_waist_bending = test_config.get("requires_waist_bending", False)
     waist_enabled = is_waist_enabled(env_cfg)
 
-    if requires_waist_bending and not waist_enabled:
-        print(
-            f"Skipping {test_name} test because it requires waist bending but waist is not enabled in"
-            f" {env_cfg.__class__.__name__}..."
-        )
-        pytest.skip(f"Test {test_name} requires waist bending but waist is not enabled")
-        return
+    env_name = "Isaac-PickPlace-GR1T2-Abs-v0"
+    device = "cuda:0"
+    env_cfg = parse_env_cfg(env_name, device=device, num_envs=pink_ik_test_config["num_envs"])
 
-    print(f"Running {test_name} test...")
-    run_movement_test(test_setup, test_config, test_cfg)
+    # create environment from loaded config
+    env = gym.make(env_name, cfg=env_cfg).unwrapped
 
 
 def run_movement_test(test_setup, test_config, test_cfg, aux_function=None):
@@ -229,219 +225,107 @@ def run_movement_test(test_setup, test_config, test_cfg, aux_function=None):
     test_counter = 0
     num_runs = 0
 
+    # Get poses from config
+    left_hand_roll_link_pose = pink_ik_test_config["left_hand_roll_link_pose"].copy()
+    right_hand_roll_link_pose = pink_ik_test_config["right_hand_roll_link_pose"].copy()
+
+    # simulate environment -- run everything in inference mode
     with contextlib.suppress(KeyboardInterrupt) and torch.inference_mode():
-        obs, _ = env.reset()
-
-        # Make the first phase longer than subsequent ones
-        initial_steps = test_cfg["allowed_steps_to_settle"]
-        phase = "initial"
-        steps_in_phase = 0
-
         while simulation_app.is_running() and not simulation_app.is_exiting():
+
             num_runs += 1
-            steps_in_phase += 1
+            setpoint_poses = left_hand_roll_link_pose + right_hand_roll_link_pose
+            actions = setpoint_poses + [0.0] * pink_ik_test_config["num_joints_in_robot_hands"]
+            actions = torch.tensor(actions, device=device)
+            actions = torch.stack([actions for _ in range(env.num_envs)])
 
-            # Call auxiliary function if provided
-            if aux_function is not None:
-                aux_function(num_runs)
-
-            # Create actions from hand poses and joint positions
-            setpoint_poses = np.concatenate([left_hand_poses[curr_pose_idx], right_hand_poses[curr_pose_idx]])
-            actions = np.concatenate([setpoint_poses, np.zeros(num_joints_in_robot_hands)])
-            actions = torch.tensor(actions, device=env.device, dtype=torch.float32)
-            # Append base command for Locomanipulation environments with fixed height
-            if test_setup["env_cfg"].__class__.__name__ == "LocomanipulationG1EnvCfg":
-                # Use a named variable for base height for clarity and maintainability
-                BASE_HEIGHT = 0.72
-                base_command = torch.zeros(4, device=env.device, dtype=actions.dtype)
-                base_command[3] = BASE_HEIGHT
-                actions = torch.cat([actions, base_command])
-            actions = actions.repeat(env.num_envs, 1)
-
-            # Step environment
             obs, _, _, _, _ = env.step(actions)
 
-            # Determine the step interval for error checking
-            if phase == "initial":
-                check_interval = initial_steps
-            else:
-                check_interval = test_config["allowed_steps_per_motion"]
+            left_hand_roll_link_pose_obs = obs["policy"]["robot_links_state"][
+                :, env.scene["robot"].data.body_names.index("left_hand_roll_link"), :7
+            ]
+            right_hand_roll_link_pose_obs = obs["policy"]["robot_links_state"][
+                :, env.scene["robot"].data.body_names.index("right_hand_roll_link"), :7
+            ]
 
-            # Check convergence and verify errors
-            if steps_in_phase % check_interval == 0:
-                print("Computing errors...")
-                errors = compute_errors(
-                    test_setup,
-                    env,
-                    left_hand_poses[curr_pose_idx],
-                    right_hand_poses[curr_pose_idx],
-                    test_setup["left_eef_urdf_link_name"],
-                    test_setup["right_eef_urdf_link_name"],
+            # The setpoints are wrt the env origin frame
+            # The observations are also wrt the env origin frame
+            left_hand_roll_link_feedback = left_hand_roll_link_pose_obs
+            left_hand_roll_link_setpoint = (
+                torch.tensor(left_hand_roll_link_pose, device=device).unsqueeze(0).repeat(env.num_envs, 1)
+            )
+            left_hand_roll_link_pos_error = left_hand_roll_link_setpoint[:, :3] - left_hand_roll_link_feedback[:, :3]
+            left_hand_roll_link_rot_error = axis_angle_from_quat(
+                quat_from_matrix(
+                    matrix_from_quat(left_hand_roll_link_setpoint[:, 3:])
+                    * matrix_from_quat(quat_inv(left_hand_roll_link_feedback[:, 3:]))
                 )
-                print_debug_info(errors, test_counter)
-                test_params = test_setup["test_params"]
-                if test_params["check_errors"]:
-                    verify_errors(errors, test_setup, test_params)
-                num_runs += 1
+            )
 
-                curr_pose_idx = (curr_pose_idx + 1) % len(left_hand_poses)
-                if curr_pose_idx == 0:
-                    test_counter += 1
-                    if test_counter > test_config["repeat"]:
-                        print("Test completed successfully")
-                        break
-                # After the first phase, switch to normal interval
-                if phase == "initial":
-                    phase = "normal"
-                    steps_in_phase = 0
+            right_hand_roll_link_feedback = right_hand_roll_link_pose_obs
+            right_hand_roll_link_setpoint = (
+                torch.tensor(right_hand_roll_link_pose, device=device).unsqueeze(0).repeat(env.num_envs, 1)
+            )
+            right_hand_roll_link_pos_error = right_hand_roll_link_setpoint[:, :3] - right_hand_roll_link_feedback[:, :3]
+            right_hand_roll_link_rot_error = axis_angle_from_quat(
+                quat_from_matrix(
+                    matrix_from_quat(right_hand_roll_link_setpoint[:, 3:])
+                    * matrix_from_quat(quat_inv(right_hand_roll_link_feedback[:, 3:]))
+                )
+            )
 
+            if num_runs % pink_ik_test_config["num_steps_controller_convergence"] == 0:
+                # Check if the left hand roll link is at the target position
+                torch.testing.assert_close(
+                    torch.mean(torch.abs(left_hand_roll_link_pos_error), dim=1),
+                    torch.zeros(env.num_envs, device="cuda:0"),
+                    rtol=0.0,
+                    atol=pink_ik_test_config["pos_tolerance"],
+                )
 
-def get_link_pose(env, link_name):
-    """Get the position and orientation of a link."""
-    link_index = env.scene["robot"].data.body_names.index(link_name)
-    link_states = env.scene._articulations["robot"]._data.body_link_state_w
-    link_pose = link_states[:, link_index, :7]
-    return link_pose[:, :3], link_pose[:, 3:7]
+                # Check if the right hand roll link is at the target position
+                torch.testing.assert_close(
+                    torch.mean(torch.abs(right_hand_roll_link_pos_error), dim=1),
+                    torch.zeros(env.num_envs, device="cuda:0"),
+                    rtol=0.0,
+                    atol=pink_ik_test_config["pos_tolerance"],
+                )
 
+                # Check if the left hand roll link is at the target orientation
+                torch.testing.assert_close(
+                    torch.mean(torch.abs(left_hand_roll_link_rot_error), dim=1),
+                    torch.zeros(env.num_envs, device="cuda:0"),
+                    rtol=0.0,
+                    atol=pink_ik_test_config["rot_tolerance"],
+                )
 
-def calculate_rotation_error(current_rot, target_rot):
-    """Calculate the rotation error between current and target orientations in axis-angle format."""
-    if isinstance(target_rot, torch.Tensor):
-        target_rot_tensor = (
-            target_rot.unsqueeze(0).expand(current_rot.shape[0], -1) if target_rot.dim() == 1 else target_rot
-        )
-    else:
-        target_rot_tensor = torch.tensor(target_rot, device=current_rot.device)
-        if target_rot_tensor.dim() == 1:
-            target_rot_tensor = target_rot_tensor.unsqueeze(0).expand(current_rot.shape[0], -1)
+                # Check if the right hand roll link is at the target orientation
+                torch.testing.assert_close(
+                    torch.mean(torch.abs(right_hand_roll_link_rot_error), dim=1),
+                    torch.zeros(env.num_envs, device="cuda:0"),
+                    rtol=0.0,
+                    atol=pink_ik_test_config["rot_tolerance"],
+                )
 
-    return axis_angle_from_quat(
-        quat_from_matrix(matrix_from_quat(target_rot_tensor) * matrix_from_quat(quat_inv(current_rot)))
-    )
+                # Change the setpoints to move the hands up and down as per the counter
+                test_counter += 1
+                if move_hands_up and test_counter > pink_ik_test_config["num_times_to_move_hands_up"]:
+                    move_hands_up = False
+                elif not move_hands_up and test_counter > (
+                    pink_ik_test_config["num_times_to_move_hands_down"]
+                    + pink_ik_test_config["num_times_to_move_hands_up"]
+                ):
+                    # Test is done after moving the hands up and down
+                    break
+                if move_hands_up:
+                    left_hand_roll_link_pose[1] += 0.05
+                    left_hand_roll_link_pose[2] += 0.05
+                    right_hand_roll_link_pose[1] += 0.05
+                    right_hand_roll_link_pose[2] += 0.05
+                else:
+                    left_hand_roll_link_pose[1] -= 0.05
+                    left_hand_roll_link_pose[2] -= 0.05
+                    right_hand_roll_link_pose[1] -= 0.05
+                    right_hand_roll_link_pose[2] -= 0.05
 
-
-def compute_errors(
-    test_setup, env, left_target_pose, right_target_pose, left_eef_urdf_link_name, right_eef_urdf_link_name
-):
-    """Compute all error metrics for the current state."""
-    action_term = test_setup["action_term"]
-    pink_controllers = test_setup["pink_controllers"]
-    articulation = test_setup["articulation"]
-    test_kinematics_model = test_setup["test_kinematics_model"]
-    left_target_link_name = test_setup["left_target_link_name"]
-    right_target_link_name = test_setup["right_target_link_name"]
-
-    # Get current hand positions and orientations
-    left_hand_pos, left_hand_rot = get_link_pose(env, left_target_link_name)
-    right_hand_pos, right_hand_rot = get_link_pose(env, right_target_link_name)
-
-    # Create setpoint tensors
-    device = env.device
-    num_envs = env.num_envs
-    left_hand_pose_setpoint = torch.tensor(left_target_pose, device=device).unsqueeze(0).repeat(num_envs, 1)
-    right_hand_pose_setpoint = torch.tensor(right_target_pose, device=device).unsqueeze(0).repeat(num_envs, 1)
-
-    # Calculate position and rotation errors
-    left_pos_error = left_hand_pose_setpoint[:, :3] - left_hand_pos
-    right_pos_error = right_hand_pose_setpoint[:, :3] - right_hand_pos
-    left_rot_error = calculate_rotation_error(left_hand_rot, left_hand_pose_setpoint[:, 3:])
-    right_rot_error = calculate_rotation_error(right_hand_rot, right_hand_pose_setpoint[:, 3:])
-
-    # Calculate PD controller errors
-    ik_controller = pink_controllers[0]
-    isaaclab_controlled_joint_ids = action_term._isaaclab_controlled_joint_ids
-
-    # Get current and target positions for controlled joints only
-    curr_joints = articulation.data.joint_pos[:, isaaclab_controlled_joint_ids].cpu().numpy()[0]
-    target_joints = action_term.processed_actions[:, : len(isaaclab_controlled_joint_ids)].cpu().numpy()[0]
-
-    # Reorder joints for Pink IK (using controlled joint ordering)
-    curr_joints = np.array(curr_joints)[ik_controller.isaac_lab_to_pink_controlled_ordering]
-    target_joints = np.array(target_joints)[ik_controller.isaac_lab_to_pink_controlled_ordering]
-
-    # Run forward kinematics
-    test_kinematics_model.update(curr_joints)
-    left_curr_pos = test_kinematics_model.get_transform_frame_to_world(frame=left_eef_urdf_link_name).translation
-    right_curr_pos = test_kinematics_model.get_transform_frame_to_world(frame=right_eef_urdf_link_name).translation
-
-    test_kinematics_model.update(target_joints)
-    left_target_pos = test_kinematics_model.get_transform_frame_to_world(frame=left_eef_urdf_link_name).translation
-    right_target_pos = test_kinematics_model.get_transform_frame_to_world(frame=right_eef_urdf_link_name).translation
-
-    # Calculate PD errors
-    left_pd_error = (
-        torch.tensor(left_target_pos - left_curr_pos, device=device, dtype=torch.float32)
-        .unsqueeze(0)
-        .repeat(num_envs, 1)
-    )
-    right_pd_error = (
-        torch.tensor(right_target_pos - right_curr_pos, device=device, dtype=torch.float32)
-        .unsqueeze(0)
-        .repeat(num_envs, 1)
-    )
-
-    return {
-        "left_pos_error": left_pos_error,
-        "right_pos_error": right_pos_error,
-        "left_rot_error": left_rot_error,
-        "right_rot_error": right_rot_error,
-        "left_pd_error": left_pd_error,
-        "right_pd_error": right_pd_error,
-    }
-
-
-def verify_errors(errors, test_setup, tolerances):
-    """Verify that all error metrics are within tolerance."""
-    env = test_setup["env"]
-    device = env.device
-    num_envs = env.num_envs
-    zero_tensor = torch.zeros(num_envs, device=device)
-
-    for hand in ["left", "right"]:
-        # Check PD controller errors
-        pd_error_norm = torch.norm(errors[f"{hand}_pd_error"], dim=1)
-        torch.testing.assert_close(
-            pd_error_norm,
-            zero_tensor,
-            rtol=0.0,
-            atol=tolerances["pd_position"],
-            msg=(
-                f"{hand.capitalize()} hand PD controller error ({pd_error_norm.item():.6f}) exceeds tolerance"
-                f" ({tolerances['pd_position']:.6f})"
-            ),
-        )
-
-        # Check IK position errors
-        pos_error_norm = torch.norm(errors[f"{hand}_pos_error"], dim=1)
-        torch.testing.assert_close(
-            pos_error_norm,
-            zero_tensor,
-            rtol=0.0,
-            atol=tolerances["position"],
-            msg=(
-                f"{hand.capitalize()} hand IK position error ({pos_error_norm.item():.6f}) exceeds tolerance"
-                f" ({tolerances['position']:.6f})"
-            ),
-        )
-
-        # Check rotation errors
-        rot_error_max = torch.max(errors[f"{hand}_rot_error"])
-        torch.testing.assert_close(
-            rot_error_max,
-            torch.zeros_like(rot_error_max),
-            rtol=0.0,
-            atol=tolerances["rotation"],
-            msg=(
-                f"{hand.capitalize()} hand IK rotation error ({rot_error_max.item():.6f}) exceeds tolerance"
-                f" ({tolerances['rotation']:.6f})"
-            ),
-        )
-
-
-def print_debug_info(errors, test_counter):
-    """Print debug information about the current state."""
-    print(f"\nTest iteration {test_counter + 1}:")
-    for hand in ["left", "right"]:
-        print(f"Measured {hand} hand position error:", errors[f"{hand}_pos_error"])
-        print(f"Measured {hand} hand rotation error:", errors[f"{hand}_rot_error"])
-        print(f"Measured {hand} hand PD error:", errors[f"{hand}_pd_error"])
+    env.close()
