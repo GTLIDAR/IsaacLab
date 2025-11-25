@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from isaaclab.utils import configclass
 import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
 

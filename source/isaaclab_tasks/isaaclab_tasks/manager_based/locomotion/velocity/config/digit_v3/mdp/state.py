@@ -86,8 +86,8 @@ def feet_air_time_positive_biped(
     air_time = contact_sensor.data.current_air_time[:, sensor_cfg.body_ids]  # type: ignore
     contact_time = contact_sensor.data.current_contact_time[:, sensor_cfg.body_ids]  # type: ignore
     in_contact = contact_time > 0.0
-    in_mode_time = torch.where(in_contact, contact_time, air_time)
-    single_stance = torch.sum(in_contact.int(), dim=1) == 1
+    in_mode_time = torch.where(in_contact, contact_time, air_time)  # type: ignore
+    single_stance = torch.sum(in_contact.int(), dim=1) == 1  # type: ignore
     return torch.min(
         torch.where(single_stance.unsqueeze(-1), in_mode_time, 0.0), dim=1
     )[0]

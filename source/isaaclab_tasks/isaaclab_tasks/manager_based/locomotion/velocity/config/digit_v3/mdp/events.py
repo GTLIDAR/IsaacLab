@@ -56,12 +56,12 @@ def randomize_actuator_gains(
         )
 
     # check if none of the joint indices are in explicit motor mode
-    for joint_index in joint_ids_list:
+    for joint_index in joint_ids_list:  # type: ignore
         for act_name, actuator in asset.actuators.items():
             # if joint indices are a slice (i.e., all joints are captured) or the joint index is in the actuator
             if (
                 actuator.joint_indices == slice(None)
-                or joint_index in actuator.joint_indices
+                or joint_index in actuator.joint_indices  # type: ignore
             ):
                 if not isinstance(actuator, ImplicitActuator):
                     raise NotImplementedError(
@@ -84,7 +84,9 @@ def randomize_actuator_gains(
             distribution=distribution,
         )[env_ids][:, joint_ids]
         asset.write_joint_stiffness_to_sim(
-            stiffness, joint_ids=joint_ids, env_ids=env_ids  # type: ignore
+            stiffness,
+            joint_ids=joint_ids,
+            env_ids=env_ids,  # type: ignore
         )
     # -- damping
     if damping_distribution_params is not None:

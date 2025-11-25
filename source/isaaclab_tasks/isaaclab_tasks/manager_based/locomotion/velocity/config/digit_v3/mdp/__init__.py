@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .rewards import *
 from .observations import *
 from .state import (

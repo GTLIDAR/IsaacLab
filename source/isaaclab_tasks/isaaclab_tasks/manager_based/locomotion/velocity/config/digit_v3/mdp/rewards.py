@@ -35,7 +35,6 @@ def compute_reward_reward_feet_contact_number(
     neg_rw: float,
     command: torch.Tensor,
 ):
-
     stance_mask, mask_2 = create_stance_mask(phase)
 
     reward = torch.where(contacts == stance_mask, pos_rw, neg_rw)
@@ -145,7 +144,6 @@ def compute_reward_track_foot_height(
     std: float,
     command: torch.Tensor,
 ):
-
     standing_height = com_z - standing_position_com_z
 
     offset = standing_height + standing_position_toe_roll_z

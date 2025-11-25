@@ -11,7 +11,6 @@ from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import (
 
 @configclass
 class DigitV3EventCfg(EventCfg):
-
     # startup
     physics_material = EventTerm(
         func=mdp.randomize_rigid_body_material,
