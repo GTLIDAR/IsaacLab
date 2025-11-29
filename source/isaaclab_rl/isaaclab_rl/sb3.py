@@ -24,7 +24,7 @@ import numpy as np
 import torch
 import torch.nn as nn  # noqa: F401
 import warnings
-from typing import Any
+from typing import Any, Union, Dict, Tuple
 
 from stable_baselines3.common.preprocessing import (
     is_image_space,
