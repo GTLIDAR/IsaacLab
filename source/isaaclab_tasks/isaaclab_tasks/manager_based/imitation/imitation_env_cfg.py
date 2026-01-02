@@ -25,12 +25,9 @@ from isaaclab.utils.assets import (
 )
 from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 
-import isaaclab_tasks.manager_based.imitation.joint_tracking.mdp as mdp
+import isaaclab_tasks.manager_based.imitation.mdp as mdp
 import isaaclab.terrains as terrain_gen
 
-##
-# Pre-defined configs
-##
 from isaaclab.terrains.config import TerrainGeneratorCfg  # isort: skip
 
 ImitationTerrainCfg = TerrainGeneratorCfg(
@@ -50,11 +47,6 @@ ImitationTerrainCfg = TerrainGeneratorCfg(
     difficulty_range=(0.0, 0.0),
     curriculum=True,
 )
-
-
-##
-# Scene definition
-##
 
 
 @configclass
@@ -105,11 +97,6 @@ class MySceneCfg(InteractiveSceneCfg):
     )
 
 
-##
-# MDP settings
-##
-
-
 @configclass
 class ActionsCfg:
     """Action specifications for the MDP."""
@@ -117,9 +104,6 @@ class ActionsCfg:
     joint_pos = mdp.JointPositionActionCfg(
         asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True
     )
-    # joint_pos = mdp.JointPositionToLimitsActionCfg(
-    #     asset_name="robot", joint_names=[".*"], scale=0.9
-    # )
 
 
 @configclass
@@ -230,11 +214,11 @@ class EventCfg:
         },
     )
 
-    # reset_robot_joints_to_reference = EventTerm(
-    #     func=mdp.reset_joints_to_reference,
-    #     mode="reset",
-    #     params={"asset_cfg": SceneEntityCfg("robot", body_names=".*")},
-    # )
+    reset_robot_joints_to_reference = EventTerm(
+        func=mdp.reset_joints_to_reference,
+        mode="reset",
+        params={"asset_cfg": SceneEntityCfg("robot", body_names=".*")},
+    )
 
     reset_robot_joints = EventTerm(
         func=mdp.reset_joints_by_offset,
@@ -258,9 +242,6 @@ class EventCfg:
 class RewardsCfg:
     """Reward terms for the MDP."""
 
-    # -- tracking in joint space, waiting for specific task
-
-    # -- penalties
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
     ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
     dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
@@ -275,7 +256,7 @@ class RewardsCfg:
             "threshold": 1.0,
         },
     )
-    # -- optional penalties
+
     flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=0.0)
     dof_pos_limits = RewTerm(func=mdp.joint_pos_limits, weight=0.0)
 
@@ -299,22 +280,6 @@ class TerminationsCfg:
             "asset_cfg": SceneEntityCfg("robot", body_names="base"),
         },
     )
-    nan_observation = DoneTerm(func=mdp.nan_observation, time_out=False)
-    # joint_pos_out_of_limit = DoneTerm(func=mdp.joint_pos_out_of_limit, time_out=False)
-    # joint_vel_out_of_limit = DoneTerm(func=mdp.joint_vel_out_of_limit, time_out=False)
-    # joint_effort_out_of_limit = DoneTerm(
-    #     func=mdp.joint_effort_out_of_limit, time_out=False
-    # )
-
-
-# @configclass
-# class CurriculumCfg:
-#     """Curriculum terms for the MDP. None for the imitation abstract class."""
-
-
-##
-# Environment configuration
-##
 
 
 @configclass
@@ -331,7 +296,6 @@ class ImitationLearningEnvCfg(ManagerBasedRLEnvCfg):
     rewards: RewardsCfg = RewardsCfg()
     terminations: TerminationsCfg = TerminationsCfg()
     events: EventCfg = EventCfg()
-    # curriculum: CurriculumCfg = CurriculumCfg()
 
     # Dataset settings
     dataset_type: str = "zarr"
@@ -387,6 +351,40 @@ class ImitationLearningEnvCfg(ManagerBasedRLEnvCfg):
         "right_elbow_roll_joint",
     ]
 
+    # Target joint names for the robot from the reference qpos order (this is the order of G1 in IsaacLab)
+    target_joint_names: list[str] = [
+        "root_x",
+        "root_y",
+        "root_z",
+        "root_qw",
+        "root_qx",
+        "root_qy",
+        "root_qz",
+        "left_hip_pitch_joint",
+        "left_hip_roll_joint",
+        "left_hip_yaw_joint",
+        "left_knee_joint",
+        "left_ankle_pitch_joint",
+        "left_ankle_roll_joint",
+        "right_hip_pitch_joint",
+        "right_hip_roll_joint",
+        "right_hip_yaw_joint",
+        "right_knee_joint",
+        "right_ankle_pitch_joint",
+        "right_ankle_roll_joint",
+        "torso_joint",
+        "left_shoulder_pitch_joint",
+        "left_shoulder_roll_joint",
+        "left_shoulder_yaw_joint",
+        "left_elbow_pitch_joint",
+        "left_elbow_roll_joint",
+        "right_shoulder_pitch_joint",
+        "right_shoulder_roll_joint",
+        "right_shoulder_yaw_joint",
+        "right_elbow_pitch_joint",
+        "right_elbow_roll_joint",
+    ]
+
     def __post_init__(self):
         """Post initialization."""
         # general settings
@@ -407,5 +405,3 @@ class ImitationLearningEnvCfg(ManagerBasedRLEnvCfg):
         # no height scan
         self.scene.height_scanner = None
         self.observations.policy.height_scan = None
-        # no terrain curriculum
-        # self.curriculum.terrain_levels = None

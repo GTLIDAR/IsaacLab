@@ -1,13 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import torch
 from isaaclab.assets import Articulation
 from isaaclab.managers import SceneEntityCfg
-
-if TYPE_CHECKING:
-    from isaaclab.envs import ImitationRLEnv
+from isaaclab.envs import ImitationRLEnv
 
 
 def reset_joints_to_reference(

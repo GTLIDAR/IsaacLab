@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -7,14 +7,9 @@ import builtins
 import enum
 import glob
 import logging
-import numpy as np
 import os
 import re
-import sys
-import tempfile
 import time
-import toml
-import torch
 import traceback
 import weakref
 from collections.abc import Iterator
@@ -24,19 +19,26 @@ from typing import Any
 
 import carb
 import flatdict
+import numpy as np
 import omni.physx
 import omni.usd
+import toml
+import torch
 from isaacsim.core.api.simulation_context import SimulationContext as _SimulationContext
 from isaacsim.core.simulation_manager import SimulationManager
 from isaacsim.core.utils.viewports import set_camera_view
-from isaacsim.core.version import get_version
 from pxr import Gf, PhysxSchema, Sdf, Usd, UsdPhysics
 
-from isaaclab.sim.utils import stage as stage_utils
+import isaaclab.sim as sim_utils
+from isaaclab.utils.logger import configure_logging
+from isaaclab.utils.version import get_isaac_sim_version
 
 from .simulation_cfg import SimulationCfg
 from .spawners import DomeLightCfg, GroundPlaneCfg
-from .utils import ColoredFormatter, RateLimitFilter, bind_physics_material
+from .utils import bind_physics_material
+
+# import logger
+logger = logging.getLogger(__name__)
 
 
 class SimulationContext(_SimulationContext):
@@ -129,26 +131,26 @@ class SimulationContext(_SimulationContext):
         cfg.validate()
         self.cfg = cfg
         # check that simulation is running
-        if stage_utils.get_current_stage() is None:
+        if sim_utils.get_current_stage() is None:
             raise RuntimeError(
                 "The stage has not been created. Did you run the simulator?"
             )
 
         # setup logger
-        self.logger = self._setup_logger()
+        self.logger = configure_logging(
+            logging_level=self.cfg.logging_level,
+            save_logs_to_file=self.cfg.save_logs_to_file,
+            log_dir=self.cfg.log_dir,
+        )
 
         # create stage in memory if requested
         if self.cfg.create_stage_in_memory:
-            self._initial_stage = stage_utils.create_new_stage_in_memory()
+            self._initial_stage = sim_utils.create_new_stage_in_memory()
         else:
             self._initial_stage = omni.usd.get_context().get_stage()
 
         # acquire settings interface
         self.carb_settings = carb.settings.get_settings()
-
-        # read isaac sim version (this includes build tag, release tag etc.)
-        # note: we do it once here because it reads the VERSION file from disk and is not expected to change.
-        self._isaacsim_version = get_version()
 
         # apply carb physics settings
         self._apply_physics_settings()
@@ -290,7 +292,7 @@ class SimulationContext(_SimulationContext):
         self._physics_device = SimulationManager.get_physics_sim_device()
 
         # create a simulation context to control the simulator
-        if float(".".join(self._isaacsim_version[2])) < 5:
+        if get_isaac_sim_version().major < 5:
             # stage arg is not supported before isaac sim 5.0
             super().__init__(
                 stage_units_in_meters=1.0,
@@ -321,106 +323,11 @@ class SimulationContext(_SimulationContext):
     def device(self) -> str:
         """Device used by the simulation.
 
-        # define mapping of user-friendly RenderCfg names to native carb names
-        rendering_setting_name_mapping = {
-            "enable_translucency": "/rtx/translucency/enabled",
-            "enable_reflections": "/rtx/reflections/enabled",
-            "enable_global_illumination": "/rtx/indirectDiffuse/enabled",
-            "enable_dlssg": "/rtx-transient/dlssg/enabled",
-            "enable_dl_denoiser": "/rtx-transient/dldenoiser/enabled",
-            "dlss_mode": "/rtx/post/dlss/execMode",
-            "enable_direct_lighting": "/rtx/directLighting/enabled",
-            "samples_per_pixel": "/rtx/directLighting/sampledLighting/samplesPerPixel",
-            "enable_shadows": "/rtx/shadows/enabled",
-            "enable_ambient_occlusion": "/rtx/ambientOcclusion/enabled",
-        }
-
-        not_carb_settings = ["rendering_mode", "carb_settings", "antialiasing_mode"]
-
-        # grab the rendering mode using the following priority:
-        # 1. command line argument --rendering_mode, if provided
-        # 2. rendering_mode from Render Config, if set
-        # 3. lastly, default to "balanced" mode, if neither is specified
-        rendering_mode = get_carb_setting(self.carb_settings, "/isaaclab/rendering/rendering_mode")
-        if not rendering_mode:
-            rendering_mode = self.cfg.render.rendering_mode
-        if not rendering_mode:
-            rendering_mode = "balanced"
-
-        # set preset settings (same behavior as the CLI arg --rendering_mode)
-        if rendering_mode is not None:
-            # check if preset is supported
-            supported_rendering_modes = ["performance", "balanced", "quality"]
-            if rendering_mode not in supported_rendering_modes:
-                raise ValueError(
-                    f"RenderCfg rendering mode '{rendering_mode}' not in supported modes {supported_rendering_modes}."
-                )
-
-            # grab isaac lab apps path
-            isaaclab_app_exp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), *[".."] * 4, "apps")
-            # for Isaac Sim 4.5 compatibility, we use the 4.5 rendering mode app files in a different folder
-            if float(".".join(self._isaacsim_version[2])) < 5:
-                isaaclab_app_exp_path = os.path.join(isaaclab_app_exp_path, "isaacsim_4_5")
-
-            # grab preset settings
-            preset_filename = os.path.join(isaaclab_app_exp_path, f"rendering_modes/{rendering_mode}.kit")
-            with open(preset_filename) as file:
-                preset_dict = toml.load(file)
-            preset_dict = dict(flatdict.FlatDict(preset_dict, delimiter="."))
-
-            # set presets
-            for key, value in preset_dict.items():
-                key = "/" + key.replace(".", "/")  # convert to carb setting format
-                set_carb_setting(self.carb_settings, key, value)
-
-        # set user-friendly named settings
-        for key, value in vars(self.cfg.render).items():
-            if value is None or key in not_carb_settings:
-                # skip unset settings and non-carb settings
-                continue
-            if key not in rendering_setting_name_mapping:
-                raise ValueError(
-                    f"'{key}' in RenderCfg not found. Note: internal 'rendering_setting_name_mapping' dictionary might"
-                    " need to be updated."
-                )
-            key = rendering_setting_name_mapping[key]
-            set_carb_setting(self.carb_settings, key, value)
-
-        # set general carb settings
-        carb_settings = self.cfg.render.carb_settings
-        if carb_settings is not None:
-            for key, value in carb_settings.items():
-                if "_" in key:
-                    key = "/" + key.replace(
-                        "_", "/"
-                    )  # convert from python variable style string
-                elif "." in key:
-                    key = "/" + key.replace(
-                        ".", "/"
-                    )  # convert from .kit file style string
-                if get_carb_setting(self.carb_settings, key) is None:
-                    raise ValueError(
-                        f"'{key}' in RenderCfg.general_parameters does not map to a carb setting."
-                    )
-                set_carb_setting(self.carb_settings, key, value)
-
-        # set denoiser mode
-        if self.cfg.render.antialiasing_mode is not None:
-            try:
-                import omni.replicator.core as rep
-
-                rep.settings.set_render_rtx_realtime(
-                    antialiasing=self.cfg.render.antialiasing_mode
-                )
-            except Exception:
-                pass
-
-        # WAR: Ensure /rtx/renderMode RaytracedLighting is correctly cased.
-        if (
-            get_carb_setting(self.carb_settings, "/rtx/rendermode").lower()
-            == "raytracedlighting"
-        ):
-            set_carb_setting(self.carb_settings, "/rtx/rendermode", "RaytracedLighting")
+        Note:
+            In Omniverse, it is possible to configure multiple GPUs for rendering, while physics engine
+            operates on a single GPU. This function returns the device that is used for physics simulation.
+        """
+        return self._physics_device
 
     """
     Operations - New.
@@ -464,18 +371,29 @@ class SimulationContext(_SimulationContext):
     def get_version(self) -> tuple[int, int, int]:
         """Returns the version of the simulator.
 
-        This is a wrapper around the ``isaacsim.core.version.get_version()`` function.
-
         The returned tuple contains the following information:
 
-        * Major version (int): This is the year of the release (e.g. 2022).
-        * Minor version (int): This is the half-year of the release (e.g. 1 or 2).
-        * Patch version (int): This is the patch number of the release (e.g. 0).
+        * Major version: This is the year of the release (e.g. 2022).
+        * Minor version: This is the half-year of the release (e.g. 1 or 2).
+        * Patch version: This is the patch number of the release (e.g. 0).
+
+        .. attention::
+            This function is deprecated and will be removed in the future.
+            We recommend using :func:`isaaclab.utils.version.get_isaac_sim_version`
+            instead of this function.
+
+        Returns:
+            A tuple containing the major, minor, and patch versions.
+
+        Example:
+            >>> sim = SimulationContext()
+            >>> sim.get_version()
+            (2022, 1, 0)
         """
         return (
-            int(self._isaacsim_version[2]),
-            int(self._isaacsim_version[3]),
-            int(self._isaacsim_version[4]),
+            get_isaac_sim_version().major,
+            get_isaac_sim_version().minor,
+            get_isaac_sim_version().micro,
         )
 
     """
@@ -579,7 +497,9 @@ class SimulationContext(_SimulationContext):
         elif isinstance(value, (list, tuple)):
             self.carb_settings.set(name, value)
         else:
-            raise ValueError(f"Unsupported value type for setting '{name}': {type(value)}")
+            raise ValueError(
+                f"Unsupported value type for setting '{name}': {type(value)}"
+            )
 
     def get_setting(self, name: str) -> Any:
         """Read the simulation setting using the Carbonite SDK.
@@ -591,14 +511,6 @@ class SimulationContext(_SimulationContext):
             The value of the setting.
         """
         return self.carb_settings.get(name)
-
-    def forward(self) -> None:
-        """Updates articulation kinematics and fabric for rendering."""
-        if self._fabric_iface is not None:
-            if self.physics_sim_view is not None and self.is_playing():
-                # Update the articulations' link's poses before rendering
-                self.physics_sim_view.update_articulations_kinematic()
-            self._update_fabric(0.0, 0.0)
 
     def get_initial_stage(self) -> Usd.Stage:
         """Returns stage handle used during scene creation.
@@ -633,6 +545,14 @@ class SimulationContext(_SimulationContext):
                 self.render()
         self._disable_app_control_on_stop_handle = False
 
+    def forward(self) -> None:
+        """Updates articulation kinematics and fabric for rendering."""
+        if self._fabric_iface is not None:
+            if self.physics_sim_view is not None and self.is_playing():
+                # Update the articulations' link's poses before rendering
+                self.physics_sim_view.update_articulations_kinematic()
+            self._update_fabric(0.0, 0.0)
+
     def step(self, render: bool = True):
         """Steps the simulation.
 
@@ -653,7 +573,9 @@ class SimulationContext(_SimulationContext):
         if self._anim_recording_enabled:
             is_anim_recording_finished = self._update_anim_recording()
             if is_anim_recording_finished:
-                carb.log_warn("[INFO][SimulationContext]: Animation recording finished. Closing app.")
+                logger.warning(
+                    "[INFO][SimulationContext]: Animation recording finished. Closing app."
+                )
                 self._app.shutdown()
 
         # check if the simulation timeline is paused. in that case keep stepping until it is playing
@@ -742,7 +664,7 @@ class SimulationContext(_SimulationContext):
 
     def _init_stage(self, *args, **kwargs) -> Usd.Stage:
         _ = super()._init_stage(*args, **kwargs)
-        with stage_utils.use_stage(self.get_initial_stage()):
+        with sim_utils.use_stage(self.get_initial_stage()):
             # a stage update here is needed for the case when physics_dt != rendering_dt, otherwise the app crashes
             # when in headless mode
             self.set_setting("/app/player/playSimulations", False)
@@ -782,7 +704,9 @@ class SimulationContext(_SimulationContext):
         """Sets various carb physics settings."""
         # enable hydra scene-graph instancing
         # note: this allows rendering of instanceable assets on the GUI
-        self.carb_settings.set_bool("/persistent/omnihydra/useSceneGraphInstancing", True)
+        self.carb_settings.set_bool(
+            "/persistent/omnihydra/useSceneGraphInstancing", True
+        )
         # change dispatcher to use the default dispatcher in PhysX SDK instead of carb tasking
         # note: dispatcher handles how threads are launched for multi-threaded physics
         self.carb_settings.set_bool("/physics/physxDispatcher", True)
@@ -846,13 +770,19 @@ class SimulationContext(_SimulationContext):
                 )
 
             # grab isaac lab apps path
-            isaaclab_app_exp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), *[".."] * 4, "apps")
+            isaaclab_app_exp_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), *[".."] * 4, "apps"
+            )
             # for Isaac Sim 4.5 compatibility, we use the 4.5 rendering mode app files in a different folder
-            if float(".".join(self._isaacsim_version[2])) < 5:
-                isaaclab_app_exp_path = os.path.join(isaaclab_app_exp_path, "isaacsim_4_5")
+            if get_isaac_sim_version().major < 5:
+                isaaclab_app_exp_path = os.path.join(
+                    isaaclab_app_exp_path, "isaacsim_4_5"
+                )
 
             # grab preset settings
-            preset_filename = os.path.join(isaaclab_app_exp_path, f"rendering_modes/{rendering_mode}.kit")
+            preset_filename = os.path.join(
+                isaaclab_app_exp_path, f"rendering_modes/{rendering_mode}.kit"
+            )
             with open(preset_filename) as file:
                 preset_dict = toml.load(file)
             preset_dict = dict(flatdict.FlatDict(preset_dict, delimiter="."))
@@ -880,11 +810,17 @@ class SimulationContext(_SimulationContext):
         if carb_settings is not None:
             for key, value in carb_settings.items():
                 if "_" in key:
-                    key = "/" + key.replace("_", "/")  # convert from python variable style string
+                    key = "/" + key.replace(
+                        "_", "/"
+                    )  # convert from python variable style string
                 elif "." in key:
-                    key = "/" + key.replace(".", "/")  # convert from .kit file style string
+                    key = "/" + key.replace(
+                        ".", "/"
+                    )  # convert from .kit file style string
                 if self.get_setting(key) is None:
-                    raise ValueError(f"'{key}' in RenderCfg.general_parameters does not map to a carb setting.")
+                    raise ValueError(
+                        f"'{key}' in RenderCfg.general_parameters does not map to a carb setting."
+                    )
                 self.set_setting(key, value)
 
         # set denoiser mode
@@ -892,7 +828,9 @@ class SimulationContext(_SimulationContext):
             try:
                 import omni.replicator.core as rep
 
-                rep.settings.set_render_rtx_realtime(antialiasing=self.cfg.render.antialiasing_mode)
+                rep.settings.set_render_rtx_realtime(
+                    antialiasing=self.cfg.render.antialiasing_mode
+                )
             except Exception:
                 pass
 
@@ -921,12 +859,27 @@ class SimulationContext(_SimulationContext):
             self.cfg.physx.gpu_collision_stack_size
         )
         # -- Improved determinism by PhysX
-        physx_scene_api.CreateEnableEnhancedDeterminismAttr(self.cfg.physx.enable_enhanced_determinism)
+        physx_scene_api.CreateEnableEnhancedDeterminismAttr(
+            self.cfg.physx.enable_enhanced_determinism
+        )
         # -- Set solve_articulation_contact_last by add attribute to the PhysxScene prim, and add attribute there.
         physx_prim = physx_scene_api.GetPrim()
-        physx_prim.CreateAttribute("physxScene:solveArticulationContactLast", Sdf.ValueTypeNames.Bool).Set(
-            self.cfg.physx.solve_articulation_contact_last
-        )
+        physx_prim.CreateAttribute(
+            "physxScene:solveArticulationContactLast", Sdf.ValueTypeNames.Bool
+        ).Set(self.cfg.physx.solve_articulation_contact_last)
+        # -- Enable external forces every iteration, helps improve the accuracy of velocity updates.
+
+        if self.cfg.physx.solver_type == 1:
+            if not self.cfg.physx.enable_external_forces_every_iteration:
+                logger.warning(
+                    "The `enable_external_forces_every_iteration` parameter in the PhysxCfg is set to False. If you are"
+                    " experiencing noisy velocities, consider enabling this flag. You may need to slightly increase the"
+                    " number of velocity iterations (setting it to 1 or 2 rather than 0), together with this flag, to"
+                    " improve the accuracy of velocity updates."
+                )
+            physx_scene_api.CreateEnableExternalForcesEveryIterationAttr(
+                self.cfg.physx.enable_external_forces_every_iteration
+            )
 
         # -- Gravity
         # note: Isaac sim only takes the "up-axis" as the gravity direction. But physics allows any direction so we
@@ -989,7 +942,9 @@ class SimulationContext(_SimulationContext):
             self._anim_recording_started_timestamp = time.time()
 
         if self._anim_recording_started_timestamp is not None:
-            anim_recording_total_time = time.time() - self._anim_recording_started_timestamp
+            anim_recording_total_time = (
+                time.time() - self._anim_recording_started_timestamp
+            )
             if anim_recording_total_time > self._anim_recording_stop_time:
                 self._finish_anim_recording()
                 return True
@@ -998,7 +953,9 @@ class SimulationContext(_SimulationContext):
     def _setup_anim_recording(self):
         """Sets up anim recording settings and initializes the recording."""
 
-        self._anim_recording_enabled = bool(self.carb_settings.get("/isaaclab/anim_recording/enabled"))
+        self._anim_recording_enabled = bool(
+            self.carb_settings.get("/isaaclab/anim_recording/enabled")
+        )
         if not self._anim_recording_enabled:
             return
 
@@ -1006,16 +963,24 @@ class SimulationContext(_SimulationContext):
         from omni.physxpvd.bindings import _physxPvd
 
         # Init anim recording settings
-        self._anim_recording_start_time = self.carb_settings.get("/isaaclab/anim_recording/start_time")
-        self._anim_recording_stop_time = self.carb_settings.get("/isaaclab/anim_recording/stop_time")
+        self._anim_recording_start_time = self.carb_settings.get(
+            "/isaaclab/anim_recording/start_time"
+        )
+        self._anim_recording_stop_time = self.carb_settings.get(
+            "/isaaclab/anim_recording/stop_time"
+        )
         self._anim_recording_first_step_timestamp = None
         self._anim_recording_started_timestamp = None
 
         # Make output path relative to repo path
-        repo_path = os.path.join(carb.tokens.get_tokens_interface().resolve("${app}"), "..")
+        repo_path = os.path.join(
+            carb.tokens.get_tokens_interface().resolve("${app}"), ".."
+        )
         self._anim_recording_timestamp = datetime.now().strftime("%Y_%m_%d_%H%M%S")
         self._anim_recording_output_dir = (
-            os.path.join(repo_path, "anim_recordings", self._anim_recording_timestamp).replace("\\", "/").rstrip("/")
+            os.path.join(repo_path, "anim_recordings", self._anim_recording_timestamp)
+            .replace("\\", "/")
+            .rstrip("/")
             + "/"
         )
         os.makedirs(self._anim_recording_output_dir, exist_ok=True)
@@ -1025,7 +990,8 @@ class SimulationContext(_SimulationContext):
 
         # Set carb settings for the output path and enabling pvd recording
         self.carb_settings.set_string(
-            "/persistent/physics/omniPvdOvdRecordingDirectory", self._anim_recording_output_dir
+            "/persistent/physics/omniPvdOvdRecordingDirectory",
+            self._anim_recording_output_dir,
         )
         self.carb_settings.set_bool("/physics/omniPvdOutputEnabled", True)
 
@@ -1046,7 +1012,11 @@ class SimulationContext(_SimulationContext):
         new_start_time_code = int(start_time * time_codes_per_second)
 
         # Replace the startTimeCode in the file
-        content = re.sub(r"startTimeCode\s*=\s*\d+", f"startTimeCode = {new_start_time_code}", content)
+        content = re.sub(
+            r"startTimeCode\s*=\s*\d+",
+            f"startTimeCode = {new_start_time_code}",
+            content,
+        )
 
         # Write the updated content back to the file
         with open(file_path, "w") as file:
@@ -1055,7 +1025,7 @@ class SimulationContext(_SimulationContext):
     def _finish_anim_recording(self):
         """Finishes the animation recording and outputs the baked animation recording."""
 
-        carb.log_warn(
+        logger.warning(
             "[INFO][SimulationContext]: Finishing animation recording. Stage must be saved. Might take a few minutes."
         )
 
@@ -1064,12 +1034,16 @@ class SimulationContext(_SimulationContext):
         physx.detach_stage()
 
         # Save stage to disk
-        stage_path = os.path.join(self._anim_recording_output_dir, "stage_simulation.usdc")
-        stage_utils.save_stage(stage_path, save_and_reload_in_place=False)
+        stage_path = os.path.join(
+            self._anim_recording_output_dir, "stage_simulation.usdc"
+        )
+        sim_utils.save_stage(stage_path, save_and_reload_in_place=False)
 
         # Find the latest ovd file not named tmp.ovd
         ovd_files = [
-            f for f in glob.glob(os.path.join(self._anim_recording_output_dir, "*.ovd")) if not f.endswith("tmp.ovd")
+            f
+            for f in glob.glob(os.path.join(self._anim_recording_output_dir, "*.ovd"))
+            if not f.endswith("tmp.ovd")
         ]
         input_ovd_path = max(ovd_files, key=os.path.getctime)
 
@@ -1088,7 +1062,8 @@ class SimulationContext(_SimulationContext):
 
         # Workaround for manually setting the truncated start time in the baked animation recording
         self._update_usda_start_time(
-            os.path.join(self._anim_recording_output_dir, stage_filename), self._anim_recording_start_time
+            os.path.join(self._anim_recording_output_dir, stage_filename),
+            self._anim_recording_start_time,
         )
 
         # Disable recording
@@ -1121,46 +1096,6 @@ class SimulationContext(_SimulationContext):
             while not omni.timeline.get_timeline_interface().is_playing():
                 self.render()
         return
-
-    """
-    Logger.
-    """
-
-    def _setup_logger(self):
-        """Sets up the logger."""
-        root_logger = logging.getLogger()
-        root_logger.setLevel(self.cfg.logging_level)
-
-        # remove existing handlers
-        if root_logger.hasHandlers():
-            for handler in root_logger.handlers:
-                root_logger.removeHandler(handler)
-
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setLevel(self.cfg.logging_level)
-
-        formatter = ColoredFormatter(fmt="%(asctime)s [%(filename)s] %(levelname)s: %(message)s", datefmt="%H:%M:%S")
-        handler.setFormatter(formatter)
-        handler.addFilter(RateLimitFilter(interval_seconds=5))
-        root_logger.addHandler(handler)
-
-        # --- File handler (optional) ---
-        if self.cfg.save_logs_to_file:
-            temp_dir = tempfile.gettempdir()
-            log_file_path = os.path.join(temp_dir, f"isaaclab_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log")
-
-            file_handler = logging.FileHandler(log_file_path, mode="w", encoding="utf-8")
-            file_handler.setLevel(logging.DEBUG)
-            file_formatter = logging.Formatter(
-                fmt="%(asctime)s [%(filename)s:%(lineno)d] %(levelname)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
-            )
-            file_handler.setFormatter(file_formatter)
-            root_logger.addHandler(file_handler)
-
-            # Print the log file path once at startup
-            print(f"[INFO] IsaacLab logging to file: {log_file_path}")
-
-        return root_logger
 
 
 @contextmanager
@@ -1212,7 +1147,7 @@ def build_simulation_context(
     """
     try:
         if create_new_stage:
-            stage_utils.create_new_stage()
+            sim_utils.create_new_stage()
 
         if sim_cfg is None:
             # Construct one and overwrite the dt, gravity, and device
