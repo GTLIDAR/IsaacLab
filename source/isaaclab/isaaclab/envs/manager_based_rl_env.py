@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -6,14 +6,13 @@
 # needed to import for allowing type-hinting: np.ndarray | None
 from __future__ import annotations
 
-import gymnasium as gym
 import math
-import numpy as np
-import torch
 from collections.abc import Sequence
 from typing import Any, ClassVar
 
-from isaacsim.core.version import get_version  # type: ignore[import-untyped]
+import gymnasium as gym
+import numpy as np
+import torch
 
 from isaaclab.managers import (
     CommandManager,
@@ -63,8 +62,6 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
     """Whether the environment is a vectorized environment."""
     metadata: ClassVar[dict[str, Any]] = {
         "render_modes": [None, "human", "rgb_array"],
-        "isaac_sim_version": get_version(),
-        "autoreset_mode": "SameStep",
     }
     autoreset_mode = "SameStep"
 
@@ -466,7 +463,9 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
                     shape=group_dim,  # type: ignore
                 )
             else:
-                group_term_cfgs = self.observation_manager._group_obs_term_cfgs[group_name]
+                group_term_cfgs = self.observation_manager._group_obs_term_cfgs[
+                    group_name
+                ]
                 term_dict = {}
                 for term_name, term_dim, term_cfg in zip(
                     group_term_names, group_dim, group_term_cfgs

@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -15,24 +15,23 @@ simulation_app = AppLauncher(headless=True).app
 import numpy as np
 import os
 
-import isaacsim.core.utils.prims as prim_utils
 import pytest
 from isaacsim.core.api.simulation_context import SimulationContext
 from isaacsim.core.prims import Articulation
 from isaacsim.core.utils.extensions import enable_extension, get_extension_path_from_name
 
+import isaaclab.sim as sim_utils
 from isaaclab.sim.converters import UrdfConverter, UrdfConverterCfg
-from isaaclab.sim.utils import stage as stage_utils
 
 
 # Create a fixture for setup and teardown
 @pytest.fixture
 def sim_config():
     # Create a new stage
-    stage_utils.create_new_stage()
+    sim_utils.create_new_stage()
     # retrieve path to urdf importer extension
-    enable_extension("isaacsim.asset.importer.urdf")
-    extension_path = get_extension_path_from_name("isaacsim.asset.importer.urdf")
+    enable_extension("isaacsim.asset.importer.urdf-2.4.31")
+    extension_path = get_extension_path_from_name("isaacsim.asset.importer.urdf-2.4.31")
     # default configuration
     config = UrdfConverterCfg(
         asset_path=f"{extension_path}/data/urdf/robots/franka_description/robots/panda_arm_hand.urdf",
@@ -96,9 +95,9 @@ def test_create_prim_from_usd(sim_config):
     urdf_converter = UrdfConverter(config)
 
     prim_path = "/World/Robot"
-    prim_utils.create_prim(prim_path, usd_path=urdf_converter.usd_path)
+    sim_utils.create_prim(prim_path, usd_path=urdf_converter.usd_path)
 
-    assert prim_utils.is_prim_path_valid(prim_path)
+    assert sim.stage.GetPrimAtPath(prim_path).IsValid()
 
 
 @pytest.mark.isaacsim_ci
@@ -120,7 +119,7 @@ def test_config_drive_type(sim_config):
     urdf_converter = UrdfConverter(config)
     # check the drive type of the robot
     prim_path = "/World/Robot"
-    prim_utils.create_prim(prim_path, usd_path=urdf_converter.usd_path)
+    sim_utils.create_prim(prim_path, usd_path=urdf_converter.usd_path)
 
     # access the robot
     robot = Articulation(prim_path, reset_xform_properties=False)
