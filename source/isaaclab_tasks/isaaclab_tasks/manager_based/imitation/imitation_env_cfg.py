@@ -6,6 +6,7 @@
 from dataclasses import MISSING
 
 import isaaclab.sim as sim_utils
+import isaaclab.terrains as terrain_gen
 from isaaclab.assets import ArticulationCfg, AssetBaseCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
 from isaaclab.managers import EventTermCfg as EventTerm
@@ -21,12 +22,10 @@ from isaaclab.utils import configclass
 from isaaclab.utils.assets import (
     ISAAC_NUCLEUS_DIR,
     ISAACLAB_NUCLEUS_DIR,
-    NVIDIA_NUCLEUS_DIR,
 )
 from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 
 import isaaclab_tasks.manager_based.imitation.mdp as mdp
-import isaaclab.terrains as terrain_gen
 
 from isaaclab.terrains.config import TerrainGeneratorCfg  # isort: skip
 

@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import torch
-
-from isaaclab.managers import SceneEntityCfg
 from isaaclab.envs import ImitationRLEnv
+from isaaclab.managers import SceneEntityCfg
 
 
 def reference_joint_pos(

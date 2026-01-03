@@ -3,31 +3,33 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-from isaaclab_tasks.manager_based.imitation.mdp import (
-    track_joint_pos,
-    track_joint_vel,
-    track_root_pos,
-    track_root_ang,
-    track_root_quat,
-    reference_joint_pos,
-    reference_joint_vel,
-    reference_root_pos,
-    reference_root_lin_vel,
-    reference_root_ang_vel,
-    reference_root_quat,
-    track_root_lin_vel,
-    track_root_ang_vel,
+from isaaclab.managers import (
+    ObservationGroupCfg as ObsGroup,
+)
+from isaaclab.managers import (
+    ObservationTermCfg as ObsTerm,
 )
 from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.managers import (
     SceneEntityCfg,
-    ObservationGroupCfg as ObsGroup,
-    ObservationTermCfg as ObsTerm,
 )
 from isaaclab.utils import configclass
-from isaaclab_assets.robots.unitree import G1_CFG
-import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
 from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
+from isaaclab_assets.robots.unitree import G1_CFG
+
+import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
+from isaaclab_tasks.manager_based.imitation.mdp import (
+    reference_joint_pos,
+    reference_root_ang_vel,
+    reference_root_lin_vel,
+    reference_root_pos,
+    reference_root_quat,
+    track_joint_pos,
+    track_root_ang_vel,
+    track_root_lin_vel,
+    track_root_pos,
+    track_root_quat,
+)
 
 from ...imitation_env_cfg import (
     ImitationLearningEnvCfg,
@@ -335,6 +337,11 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
     loader_kwargs: dict = {
         "env_name": "UnitreeG1",
         "n_substeps": 20,
+        "dataset": {"trajectories": {"default": ["walk"], "amass": [], "lafan1": []}},
+        "control_freq": 50.0,
+        "window_size": 4,
+        "sim": {"dt": 0.001},
+        "decimation": 20,
     }  # Loader kwargs (required if Zarr does not exist)
     dataset: dict = {
         "trajectories": {"default": [], "amass": [], "lafan1": ["dance2_subject4"]}

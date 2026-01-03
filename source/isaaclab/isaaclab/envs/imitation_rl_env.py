@@ -84,7 +84,8 @@ class ImitationRLEnv(ManagerBasedRLEnv):
                 if loader_type == "loco_mujoco":
                     from omegaconf import DictConfig
 
-                    loader_cfg = DictConfig(loader_kwargs.get("cfg", {}))
+                    loader_cfg = DictConfig(loader_kwargs)
+                    print(f"[ImitationRLEnv] Loader cfg: {loader_cfg}")
                     _ = LocoMuJoCoLoader(
                         env_name=loader_kwargs["env_name"],
                         cfg=loader_cfg,
@@ -108,7 +109,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
                 motions=motions,
                 trajectories=traj_names,
                 keys=keys,
-                device=device,
+                device="cpu",
                 verbose_tree=False,
             )
         else:
@@ -148,7 +149,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         self.trajectory_manager = ParallelTrajectoryManager(
             rb=rb,
             traj_info=traj_info,
-            n_envs=num_envs,
+            num_envs=num_envs,
             reset_schedule=reset_schedule,
             wrap_steps=wrap_steps,
             device=device,
@@ -193,7 +194,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         self.trajectory_manager.reset_envs(env_ids_tensor)
 
         # Get initial reference data for all envs (manager handles indexing)
-        self.current_reference = self.trajectory_manager.sample(advance=False)
+        self.current_reference = self.trajectory_manager.sample(advance=True)
 
         # Trigger the reset events
         result = super()._reset_idx(env_ids_tensor)  # type: ignore
@@ -214,9 +215,9 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         """Step the environment and update reference data."""
 
         # Get next reference data point (advance=True to move to next step)
-        self.current_reference = self.trajectory_manager.sample(advance=True)
-
-        self._replay_reference()
+        self.current_reference: TensorDict = self.trajectory_manager.sample(
+            advance=True
+        )
 
         # Call parent step
         return super().step(action)
