@@ -15,7 +15,7 @@ from isaaclab.managers import (
 )
 from isaaclab.utils import configclass
 from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
-from isaaclab_assets.robots.unitree import G1_CFG
+from isaaclab_assets.robots.unitree import G1_MINIMAL_CFG
 
 import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
 from isaaclab_tasks.manager_based.imitation.mdp import (
@@ -421,7 +421,7 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
         # post init of parent
         super().__post_init__()  # type: ignore
         # Scene
-        self.scene.robot = G1_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore
+        self.scene.robot = G1_MINIMAL_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore
 
         # Randomization
         self.events.push_robot = None
