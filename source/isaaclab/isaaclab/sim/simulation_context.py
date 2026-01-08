@@ -5,6 +5,7 @@
 
 import builtins
 import enum
+import flatdict
 import glob
 import logging
 import os
@@ -18,8 +19,6 @@ from datetime import datetime
 from typing import Any
 
 import carb
-import flatdict
-import numpy as np
 import omni.physx
 import omni.usd
 import toml
