@@ -7,8 +7,8 @@ from tensordict import TensorDict
 import isaaclab.utils.math as math_utils
 from isaaclab.assets import Articulation
 
-from .common import VecEnvStepReturn
-from .manager_based_rl_env import ManagerBasedRLEnv
+from isaaclab.envs.common import VecEnvStepReturn
+from isaaclab.envs.manager_based_rl_env import ManagerBasedRLEnv
 
 # Import the new manager and utilities
 try:
@@ -30,6 +30,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         dataset_path: str, path to Zarr dataset directory (or directory containing trajectories.zarr)
         reset_schedule: str, trajectory reset schedule ("random", "sequential", "round_robin", "custom")
         wrap_steps: bool, if True, wrap steps within trajectory (default: False)
+        replay_only: bool, if True, ignore actions and force reference root/joint state each step
         loader_type: str, required if Zarr does not exist (e.g., "loco_mujoco")
         loader_kwargs: dict, required if Zarr does not exist (e.g., {"env_name": "UnitreeG1", "cfg": ...})
         reference_joint_names: list[str], joint names in reference data order
@@ -166,6 +167,12 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         self.reference_joint_names = reference_joint_names
         self._joint_mapping_cache: Optional[torch.Tensor] = None
         self.replay_reference = getattr(cfg, "replay_reference", False)
+        self.replay_only = getattr(cfg, "replay_only", False)
+        if self.replay_only and not self.replay_reference:
+            self.replay_reference = True
+            print(
+                "[ImitationRLEnv] replay_only enabled; forcing replay_reference=True."
+            )
 
         # Store initial poses for replay
         self._init_root_pos = torch.zeros((num_envs, 3), device=device)
@@ -219,7 +226,9 @@ class ImitationRLEnv(ManagerBasedRLEnv):
             advance=True
         )
 
-        # Call parent step
+        if self.replay_only:
+            self._replay_reference()
+
         return super().step(action)
 
     def get_reference_data(
@@ -257,8 +266,6 @@ class ImitationRLEnv(ManagerBasedRLEnv):
     def _replay_reference(self, env_ids: Optional[torch.Tensor] = None):
         """Replay the reference data. If env_ids is provided, only replay the reference data for the given environments.
         If env_ids is not provided, replay the reference data for all environments."""
-        if not self.replay_reference:
-            return
 
         if env_ids is None:
             init_pos = self._init_root_pos
@@ -289,15 +296,10 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         # ref is a TensorDict, so accessing keys returns tensors
         joint_pos_raw = ref["joint_pos"]  # type: ignore[assignment]
         joint_vel_raw = ref["joint_vel"]  # type: ignore[assignment]
-        # Clone if tensor, otherwise convert
-        if isinstance(joint_pos_raw, torch.Tensor):
-            joint_pos = joint_pos_raw.clone()
-        else:
-            joint_pos = torch.as_tensor(joint_pos_raw)
-        if isinstance(joint_vel_raw, torch.Tensor):
-            joint_vel = joint_vel_raw.clone()
-        else:
-            joint_vel = torch.as_tensor(joint_vel_raw)
+        joint_pos = joint_pos_raw.clone()
+        joint_vel = joint_vel_raw.clone()
+
+        # Replace NaN positions with default values
         pos_mask = torch.isnan(joint_pos)
         vel_mask = torch.isnan(joint_vel)
         joint_pos[pos_mask] = defaults_pos[pos_mask]

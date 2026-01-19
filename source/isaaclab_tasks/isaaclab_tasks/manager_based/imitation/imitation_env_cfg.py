@@ -316,6 +316,7 @@ class ImitationLearningEnvCfg(ManagerBasedRLEnvCfg):
         }
     }
     replay_reference: bool = False
+    replay_only: bool = True
     # Reference joint names for the robot from the reference qpos order (this is the order of G1 in loco-mujoco)
     reference_joint_names: list[str] = [
         "root_x",
