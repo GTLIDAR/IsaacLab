@@ -300,10 +300,10 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         joint_vel = joint_vel_raw.clone()
 
         # Replace NaN positions with default values
-        pos_mask = torch.isnan(joint_pos)
-        vel_mask = torch.isnan(joint_vel)
-        joint_pos[pos_mask] = defaults_pos[pos_mask]
-        joint_vel[vel_mask] = defaults_vel[vel_mask]
-        self.robot.write_root_pose_to_sim(root_pose, env_ids=write_env_ids)  # type: ignore
-        self.robot.write_root_velocity_to_sim(root_vel, env_ids=write_env_ids)  # type: ignore
-        self.robot.write_joint_state_to_sim(joint_pos, joint_vel, env_ids=write_env_ids)  # type: ignore
+        joint_pos = torch.where(torch.isnan(joint_pos), defaults_pos, joint_pos)
+        joint_vel = torch.where(torch.isnan(joint_vel), defaults_vel, joint_vel)
+        self.robot.write_root_pose_to_sim(root_pose, env_ids=env_ids)
+        # fy: adding this will cause the robot to wobble
+        # self.robot.write_root_velocity_to_sim(root_vel, env_ids=env_ids)
+        self.robot.write_joint_state_to_sim(joint_pos, joint_vel, env_ids=env_ids)
+        self.robot.write_data_to_sim()
