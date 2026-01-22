@@ -300,6 +300,7 @@ class ImitationLearningEnvCfg(ManagerBasedRLEnvCfg):
     dataset_type: str = "zarr"
     # Dataset and cache settings for ImitationRLEnv
     dataset_path: str = "/tmp/iltools_zarr"
+    reset_schedule: str = "random"
     window_size: int = 64  # Window size for per-env cache
     batch_size: int = 1  # Batch size for Zarr prefetching
     device: str = "cuda"  # Torch device

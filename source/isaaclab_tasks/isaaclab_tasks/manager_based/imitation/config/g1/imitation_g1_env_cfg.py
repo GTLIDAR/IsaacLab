@@ -337,7 +337,13 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
     loader_kwargs: dict = {
         "env_name": "UnitreeG1",
         "n_substeps": 20,
-        "dataset": {"trajectories": {"default": ["walk"], "amass": [], "lafan1": []}},
+        "dataset": {
+            "trajectories": {
+                "default": ["walk", "run", "jumpturn", "balance"],
+                "amass": [],
+                "lafan1": [],
+            }
+        },
         "control_freq": 50.0,
         "window_size": 4,
         "sim": {"dt": 0.001},

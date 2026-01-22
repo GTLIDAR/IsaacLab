@@ -136,7 +136,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
             )
         if reset_schedule is None:
             reset_schedule = ResetSchedule.RANDOM
-
+        print(f"[ImitationRLEnv] Reset schedule: {reset_schedule}")
         # Get other config options
         wrap_steps = getattr(cfg, "wrap_steps", False)
         reference_joint_names = getattr(cfg, "reference_joint_names", [])
