@@ -81,6 +81,9 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # store the render mode
         self.render_mode = render_mode
 
+        # buffer that stores the final observation for each env
+        self.final_obs_buf: dict | None = None
+
         # initialize data and constants
         # -- set the framerate of the gym video recorder wrapper so that the playback speed of the
         #    produced video matches the simulation
@@ -169,6 +172,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         Returns:
             A tuple containing the observations, rewards, resets (terminated and truncated) and extras.
         """
+        assert not torch.isnan(action).any(), "Action contains NaN values"
         # process actions
         self.action_manager.process_action(action.to(self.device))
 
@@ -215,6 +219,10 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # -- reset envs that terminated/timed-out and log the episode information
         reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
         if len(reset_env_ids) > 0:
+            # record the final observation
+            self.final_obs_buf: dict = self.observation_manager.compute()
+            self.extras["final_obs_buf"] = self.final_obs_buf
+
             # trigger recorder terms for pre-reset calls
             self.recorder_manager.record_pre_reset(reset_env_ids)
 

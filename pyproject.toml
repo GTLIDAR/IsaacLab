@@ -140,3 +140,12 @@ ignore-words-list = "haa,slq,collapsable,buss,reacher,thirdparty"
 markers = [
     "isaacsim_ci: mark test to run in isaacsim ci",
 ]
+
+[tool.pyrefly]
+search-path = [
+    "source/isaaclab",
+    "source/isaaclab_assets",
+    "source/isaaclab_rl",
+    "source/isaaclab_mimic",
+    "source/isaaclab_tasks",
+]
