@@ -218,10 +218,29 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
         # -- reset envs that terminated/timed-out and log the episode information
         reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
+        # Clear any stale terminal info from previous steps.
+        for key in ("final_obs", "final_info"):
+            if key in self.extras:
+                del self.extras[key]
         if len(reset_env_ids) > 0:
-            # record the final observation
-            self.final_obs_buf: dict = self.observation_manager.compute()
-            self.extras["final_obs_buf"] = self.final_obs_buf
+            # Populate Gymnasium-style terminal observation info for vector envs.
+            # final_obs/final_info are object arrays with None for non-reset envs.
+            final_obs = np.empty(self.num_envs, dtype=object)
+            final_obs[:] = None
+            final_info = np.empty(self.num_envs, dtype=object)
+            final_info[:] = None
+
+            def _slice_obs(obs: dict | torch.Tensor, env_id: int):
+                if isinstance(obs, dict):
+                    return {k: _slice_obs(v, env_id) for k, v in obs.items()}
+                return obs[env_id]
+
+            for env_id in reset_env_ids.tolist():
+                final_obs[env_id] = _slice_obs(self.obs_buf, env_id)
+                final_info[env_id] = {}
+
+            self.extras["final_obs"] = final_obs
+            self.extras["final_info"] = final_info
 
             # trigger recorder terms for pre-reset calls
             self.recorder_manager.record_pre_reset(reset_env_ids)

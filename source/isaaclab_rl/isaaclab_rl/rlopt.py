@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import field
 from typing import Any, Literal
 
 import gymnasium as gym
 import torch
 from rlopt.agent import IPMDRLOptConfig, PPORLOptConfig, SACRLOptConfig  # noqa: F401
+from rlopt.config_base import RLOptConfig
 from tensordict import TensorDict
-from torchrl.data.tensor_specs import Composite, Unbounded
+from torchrl.data.tensor_specs import Bounded, Composite, Unbounded
 from torchrl.envs.libs.gym import GymWrapper, _gym_to_torchrl_spec_transform, terminal_obs_reader
 
 from isaaclab.envs import ManagerBasedRLEnv
@@ -72,6 +74,7 @@ class IsaacLabWrapper(GymWrapper):
             convert_actions_to_numpy=convert_actions_to_numpy,
             **kwargs,
         )
+        self.log_infos = deque()
 
     @property
     def _is_batched(self) -> bool:
@@ -148,6 +151,8 @@ class IsaacLabWrapper(GymWrapper):
         #  in-place. We clone them here to make sure data doesn't inadvertently get modified.
         # The variable naming follows torchrl's convention here.
         observations, reward, terminated, truncated, info = step_outputs_tuple
+        if isinstance(info, dict) and "log" in info:
+            self.log_infos.append(info["log"])
         for k, v in observations.items():
             if torch.isnan(v).any():
                 # print the first row with nan
@@ -225,37 +230,42 @@ class IsaacLabTerminalObsReader(terminal_obs_reader):
     This reader extracts the terminal observation from the environment's info dictionary.
     It is used to read the terminal observation when the environment is reset."""
 
-    def __call__(self, info_dict, tensordict):
-        """Read the terminal observation from the info dictionary and update the tensordict.
+    def __init__(self, observation_spec: Composite, backend, name: str = "final"):
+        super().__init__(observation_spec=observation_spec, backend=backend, name=name)
+        # Provide info specs upfront to avoid dummy rollouts in set_info_dict_reader.
+        self._info_spec = Composite({self.name: observation_spec.clone()}, shape=[])
 
-        Args:
-            info_dict (dict): The info dictionary from the environment.
-            tensordict (TensorDictBase): The tensordict to update with the terminal observation.
-        Returns:
-            TensorDictBase: The updated tensordict with the terminal observation.
-        """
-        # convert info_dict to a tensordict
-        info_dict = TensorDict(info_dict)
-        # get the terminal observation
-        terminal_obs = info_dict.pop("final_obs_buf", None)
+    # def __call__(self, info_dict, tensordict):
+    #     """Read the terminal observation from the info dictionary and update the tensordict.
 
-        # get the terminal info dict
-        terminal_info = info_dict.pop(self.backend_info_key[self.backend], None)
+    #     Args:
+    #         info_dict (dict): The info dictionary from the environment.
+    #         tensordict (TensorDictBase): The tensordict to update with the terminal observation.
+    #     Returns:
+    #         TensorDictBase: The updated tensordict with the terminal observation.
+    #     """
+    #     # convert info_dict to a tensordict
+    #     info_dict = TensorDict(info_dict)
+    #     # get the terminal observation
+    #     terminal_obs = info_dict.pop("final_obs_buf", None)
 
-        if terminal_info is None:
-            terminal_info = {}
+    #     # get the terminal info dict
+    #     terminal_info = info_dict.pop(self.backend_info_key[self.backend], None)
 
-        super().__call__(info_dict, tensordict)
-        if not self._final_validated:
-            self.info_spec[self.name] = self._obs_spec.update(self.info_spec)  # type: ignore
-            self._final_validated = True
-        final_info = terminal_info.copy()  # type: ignore
-        if terminal_obs is not None:
-            final_info["observation"] = terminal_obs
+    #     if terminal_info is None:
+    #         terminal_info = {}
 
-        for key in self.info_spec[self.name].keys():  # type: ignore
-            tensordict.set(
-                (self.name, key),
-                (terminal_obs[key] if terminal_obs is not None else self.info_spec[self.name, key].zero()),  # type: ignore
-            )
-        return tensordict
+    #     super().__call__(info_dict, tensordict)
+    #     if not self._final_validated:
+    #         self.info_spec[self.name] = self._obs_spec.update(self.info_spec)  # type: ignore
+    #         self._final_validated = True
+    #     final_info = terminal_info.copy()  # type: ignore
+    #     if terminal_obs is not None:
+    #         final_info["observation"] = terminal_obs
+
+    #     for key in self.info_spec[self.name].keys():  # type: ignore
+    #         tensordict.set(
+    #             (self.name, key),
+    #             (terminal_obs[key] if terminal_obs is not None else self.info_spec[self.name, key].zero()),  # type: ignore
+    #         )
+    #     return tensordict

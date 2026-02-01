@@ -101,8 +101,20 @@ class G1Rewards(RewardsCfg):
 
 
 @configclass
+class G1ActionsCfg:
+    """Action specifications for the MDP."""
+
+    joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True)
+    # joint_pos = mdp.JointPositionToLimitsActionCfg(
+    #     asset_name="robot",
+    #     joint_names=[".*"],
+    # )
+
+
+@configclass
 class G1RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
     rewards: G1Rewards = G1Rewards()
+    actions: G1ActionsCfg = G1ActionsCfg()
 
     def __post_init__(self):
         # post init of parent

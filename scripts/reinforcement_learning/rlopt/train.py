@@ -81,12 +81,16 @@ import time
 from datetime import datetime
 
 import gymnasium as gym
+import torch
 from rlopt.agent import IPMD, PPO, SAC
 from torchrl.envs import (
     Compose,
+    ObservationNorm,
+    RewardClipping,
     RewardSum,
     StepCounter,
     TransformedEnv,
+    VecNormV2,
 )
 
 from isaaclab.envs import (
@@ -103,6 +107,8 @@ from isaaclab_rl.rlopt import IsaacLabTerminalObsReader, IsaacLabWrapper, RLOptC
 import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
+torch.set_float32_matmul_precision("high")
+
 # import logger
 logger = logging.getLogger(__name__)
 # PLACEHOLDER: Extension template (do not remove this comment)
@@ -112,6 +118,8 @@ ALGORITHM_CLASS_MAP = {
     "SAC": SAC,
     "IPMD": IPMD,
 }
+
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 
 def resolve_agent_cfg_entry_point(task_name: str | None, agent_entry_point: str, algorithm: str) -> str:
@@ -160,16 +168,26 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             args_cli.max_iterations * agent_cfg.collector.total_frames * env_cfg.scene.num_envs
         )
     agent_cfg.collector.frames_per_batch *= env_cfg.scene.num_envs
-    agent_cfg.loss.mini_batch_size = int(agent_cfg.collector.frames_per_batch / 5)
     # set the environment seed
     # note: certain randomizations occur in the environment initialization so we set the seed here
     env_cfg.seed = agent_cfg.seed
     env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
 
     if args_cli.algorithm == "SAC" or args_cli.algorithm == "IPMD":
-        # for off-policy algorithms, we typically want more initial random frames
-        agent_cfg.collector.init_random_frames *= env_cfg.scene.num_envs
-        agent_cfg.sac.utd_ratio /= env_cfg.scene.num_envs
+        # Off-policy algorithms need replay buffer warmup
+        # Collect some random transitions before training starts
+        agent_cfg.collector.init_random_frames = env_cfg.scene.num_envs * 24  # ~1 episode per env
+        agent_cfg.sac.utd_ratio = 1.0 / 24.0  # ~num_envs updates per batch
+
+        agent_cfg.replay_buffer.size = 1_000_000
+        agent_cfg.loss.mini_batch_size = 256  # Smaller batch for off-policy
+        agent_cfg.optim.lr = 3e-4
+        agent_cfg.replay_buffer.prb = False
+        agent_cfg.replay_buffer.prefetch = 3
+        agent_cfg.compile.compile = False
+        agent_cfg.compile.compile_mode = "default"
+        agent_cfg.compile.cudagraphs = False
+        agent_cfg.sac.skip_done_states = False
 
     # directory for logging into
     run_info = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -219,7 +237,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     start_time = time.time()
 
-    env = IsaacLabWrapper(env, allow_done_after_reset=False, device=env_cfg.sim.device)  # type: ignore
+    env = IsaacLabWrapper(env)  # type: ignore
     env = env.set_info_dict_reader(
         IsaacLabTerminalObsReader(observation_spec=env.observation_spec, backend="gymnasium")  # type: ignore
     )
@@ -228,6 +246,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         transform=Compose(
             RewardSum(),  # type: ignore
             StepCounter(1000),  # type: ignore
+            # VecNormV2(in_keys=agent_cfg.policy.input_keys),
         ),
     )
 
