@@ -7,7 +7,7 @@ from isaaclab_rl.rlopt import SACRLOptConfig
 @configclass
 class G1RLOptSACConfig(SACRLOptConfig):
     """RLOpt SAC configuration for G1.
-    
+
     Note: input_dim values are left as None for lazy initialization.
     The networks will automatically infer dimensions from the environment specs.
     """
@@ -34,7 +34,7 @@ class G1RLOptSACConfig(SACRLOptConfig):
         self.sac.alpha_init = 1.0
         self.sac.target_entropy = "auto"  # -dim(action) will be computed
         self.sac.num_qvalue_nets = 2  # Twin Q-networks
-        
+
         # Target network update (soft update)
         self.optim.target_update_polyak = 0.995  # tau = 1 - polyak = 0.005
         self.optim.lr = 3e-4
@@ -56,6 +56,6 @@ class G1RLOptSACFlatConfig(G1RLOptSACConfig):
         # Network architecture for flat terrain
         self.policy.num_cells = [256, 256, 256]
         self.q_function.num_cells = [256, 256, 256]
-        
+
         # Training duration
         self.collector.total_frames = 100_000_000

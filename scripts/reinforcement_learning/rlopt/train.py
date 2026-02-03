@@ -173,14 +173,12 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     env_cfg.seed = agent_cfg.seed
     env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
 
-    if args_cli.algorithm == "SAC" or args_cli.algorithm == "IPMD":
-        # Off-policy algorithms need replay buffer warmup
-        # Collect some random transitions before training starts
-        agent_cfg.collector.init_random_frames = env_cfg.scene.num_envs * 24  # ~1 episode per env
-        agent_cfg.sac.utd_ratio = 1.0 / 24.0  # ~num_envs updates per batch
-
+    if args_cli.algorithm == "SAC":
+        # Off-policy: replay buffer and SAC-specific settings
+        agent_cfg.collector.init_random_frames = 0
+        agent_cfg.sac.utd_ratio = 24.0 / 4096.0 * 24  # ~num_envs updates per batch
         agent_cfg.replay_buffer.size = 1_000_000
-        agent_cfg.loss.mini_batch_size = 256  # Smaller batch for off-policy
+        agent_cfg.loss.mini_batch_size = 4906 * 6  # Smaller batch for off-policy
         agent_cfg.optim.lr = 3e-4
         agent_cfg.replay_buffer.prb = False
         agent_cfg.replay_buffer.prefetch = 3
@@ -188,6 +186,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         agent_cfg.compile.compile_mode = "default"
         agent_cfg.compile.cudagraphs = False
         agent_cfg.sac.skip_done_states = False
+    # IPMD is PPO-based: use PPO-style config (value function, epochs, no SAC/replay overrides)
 
     # directory for logging into
     run_info = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -246,7 +245,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         transform=Compose(
             RewardSum(),  # type: ignore
             StepCounter(1000),  # type: ignore
-            # VecNormV2(in_keys=agent_cfg.policy.input_keys),
+            VecNormV2(in_keys=agent_cfg.policy.input_keys + ["reward"]),
         ),
     )
 
