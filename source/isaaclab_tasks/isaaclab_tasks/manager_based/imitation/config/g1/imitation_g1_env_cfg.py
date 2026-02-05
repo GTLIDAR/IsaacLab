@@ -320,7 +320,7 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
     loader_type: str = "loco_mujoco"  # Loader type (required if Zarr does not exist)
     loader_kwargs: dict = {
         "env_name": "UnitreeG1",
-        "n_substeps": 20,
+        "n_substeps": 10,
         "dataset": {
             "trajectories": {
                 "default": ["walk"],
@@ -330,8 +330,8 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
         },
         "control_freq": 50.0,
         "window_size": 4,
-        "sim": {"dt": 0.001},
-        "decimation": 20,
+        "sim": {"dt": 0.005},
+        "decimation": 4,
     }  # Loader kwargs (required if Zarr does not exist)
 
     replay_reference: bool = False
