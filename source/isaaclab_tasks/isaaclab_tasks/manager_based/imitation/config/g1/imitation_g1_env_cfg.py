@@ -15,9 +15,11 @@ from isaaclab.managers import (
 )
 from isaaclab.utils import configclass
 from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
-from isaaclab_assets.robots.unitree import G1_MINIMAL_CFG
 
 import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
+from isaaclab_tasks.manager_based.imitation.imitation_env_cfg import (
+    ImitationLearningEnvCfg,
+)
 from isaaclab_tasks.manager_based.imitation.mdp import (
     reference_joint_pos,
     reference_root_ang_vel,
@@ -31,9 +33,7 @@ from isaaclab_tasks.manager_based.imitation.mdp import (
     track_root_quat,
 )
 
-from isaaclab_tasks.manager_based.imitation.imitation_env_cfg import (
-    ImitationLearningEnvCfg,
-)
+from isaaclab_assets.robots.unitree import G1_MINIMAL_CFG
 
 
 # --- Observation ---
@@ -46,19 +46,13 @@ class G1ObservationCfg:
         """Observations for policy group."""
 
         # observation terms (order preserved)
-        base_lin_vel = ObsTerm(
-            func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1)
-        )
-        base_ang_vel = ObsTerm(
-            func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2)
-        )
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
         projected_gravity = ObsTerm(
             func=mdp.projected_gravity,
             noise=Unoise(n_min=-0.05, n_max=0.05),
         )
-        joint_pos = ObsTerm(
-            func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01)
-        )
+        joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
         reference_joint_pos = ObsTerm(
             func=reference_joint_pos,
@@ -240,9 +234,7 @@ class G1RewardsCfg:
         func=mdp.feet_slide,
         weight=-0.1,
         params={
-            "sensor_cfg": SceneEntityCfg(
-                "contact_forces", body_names=".*_ankle_roll_link"
-            ),
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
             "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
         },
     )
@@ -251,21 +243,13 @@ class G1RewardsCfg:
     dof_pos_limits = RewTerm(
         func=mdp.joint_pos_limits,
         weight=-1.0,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot", joint_names=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"]
-            )
-        },
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"])},
     )
     # Penalize deviation from default of the joints that are not essential for locomotion
     joint_deviation_hip = RewTerm(
         func=mdp.joint_deviation_l1,
         weight=-0.1,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot", joint_names=[".*_hip_yaw_joint", ".*_hip_roll_joint"]
-            )
-        },
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_yaw_joint", ".*_hip_roll_joint"])},
     )
     joint_deviation_arms = RewTerm(
         func=mdp.joint_deviation_l1,
@@ -339,7 +323,7 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
         "n_substeps": 20,
         "dataset": {
             "trajectories": {
-                "default": ["walk", "run", "jumpturn", "balance"],
+                "default": ["walk"],
                 "amass": [],
                 "lafan1": [],
             }
@@ -431,9 +415,7 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
         # Randomization
         self.events.push_robot = None
         self.events.add_base_mass = None
-        self.events.base_external_force_torque.params["asset_cfg"].body_names = [
-            "torso_link"
-        ]
+        self.events.base_external_force_torque.params["asset_cfg"].body_names = ["torso_link"]
         self.events.reset_base.params = {
             "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
             "velocity_range": {
@@ -465,5 +447,4 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
 
         # terminations
         self.terminations.base_contact.params["sensor_cfg"].body_names = "torso_link"
-        self.terminations.base_too_low.params["asset_cfg"].body_names = "torso_link"
-        self.terminations = None
+        self.terminations.base_too_low = None

@@ -31,7 +31,7 @@ parser.add_argument(
     "--algorithm",
     dest="algorithm",
     type=str.upper,
-    default="SAC",
+    default="PPO",
     choices=["PPO", "SAC", "IPMD"],
     help="RLOpt algorithm to train (must match the agent config).",
 )

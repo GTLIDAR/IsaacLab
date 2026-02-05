@@ -17,8 +17,7 @@ try:
     from iltools.datasets.utils import make_rb_from
 except ImportError as e:
     raise ImportError(
-        f"Failed to import required modules from iltools_datasets: {e}. "
-        "Make sure ImitationLearningTools is installed."
+        f"Failed to import required modules from iltools_datasets: {e}. Make sure ImitationLearningTools is installed."
     ) from e
 
 
@@ -49,13 +48,9 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         reference_joint_names = ['left_hip_pitch_joint', ...]
     """
 
-    def __init__(
-        self, cfg: Any, render_mode: Optional[str] = None, **kwargs: Any
-    ) -> None:
+    def __init__(self, cfg: Any, render_mode: Optional[str] = None, **kwargs: Any) -> None:
         """Initialize the simplified ImitationRLEnv."""
-        print(
-            f"[ImitationRLEnv] Starting initialization with num_envs={cfg.scene.num_envs}"
-        )
+        print(f"[ImitationRLEnv] Starting initialization with num_envs={cfg.scene.num_envs}")
 
         # Get device
         device = cfg.sim.device
@@ -79,9 +74,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
 
             # If zarr doesn't exist and loader is provided, create it
             if not zarr_path.exists() and loader_type is not None:
-                print(
-                    f"[ImitationRLEnv] Zarr not found at {zarr_path}, creating with {loader_type} loader..."
-                )
+                print(f"[ImitationRLEnv] Zarr not found at {zarr_path}, creating with {loader_type} loader...")
                 if loader_type == "loco_mujoco":
                     from omegaconf import DictConfig
 
@@ -159,9 +152,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         )
 
         # Get initial reference data (this also initializes env assignments)
-        self.current_reference: TensorDict = self.trajectory_manager.sample(
-            advance=False
-        )
+        self.current_reference: TensorDict = self.trajectory_manager.sample(advance=False)
 
         # Store reference joint mapping
         self.reference_joint_names = reference_joint_names
@@ -170,9 +161,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         self.replay_only = getattr(cfg, "replay_only", False)
         if self.replay_only and not self.replay_reference:
             self.replay_reference = True
-            print(
-                "[ImitationRLEnv] replay_only enabled; forcing replay_reference=True."
-            )
+            print("[ImitationRLEnv] replay_only enabled; forcing replay_reference=True.")
 
         # Store initial poses for replay
         self._init_root_pos = torch.zeros((num_envs, 3), device=device)
@@ -191,9 +180,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         """Reset the specified environments."""
 
         if not isinstance(env_ids, torch.Tensor):
-            env_ids_tensor = torch.tensor(
-                env_ids, device=self.device, dtype=torch.int64
-            )
+            env_ids_tensor = torch.tensor(env_ids, device=self.device, dtype=torch.int64)
         else:
             env_ids_tensor = env_ids.to(dtype=torch.int64)
 
@@ -207,12 +194,8 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         result = super()._reset_idx(env_ids_tensor)  # type: ignore
 
         # Store initial poses for replay
-        self._init_root_pos[env_ids_tensor] = self.robot.data.root_state_w[
-            env_ids_tensor, 0:3
-        ]
-        self._init_root_quat[env_ids_tensor] = self.robot.data.root_state_w[
-            env_ids_tensor, 3:7
-        ]
+        self._init_root_pos[env_ids_tensor] = self.robot.data.root_state_w[env_ids_tensor, 0:3]
+        self._init_root_quat[env_ids_tensor] = self.robot.data.root_state_w[env_ids_tensor, 3:7]
 
         self._replay_reference(env_ids_tensor)
 
@@ -222,9 +205,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         """Step the environment and update reference data."""
 
         # Get next reference data point (advance=True to move to next step)
-        self.current_reference: TensorDict = self.trajectory_manager.sample(
-            advance=True
-        )
+        self.current_reference: TensorDict = self.trajectory_manager.sample(advance=True)
 
         if self.replay_only:
             self._replay_reference()
