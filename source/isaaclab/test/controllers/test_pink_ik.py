@@ -4,7 +4,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 """Launch Isaac Sim Simulator first."""
-# Import pinocchio in the main script to force the use of the dependencies installed by IsaacLab and not the one installed by Isaac Sim
+
+# Import pinocchio in the main script to force the use of the dependencies
+# installed by IsaacLab and not the one installed by Isaac Sim
 # pinocchio is required by the Pink IK controller
 import sys
 
@@ -19,25 +21,20 @@ simulation_app = AppLauncher(headless=True).app
 """Rest everything follows."""
 
 import contextlib
-import gymnasium as gym
 import json
-import numpy as np
-import pytest
 import re
-import torch
 from pathlib import Path
 
-import omni.usd
-
+import gymnasium as gym
+import numpy as np
+import pytest
+import torch
 from pink.configuration import Configuration
 from pink.tasks import FrameTask
 
-from isaaclab.utils.math import (
-    axis_angle_from_quat,
-    matrix_from_quat,
-    quat_from_matrix,
-    quat_inv,
-)
+import omni.usd
+
+from isaaclab.utils.math import axis_angle_from_quat, matrix_from_quat, quat_from_matrix, quat_inv
 
 import isaaclab_tasks  # noqa: F401
 import isaaclab_tasks.manager_based.locomanipulation.pick_place  # noqa: F401
@@ -116,9 +113,9 @@ def env_and_cfg(request):
     # Try to infer which is left and which is right
     left_candidates = [f for f in frames if "left" in f.lower()]
     right_candidates = [f for f in frames if "right" in f.lower()]
-    assert (
-        len(left_candidates) == 1 and len(right_candidates) == 1
-    ), f"Could not uniquely identify left/right frames from: {frames}"
+    assert len(left_candidates) == 1 and len(right_candidates) == 1, (
+        f"Could not uniquely identify left/right frames from: {frames}"
+    )
     left_eef_urdf_link_name = left_candidates[0]
     right_eef_urdf_link_name = right_candidates[0]
 
@@ -233,7 +230,6 @@ def run_movement_test(test_setup, test_config, test_cfg, aux_function=None):
     # simulate environment -- run everything in inference mode
     with contextlib.suppress(KeyboardInterrupt) and torch.inference_mode():
         while simulation_app.is_running() and not simulation_app.is_exiting():
-
             num_runs += 1
             setpoint_poses = left_hand_roll_link_pose + right_hand_roll_link_pose
             actions = setpoint_poses + [0.0] * pink_ik_test_config["num_joints_in_robot_hands"]

@@ -18,6 +18,7 @@ simulation_app = AppLauncher(headless=True).app
 """Rest everything follows."""
 
 import ctypes
+
 import pytest
 import torch
 
@@ -977,50 +978,38 @@ def test_external_force_buffer(sim, num_articulations, device):
     # perform simulation
     for step in range(5):
         # initiate force tensor
-        external_wrench_b = torch.zeros(
-            articulation.num_instances, len(body_ids), 6, device=sim.device
-        )
-        external_wrench_positions_b = torch.zeros(
-            articulation.num_instances, len(body_ids), 3, device=sim.device
-        )
+        external_wrench_b = torch.zeros(articulation.num_instances, len(body_ids), 6, device=sim.device)
 
         if step == 0 or step == 3:
             # set a non-zero force
             force = 1
-            position = 1
         else:
             # set a zero force
             force = 0
-            position = 0
 
         # set force value
         external_wrench_b[:, :, 0] = force
         external_wrench_b[:, :, 3] = force
-        external_wrench_positions_b[:, :, 0] = position
 
         # apply force
-        if step == 0 or step == 3:
-            articulation.set_external_force_and_torque(
-                external_wrench_b[..., :3],
-                external_wrench_b[..., 3:],
-                body_ids=body_ids,
-                positions=external_wrench_positions_b,
-                is_global=True,
-            )
-        else:
-            articulation.set_external_force_and_torque(
-                external_wrench_b[..., :3],
-                external_wrench_b[..., 3:],
-                body_ids=body_ids,
-                is_global=False,
-            )
+        # TODO: Replace with wrench composer once the deprecation is complete
+        articulation.set_external_force_and_torque(
+            external_wrench_b[..., :3],
+            external_wrench_b[..., 3:],
+            body_ids=body_ids,
+        )
 
         # check if the articulation's force and torque buffers are correctly updated
         for i in range(num_articulations):
-            assert articulation._external_force_b[i, 0, 0].item() == force
-            assert articulation._external_torque_b[i, 0, 0].item() == force
-            assert articulation._external_wrench_positions_b[i, 0, 0].item() == position
-            assert articulation._use_global_wrench_frame == (step == 0 or step == 3)
+            assert articulation.permanent_wrench_composer.composed_force_as_torch[i, 0, 0].item() == force
+            assert articulation.permanent_wrench_composer.composed_torque_as_torch[i, 0, 0].item() == force
+
+        # Check if the instantaneous wrench is correctly added to the permanent wrench
+        articulation.instantaneous_wrench_composer.add_forces_and_torques(
+            forces=external_wrench_b[..., :3],
+            torques=external_wrench_b[..., 3:],
+            body_ids=body_ids,
+        )
 
         # apply action to the articulation
         articulation.set_joint_position_target(
@@ -1081,15 +1070,14 @@ def test_external_force_on_single_body(sim, num_articulations, device):
         # reset articulation
         articulation.reset()
         # apply force
+        # TODO: Replace with wrench composer once the deprecation is complete
         articulation.set_external_force_and_torque(
             external_wrench_b[..., :3], external_wrench_b[..., 3:], body_ids=body_ids
         )
         # perform simulation
         for _ in range(100):
             # apply action to the articulation
-            articulation.set_joint_position_target(
-                articulation.data.default_joint_pos.clone()
-            )
+            articulation.set_joint_position_target(articulation.data.default_joint_pos.clone())
             articulation.write_data_to_sim()
             # perform step
             sim.step()
@@ -1106,9 +1094,11 @@ def test_external_force_on_single_body_at_position(sim, num_articulations, devic
     """Test application of external force on the base of the articulation at a given position.
 
     This test verifies that:
-    1. External forces can be applied to specific bodies
-    2. The forces affect the articulation's motion correctly
-    3. The articulation responds to the forces as expected
+    1. External forces can be applied to specific bodies at a given position
+    2. External forces can be applied to specific bodies in the global frame
+    3. External forces are calculated and composed correctly
+    4. The forces affect the articulation's motion correctly
+    5. The articulation responds to the forces as expected
 
     Args:
         sim: The simulation fixture
@@ -1132,11 +1122,18 @@ def test_external_force_on_single_body_at_position(sim, num_articulations, devic
         articulation.num_instances, len(body_ids), 3, device=sim.device
     )
     external_wrench_positions_b[..., 0] = 0.0
+    external_wrench_b = torch.zeros(articulation.num_instances, len(body_ids), 6, device=sim.device)
+    external_wrench_b[..., 2] = 500.0
+    external_wrench_positions_b = torch.zeros(articulation.num_instances, len(body_ids), 3, device=sim.device)
     external_wrench_positions_b[..., 1] = 1.0
-    external_wrench_positions_b[..., 2] = 0.0
+
+    desired_force = torch.zeros(articulation.num_instances, len(body_ids), 3, device=sim.device)
+    desired_force[..., 2] = 1000.0
+    desired_torque = torch.zeros(articulation.num_instances, len(body_ids), 3, device=sim.device)
+    desired_torque[..., 0] = 1000.0
 
     # Now we are ready!
-    for _ in range(5):
+    for i in range(5):
         # reset root state
         root_state = articulation.data.default_root_state.clone()
 
@@ -1151,92 +1148,38 @@ def test_external_force_on_single_body_at_position(sim, num_articulations, devic
         # reset articulation
         articulation.reset()
         # apply force
-        articulation.set_external_force_and_torque(
-            external_wrench_b[..., :3],
-            external_wrench_b[..., 3:],
-            body_ids=body_ids,
+        is_global = False
+
+        if i % 2 == 0:
+            body_com_pos_w = articulation.data.body_com_pos_w[:, body_ids, :3]
+            # is_global = True
+            external_wrench_positions_b[..., 0] = 0.0
+            external_wrench_positions_b[..., 1] = 1.0
+            external_wrench_positions_b[..., 2] = 0.0
+            external_wrench_positions_b += body_com_pos_w
+        else:
+            external_wrench_positions_b[..., 0] = 0.0
+            external_wrench_positions_b[..., 1] = 1.0
+            external_wrench_positions_b[..., 2] = 0.0
+
+        articulation.permanent_wrench_composer.set_forces_and_torques(
+            forces=external_wrench_b[..., :3],
+            torques=external_wrench_b[..., 3:],
             positions=external_wrench_positions_b,
+            body_ids=body_ids,
+            is_global=is_global,
+        )
+        articulation.permanent_wrench_composer.add_forces_and_torques(
+            forces=external_wrench_b[..., :3],
+            torques=external_wrench_b[..., 3:],
+            positions=external_wrench_positions_b,
+            body_ids=body_ids,
+            is_global=is_global,
         )
         # perform simulation
         for _ in range(100):
             # apply action to the articulation
-            articulation.set_joint_position_target(
-                articulation.data.default_joint_pos.clone()
-            )
-            articulation.write_data_to_sim()
-            # perform step
-            sim.step()
-            # update buffers
-            articulation.update(sim.cfg.dt)
-        # check condition that the articulations have fallen down
-        for i in range(num_articulations):
-            assert articulation.data.root_pos_w[i, 2].item() < 0.2
-
-
-@pytest.mark.parametrize("num_articulations", [1, 2])
-@pytest.mark.parametrize("device", ["cuda:0", "cpu"])
-@pytest.mark.isaacsim_ci
-def test_external_force_on_single_body_at_position(sim, num_articulations, device):
-    """Test application of external force on the base of the articulation at a given position.
-
-    This test verifies that:
-    1. External forces can be applied to specific bodies
-    2. The forces affect the articulation's motion correctly
-    3. The articulation responds to the forces as expected
-
-    Args:
-        sim: The simulation fixture
-        num_articulations: Number of articulations to test
-    """
-    articulation_cfg = generate_articulation_cfg(articulation_type="anymal")
-    articulation, _ = generate_articulation(
-        articulation_cfg, num_articulations, device=sim.device
-    )
-    # Play the simulator
-    sim.reset()
-
-    # Find bodies to apply the force
-    body_ids, _ = articulation.find_bodies("base")
-    # Sample a large force
-    external_wrench_b = torch.zeros(
-        articulation.num_instances, len(body_ids), 6, device=sim.device
-    )
-    external_wrench_b[..., 2] = 1000.0
-    external_wrench_positions_b = torch.zeros(
-        articulation.num_instances, len(body_ids), 3, device=sim.device
-    )
-    external_wrench_positions_b[..., 0] = 0.0
-    external_wrench_positions_b[..., 1] = 1.0
-    external_wrench_positions_b[..., 2] = 0.0
-
-    # Now we are ready!
-    for _ in range(5):
-        # reset root state
-        root_state = articulation.data.default_root_state.clone()
-
-        articulation.write_root_pose_to_sim(root_state[:, :7])
-        articulation.write_root_velocity_to_sim(root_state[:, 7:])
-        # reset dof state
-        joint_pos, joint_vel = (
-            articulation.data.default_joint_pos,
-            articulation.data.default_joint_vel,
-        )
-        articulation.write_joint_state_to_sim(joint_pos, joint_vel)
-        # reset articulation
-        articulation.reset()
-        # apply force
-        articulation.set_external_force_and_torque(
-            external_wrench_b[..., :3],
-            external_wrench_b[..., 3:],
-            body_ids=body_ids,
-            positions=external_wrench_positions_b,
-        )
-        # perform simulation
-        for _ in range(100):
-            # apply action to the articulation
-            articulation.set_joint_position_target(
-                articulation.data.default_joint_pos.clone()
-            )
+            articulation.set_joint_position_target(articulation.data.default_joint_pos.clone())
             articulation.write_data_to_sim()
             # perform step
             sim.step()
@@ -1296,6 +1239,7 @@ def test_external_force_on_multiple_bodies(sim, num_articulations, device):
         # reset articulation
         articulation.reset()
         # apply force
+        # TODO: Replace with wrench composer once the deprecation is complete
         articulation.set_external_force_and_torque(
             external_wrench_b[..., :3], external_wrench_b[..., 3:], body_ids=body_ids
         )
@@ -1322,18 +1266,18 @@ def test_external_force_on_multiple_bodies_at_position(sim, num_articulations, d
     """Test application of external force on the legs of the articulation at a given position.
 
     This test verifies that:
-    1. External forces can be applied to multiple bodies
-    2. The forces affect the articulation's motion correctly
-    3. The articulation responds to the forces as expected
+    1. External forces can be applied to multiple bodies at a given position
+    2. External forces can be applied to multiple bodies in the global frame
+    3. External forces are calculated and composed correctly
+    4. The forces affect the articulation's motion correctly
+    5. The articulation responds to the forces as expected
 
     Args:
         sim: The simulation fixture
         num_articulations: Number of articulations to test
     """
     articulation_cfg = generate_articulation_cfg(articulation_type="anymal")
-    articulation, _ = generate_articulation(
-        articulation_cfg, num_articulations, device=sim.device
-    )
+    articulation, _ = generate_articulation(articulation_cfg, num_articulations, device=sim.device)
 
     # Play the simulator
     sim.reset()
@@ -1341,91 +1285,18 @@ def test_external_force_on_multiple_bodies_at_position(sim, num_articulations, d
     # Find bodies to apply the force
     body_ids, _ = articulation.find_bodies(".*_SHANK")
     # Sample a large force
-    external_wrench_b = torch.zeros(
-        articulation.num_instances, len(body_ids), 6, device=sim.device
-    )
-    external_wrench_b[..., 1] = 100.0
-
-    # Now we are ready!
-    for _ in range(5):
-        # reset root state
-        articulation.write_root_pose_to_sim(
-            articulation.data.default_root_state.clone()[:, :7]
-        )
-        articulation.write_root_velocity_to_sim(
-            articulation.data.default_root_state.clone()[:, 7:]
-        )
-        # reset dof state
-        joint_pos, joint_vel = (
-            articulation.data.default_joint_pos,
-            articulation.data.default_joint_vel,
-        )
-        articulation.write_joint_state_to_sim(joint_pos, joint_vel)
-        # reset articulation
-        articulation.reset()
-        # apply force
-        articulation.set_external_force_and_torque(
-            external_wrench_b[..., :3],
-            external_wrench_b[..., 3:],
-            body_ids=body_ids,
-            positions=external_wrench_positions_b,
-        )
-        # perform simulation
-        for _ in range(100):
-            # apply action to the articulation
-            articulation.set_joint_position_target(
-                articulation.data.default_joint_pos.clone()
-            )
-            articulation.write_data_to_sim()
-            # perform step
-            sim.step()
-            # update buffers
-            articulation.update(sim.cfg.dt)
-        # check condition
-        for i in range(num_articulations):
-            # since there is a moment applied on the articulation, the articulation should rotate
-            assert torch.abs(articulation.data.root_ang_vel_w[i, 2]).item() > 0.1
-
-
-@pytest.mark.parametrize("num_articulations", [1, 2])
-@pytest.mark.parametrize("device", ["cuda:0", "cpu"])
-@pytest.mark.isaacsim_ci
-def test_external_force_on_multiple_bodies_at_position(sim, num_articulations, device):
-    """Test application of external force on the legs of the articulation at a given position.
-
-    This test verifies that:
-    1. External forces can be applied to multiple bodies
-    2. The forces affect the articulation's motion correctly
-    3. The articulation responds to the forces as expected
-
-    Args:
-        sim: The simulation fixture
-        num_articulations: Number of articulations to test
-    """
-    articulation_cfg = generate_articulation_cfg(articulation_type="anymal")
-    articulation, _ = generate_articulation(
-        articulation_cfg, num_articulations, device=sim.device
-    )
-
-    # Play the simulator
-    sim.reset()
-
-    # Find bodies to apply the force
-    body_ids, _ = articulation.find_bodies(".*_SHANK")
-    # Sample a large force
-    external_wrench_b = torch.zeros(
-        articulation.num_instances, len(body_ids), 6, device=sim.device
-    )
-    external_wrench_b[..., 2] = 1000.0
-    external_wrench_positions_b = torch.zeros(
-        articulation.num_instances, len(body_ids), 3, device=sim.device
-    )
-    external_wrench_positions_b[..., 0] = 0.0
+    external_wrench_b = torch.zeros(articulation.num_instances, len(body_ids), 6, device=sim.device)
+    external_wrench_b[..., 2] = 500.0
+    external_wrench_positions_b = torch.zeros(articulation.num_instances, len(body_ids), 3, device=sim.device)
     external_wrench_positions_b[..., 1] = 1.0
-    external_wrench_positions_b[..., 2] = 0.0
+
+    desired_force = torch.zeros(articulation.num_instances, len(body_ids), 3, device=sim.device)
+    desired_force[..., 2] = 1000.0
+    desired_torque = torch.zeros(articulation.num_instances, len(body_ids), 3, device=sim.device)
+    desired_torque[..., 0] = 1000.0
 
     # Now we are ready!
-    for _ in range(5):
+    for i in range(5):
         # reset root state
         articulation.write_root_pose_to_sim(
             articulation.data.default_root_state.clone()[:, :7]
@@ -1441,12 +1312,34 @@ def test_external_force_on_multiple_bodies_at_position(sim, num_articulations, d
         articulation.write_joint_state_to_sim(joint_pos, joint_vel)
         # reset articulation
         articulation.reset()
+
+        is_global = False
+        if i % 2 == 0:
+            body_com_pos_w = articulation.data.body_com_pos_w[:, body_ids, :3]
+            is_global = True
+            external_wrench_positions_b[..., 0] = 0.0
+            external_wrench_positions_b[..., 1] = 1.0
+            external_wrench_positions_b[..., 2] = 0.0
+            external_wrench_positions_b += body_com_pos_w
+        else:
+            external_wrench_positions_b[..., 0] = 0.0
+            external_wrench_positions_b[..., 1] = 1.0
+            external_wrench_positions_b[..., 2] = 0.0
+
         # apply force
-        articulation.set_external_force_and_torque(
-            external_wrench_b[..., :3],
-            external_wrench_b[..., 3:],
-            body_ids=body_ids,
+        articulation.permanent_wrench_composer.set_forces_and_torques(
+            forces=external_wrench_b[..., :3],
+            torques=external_wrench_b[..., 3:],
             positions=external_wrench_positions_b,
+            body_ids=body_ids,
+            is_global=is_global,
+        )
+        articulation.permanent_wrench_composer.add_forces_and_torques(
+            forces=external_wrench_b[..., :3],
+            torques=external_wrench_b[..., 3:],
+            positions=external_wrench_positions_b,
+            body_ids=body_ids,
+            is_global=is_global,
         )
         # perform simulation
         for _ in range(100):
@@ -1894,9 +1787,35 @@ def test_reset(sim, num_articulations, device):
     articulation.reset()
 
     # Reset should zero external forces and torques
-    assert not articulation.has_external_wrench
-    assert torch.count_nonzero(articulation._external_force_b) == 0
-    assert torch.count_nonzero(articulation._external_torque_b) == 0
+    assert not articulation._instantaneous_wrench_composer.active
+    assert not articulation._permanent_wrench_composer.active
+    assert torch.count_nonzero(articulation._instantaneous_wrench_composer.composed_force_as_torch) == 0
+    assert torch.count_nonzero(articulation._instantaneous_wrench_composer.composed_torque_as_torch) == 0
+    assert torch.count_nonzero(articulation._permanent_wrench_composer.composed_force_as_torch) == 0
+    assert torch.count_nonzero(articulation._permanent_wrench_composer.composed_torque_as_torch) == 0
+
+    if num_articulations > 1:
+        num_bodies = articulation.num_bodies
+        # TODO: Replace with wrench composer once the deprecation is complete
+        articulation.set_external_force_and_torque(
+            forces=torch.ones((num_articulations, num_bodies, 3), device=device),
+            torques=torch.ones((num_articulations, num_bodies, 3), device=device),
+        )
+        articulation.instantaneous_wrench_composer.add_forces_and_torques(
+            forces=torch.ones((num_articulations, num_bodies, 3), device=device),
+            torques=torch.ones((num_articulations, num_bodies, 3), device=device),
+        )
+        articulation.reset(env_ids=torch.tensor([0], device=device))
+        assert articulation._instantaneous_wrench_composer.active
+        assert articulation._permanent_wrench_composer.active
+        assert (
+            torch.count_nonzero(articulation._instantaneous_wrench_composer.composed_force_as_torch) == num_bodies * 3
+        )
+        assert (
+            torch.count_nonzero(articulation._instantaneous_wrench_composer.composed_torque_as_torch) == num_bodies * 3
+        )
+        assert torch.count_nonzero(articulation._permanent_wrench_composer.composed_force_as_torch) == num_bodies * 3
+        assert torch.count_nonzero(articulation._permanent_wrench_composer.composed_torque_as_torch) == num_bodies * 3
 
 
 @pytest.mark.parametrize("num_articulations", [1, 2])
@@ -2204,9 +2123,8 @@ def test_body_incoming_joint_wrench_b_single_joint(sim, num_articulations, devic
     articulation.set_joint_position_target(joint_pos)
     articulation.write_data_to_sim()
     for _ in range(50):
-        articulation.set_external_force_and_torque(
-            forces=external_force_vector_b, torques=external_torque_vector_b
-        )
+        # TODO: Replace with wrench composer once the deprecation is complete
+        articulation.set_external_force_and_torque(forces=external_force_vector_b, torques=external_torque_vector_b)
         articulation.write_data_to_sim()
         # perform step
         sim.step()

@@ -7,9 +7,11 @@ from __future__ import annotations
 
 import logging
 import re
-import torch
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
+
+import torch
+import warp as wp
 
 import omni.physics.tensors.impl.api as physx
 from isaacsim.core.simulation_manager import SimulationManager
@@ -18,6 +20,7 @@ from pxr import UsdPhysics
 import isaaclab.sim as sim_utils
 import isaaclab.utils.math as math_utils
 import isaaclab.utils.string as string_utils
+from isaaclab.utils.wrench_composer import WrenchComposer
 
 from ..asset_base import AssetBase
 from .rigid_object_collection_data import RigidObjectCollectionData
@@ -87,9 +90,7 @@ class RigidObjectCollection(AssetBase):
             # check that spawn was successful
             matching_prims = sim_utils.find_matching_prims(rigid_object_cfg.prim_path)
             if len(matching_prims) == 0:
-                raise RuntimeError(
-                    f"Could not find prim with path {rigid_object_cfg.prim_path}."
-                )
+                raise RuntimeError(f"Could not find prim with path {rigid_object_cfg.prim_path}.")
             self._prim_paths.append(rigid_object_cfg.prim_path)
         # stores object names
         self._object_names_list = []
@@ -133,6 +134,27 @@ class RigidObjectCollection(AssetBase):
         """
         return self._root_physx_view  # type: ignore
 
+    @property
+    def instantaneous_wrench_composer(self) -> WrenchComposer:
+        """Instantaneous wrench composer.
+
+        Returns a :class:`~isaaclab.utils.wrench_composer.WrenchComposer` instance. Wrenches added or set to this wrench
+        composer are only valid for the current simulation step. At the end of the simulation step, the wrenches set
+        to this object are discarded. This is useful to apply forces that change all the time, things like drag forces
+        for instance.
+        """
+        return self._instantaneous_wrench_composer
+
+    @property
+    def permanent_wrench_composer(self) -> WrenchComposer:
+        """Permanent wrench composer.
+
+        Returns a :class:`~isaaclab.utils.wrench_composer.WrenchComposer` instance. Wrenches added or set to this wrench
+        composer are persistent and are applied to the simulation at every step. This is useful to apply forces that
+        are constant over a period of time, things like the thrust of a motor for instance.
+        """
+        return self._permanent_wrench_composer
+
     """
     Operations.
     """
@@ -154,9 +176,8 @@ class RigidObjectCollection(AssetBase):
         if object_ids is None:
             object_ids = self._ALL_OBJ_INDICES
         # reset external wrench
-        self._external_force_b[env_ids[:, None], object_ids] = 0.0
-        self._external_torque_b[env_ids[:, None], object_ids] = 0.0
-        self._external_wrench_positions_b[env_ids[:, None], object_ids] = 0.0
+        self._instantaneous_wrench_composer.reset(env_ids)
+        self._permanent_wrench_composer.reset(env_ids)
 
     def write_data_to_sim(self):
         """Write external wrench to the simulation.
@@ -166,23 +187,33 @@ class RigidObjectCollection(AssetBase):
             This ensures that the external wrench is applied at every simulation step.
         """
         # write external wrench
-        if self.has_external_wrench:
-            if self.uses_external_wrench_positions:
-                self.root_physx_view.apply_forces_and_torques_at_position(
-                    force_data=self.reshape_data_to_view(self._external_force_b),
-                    torque_data=self.reshape_data_to_view(self._external_torque_b),
-                    position_data=self.reshape_data_to_view(self._external_wrench_positions_b),
-                    indices=self._env_obj_ids_to_view_ids(self._ALL_ENV_INDICES, self._ALL_OBJ_INDICES),
-                    is_global=self._use_global_wrench_frame,
+        if self._instantaneous_wrench_composer.active or self._permanent_wrench_composer.active:
+            if self._instantaneous_wrench_composer.active:
+                # Compose instantaneous wrench with permanent wrench
+                self._instantaneous_wrench_composer.add_forces_and_torques(
+                    forces=self._permanent_wrench_composer.composed_force,
+                    torques=self._permanent_wrench_composer.composed_torque,
+                    body_ids=self._ALL_OBJ_INDICES_WP,
+                    env_ids=self._ALL_ENV_INDICES_WP,
                 )
-            else:
+                # Apply both instantaneous and permanent wrench to the simulation
                 self.root_physx_view.apply_forces_and_torques_at_position(
-                    force_data=self.reshape_data_to_view(self._external_force_b),
-                    torque_data=self.reshape_data_to_view(self._external_torque_b),
+                    force_data=self.reshape_data_to_view(self._instantaneous_wrench_composer.composed_force_as_torch),
+                    torque_data=self.reshape_data_to_view(self._instantaneous_wrench_composer.composed_torque_as_torch),
                     position_data=None,
                     indices=self._env_obj_ids_to_view_ids(self._ALL_ENV_INDICES, self._ALL_OBJ_INDICES),
-                    is_global=self._use_global_wrench_frame,
+                    is_global=False,
                 )
+            else:
+                # Apply permanent wrench to the simulation
+                self.root_physx_view.apply_forces_and_torques_at_position(
+                    force_data=self.reshape_data_to_view(self._permanent_wrench_composer.composed_force_as_torch),
+                    torque_data=self.reshape_data_to_view(self._permanent_wrench_composer.composed_torque_as_torch),
+                    position_data=None,
+                    indices=self._env_obj_ids_to_view_ids(self._ALL_ENV_INDICES, self._ALL_OBJ_INDICES),
+                    is_global=False,
+                )
+        self._instantaneous_wrench_composer.reset()
 
     def update(self, dt: float):
         self._data.update(dt)
@@ -206,9 +237,7 @@ class RigidObjectCollection(AssetBase):
         Returns:
             A tuple containing the object indices and names.
         """
-        obj_ids, obj_names = string_utils.resolve_matching_names(
-            name_keys, self.object_names, preserve_order
-        )
+        obj_ids, obj_names = string_utils.resolve_matching_names(name_keys, self.object_names, preserve_order)
         return torch.tensor(obj_ids, device=self.device), obj_names
 
     """
@@ -233,12 +262,8 @@ class RigidObjectCollection(AssetBase):
         """
 
         # set into simulation
-        self.write_object_pose_to_sim(
-            object_state[..., :7], env_ids=env_ids, object_ids=object_ids
-        )
-        self.write_object_velocity_to_sim(
-            object_state[..., 7:], env_ids=env_ids, object_ids=object_ids
-        )
+        self.write_object_pose_to_sim(object_state[..., :7], env_ids=env_ids, object_ids=object_ids)
+        self.write_object_velocity_to_sim(object_state[..., 7:], env_ids=env_ids, object_ids=object_ids)
 
     def write_object_com_state_to_sim(
         self,
@@ -257,12 +282,8 @@ class RigidObjectCollection(AssetBase):
             object_ids: Object indices. If None, then all indices are used.
         """
         # set into simulation
-        self.write_object_com_pose_to_sim(
-            object_state[..., :7], env_ids=env_ids, object_ids=object_ids
-        )
-        self.write_object_com_velocity_to_sim(
-            object_state[..., 7:], env_ids=env_ids, object_ids=object_ids
-        )
+        self.write_object_com_pose_to_sim(object_state[..., :7], env_ids=env_ids, object_ids=object_ids)
+        self.write_object_com_velocity_to_sim(object_state[..., 7:], env_ids=env_ids, object_ids=object_ids)
 
     def write_object_link_state_to_sim(
         self,
@@ -281,12 +302,8 @@ class RigidObjectCollection(AssetBase):
             object_ids: Object indices. If None, then all indices are used.
         """
         # set into simulation
-        self.write_object_link_pose_to_sim(
-            object_state[..., :7], env_ids=env_ids, object_ids=object_ids
-        )
-        self.write_object_link_velocity_to_sim(
-            object_state[..., 7:], env_ids=env_ids, object_ids=object_ids
-        )
+        self.write_object_link_pose_to_sim(object_state[..., :7], env_ids=env_ids, object_ids=object_ids)
+        self.write_object_link_velocity_to_sim(object_state[..., 7:], env_ids=env_ids, object_ids=object_ids)
 
     def write_object_pose_to_sim(
         self,
@@ -312,17 +329,13 @@ class RigidObjectCollection(AssetBase):
             object_ids = self._ALL_OBJ_INDICES
         # note: we need to do this here since tensors are not set into simulation until step.
         # set into internal buffers
-        self._data.object_state_w[env_ids[:, None], object_ids, :7] = (
-            object_pose.clone()
-        )
+        self._data.object_state_w[env_ids[:, None], object_ids, :7] = object_pose.clone()
         # convert the quaternion from wxyz to xyzw
         poses_xyzw = self._data.object_state_w[..., :7].clone()
         poses_xyzw[..., 3:] = math_utils.convert_quat(poses_xyzw[..., 3:], to="xyzw")
         # set into simulation
         view_ids = self._env_obj_ids_to_view_ids(env_ids, object_ids)
-        self.root_physx_view.set_transforms(
-            self.reshape_data_to_view(poses_xyzw), indices=view_ids
-        )
+        self.root_physx_view.set_transforms(self.reshape_data_to_view(poses_xyzw), indices=view_ids)
 
     def write_object_link_pose_to_sim(
         self,
@@ -374,9 +387,7 @@ class RigidObjectCollection(AssetBase):
 
         # set into simulation
         view_ids = self._env_obj_ids_to_view_ids(env_ids, object_ids)
-        self.root_physx_view.set_transforms(
-            self.reshape_data_to_view(poses_xyzw), indices=view_ids
-        )
+        self.root_physx_view.set_transforms(self.reshape_data_to_view(poses_xyzw), indices=view_ids)
 
     def write_object_com_pose_to_sim(
         self,
@@ -421,9 +432,7 @@ class RigidObjectCollection(AssetBase):
 
         # write transformed pose in link frame to sim
         object_link_pose = torch.cat((object_link_pos, object_link_quat), dim=-1)
-        self.write_object_link_pose_to_sim(
-            object_pose=object_link_pose, env_ids=env_ids, object_ids=object_ids
-        )
+        self.write_object_link_pose_to_sim(object_pose=object_link_pose, env_ids=env_ids, object_ids=object_ids)
 
     def write_object_velocity_to_sim(
         self,
@@ -446,9 +455,7 @@ class RigidObjectCollection(AssetBase):
         if object_ids is None:
             object_ids = self._ALL_OBJ_INDICES
 
-        self._data.object_state_w[env_ids[:, None], object_ids, 7:] = (
-            object_velocity.clone()
-        )
+        self._data.object_state_w[env_ids[:, None], object_ids, 7:] = object_velocity.clone()
         self._data.object_acc_w[env_ids[:, None], object_ids] = 0.0
 
         # set into simulation
@@ -571,18 +578,6 @@ class RigidObjectCollection(AssetBase):
                 # example of disabling external wrench
                 asset.set_external_force_and_torque(forces=torch.zeros(0, 0, 3), torques=torch.zeros(0, 0, 3))
 
-        .. caution::
-            If the function is called consecutively with and with different values for ``is_global``, then the
-            all the external wrenches will be applied in the frame specified by the last call.
-
-            .. code-block:: python
-
-                # example of setting external wrench in the global frame
-                asset.set_external_force_and_torque(forces=torch.ones(1, 1, 3), env_ids=[0], is_global=True)
-                # example of setting external wrench in the link frame
-                asset.set_external_force_and_torque(forces=torch.ones(1, 1, 3), env_ids=[1], is_global=False)
-                # Both environments will have the external wrenches applied in the link frame
-
         .. note::
             This function does not apply the external wrench to the simulation. It only fills the buffers with
             the desired values. To apply the external wrench, call the :meth:`write_data_to_sim` function
@@ -597,37 +592,43 @@ class RigidObjectCollection(AssetBase):
             is_global: Whether to apply the external wrench in the global frame. Defaults to False. If set to False,
                 the external wrench is applied in the link frame of the bodies.
         """
-        if forces.any() or torques.any():
-            self.has_external_wrench = True
-        else:
-            self.has_external_wrench = False
-            # to be safe, explicitly set value to zero
-            forces = torques = 0.0
+        logger.warning(
+            "The function 'set_external_force_and_torque' will be deprecated in a future release. Please"
+            " use 'permanent_wrench_composer.set_forces_and_torques' instead."
+        )
+
+        if forces is None and torques is None:
+            logger.warning("No forces or torques provided. No permanent external wrench will be applied.")
 
         # resolve all indices
         # -- env_ids
         if env_ids is None:
-            env_ids = self._ALL_ENV_INDICES
+            env_ids = self._ALL_ENV_INDICES_WP
+        elif not isinstance(env_ids, torch.Tensor):
+            env_ids = wp.array(env_ids, dtype=wp.int32, device=self.device)
+        else:
+            env_ids = wp.from_torch(env_ids.to(torch.int32), dtype=wp.int32)
         # -- object_ids
         if object_ids is None:
-            object_ids = self._ALL_OBJ_INDICES
-        # set into internal buffers
-        self._external_force_b[env_ids[:, None], object_ids] = forces
-        self._external_torque_b[env_ids[:, None], object_ids] = torques
-
-        if is_global != self._use_global_wrench_frame:
-            logger.warning(
-                f"The external wrench frame has been changed from {self._use_global_wrench_frame} to {is_global}. This"
-                " may lead to unexpected behavior."
+            object_ids = self._ALL_OBJ_INDICES_WP
+        elif isinstance(object_ids, slice):
+            object_ids = wp.from_torch(
+                torch.arange(self.num_objects, dtype=torch.int32, device=self.device)[object_ids], dtype=wp.int32
             )
-            self._use_global_wrench_frame = is_global
-
-        if positions is not None:
-            self.uses_external_wrench_positions = True
-            self._external_wrench_positions_b[env_ids[:, None], object_ids] = positions
+        elif not isinstance(object_ids, torch.Tensor):
+            object_ids = wp.array(object_ids, dtype=wp.int32, device=self.device)
         else:
-            if self.uses_external_wrench_positions:
-                self._external_wrench_positions_b[env_ids[:, None], object_ids] = 0.0
+            object_ids = wp.from_torch(object_ids.to(torch.int32), dtype=wp.int32)
+
+        # Write to wrench composer
+        self._permanent_wrench_composer.set_forces_and_torques(
+            forces=wp.from_torch(forces, dtype=wp.vec3f) if forces is not None else None,
+            torques=wp.from_torch(torques, dtype=wp.vec3f) if torques is not None else None,
+            positions=wp.from_torch(positions, dtype=wp.vec3f) if positions is not None else None,
+            body_ids=object_ids,
+            env_ids=env_ids,
+            is_global=is_global,
+        )
 
     """
     Helper functions.
@@ -668,13 +669,9 @@ class RigidObjectCollection(AssetBase):
         root_prim_path_exprs = []
         for name, rigid_object_cfg in self.cfg.rigid_objects.items():
             # obtain the first prim in the regex expression (all others are assumed to be a copy of this)
-            template_prim = sim_utils.find_first_matching_prim(
-                rigid_object_cfg.prim_path
-            )
+            template_prim = sim_utils.find_first_matching_prim(rigid_object_cfg.prim_path)
             if template_prim is None:
-                raise RuntimeError(
-                    f"Failed to find prim for expression: '{rigid_object_cfg.prim_path}'."
-                )
+                raise RuntimeError(f"Failed to find prim for expression: '{rigid_object_cfg.prim_path}'.")
             template_prim_path = template_prim.GetPath().pathString
 
             # find rigid root prims
@@ -702,11 +699,7 @@ class RigidObjectCollection(AssetBase):
                 traverse_instance_prims=False,
             )
             if len(articulation_prims) != 0:
-                if (
-                    articulation_prims[0]
-                    .GetAttribute("physxArticulation:articulationEnabled")
-                    .Get()
-                ):
+                if articulation_prims[0].GetAttribute("physxArticulation:articulationEnabled").Get():
                     raise RuntimeError(
                         f"Found an articulation root when resolving '{rigid_object_cfg.prim_path}' in the rigid object"
                         f" collection. These are located at: '{articulation_prims}' under '{template_prim_path}'."
@@ -716,23 +709,17 @@ class RigidObjectCollection(AssetBase):
 
             # resolve root prim back into regex expression
             root_prim_path = root_prims[0].GetPath().pathString
-            root_prim_path_expr = (
-                rigid_object_cfg.prim_path + root_prim_path[len(template_prim_path) :]
-            )
+            root_prim_path_expr = rigid_object_cfg.prim_path + root_prim_path[len(template_prim_path) :]
             root_prim_path_exprs.append(root_prim_path_expr.replace(".*", "*"))
 
             self._object_names_list.append(name)
 
         # -- object view
-        self._root_physx_view = self._physics_sim_view.create_rigid_body_view(
-            root_prim_path_exprs
-        )
+        self._root_physx_view = self._physics_sim_view.create_rigid_body_view(root_prim_path_exprs)
 
         # check if the rigid body was created
         if self._root_physx_view._backend is None:
-            raise RuntimeError(
-                "Failed to create rigid body collection. Please check PhysX logs."
-            )
+            raise RuntimeError("Failed to create rigid body collection. Please check PhysX logs.")
 
         # log information about the rigid body
         logger.info(f"Number of instances: {self.num_instances}")
@@ -740,9 +727,7 @@ class RigidObjectCollection(AssetBase):
         logger.info(f"Object names: {self.object_names}")
 
         # container for data access
-        self._data = RigidObjectCollectionData(
-            self.root_physx_view, self.num_objects, self.device
-        )
+        self._data = RigidObjectCollectionData(self.root_physx_view, self.num_objects, self.device)
 
         # create buffers
         self._create_buffers()
@@ -754,31 +739,19 @@ class RigidObjectCollection(AssetBase):
     def _create_buffers(self):
         """Create buffers for storing data."""
         # constants
-        self._ALL_ENV_INDICES = torch.arange(
-            self.num_instances, dtype=torch.long, device=self.device
-        )
-        self._ALL_OBJ_INDICES = torch.arange(
-            self.num_objects, dtype=torch.long, device=self.device
-        )
+        self._ALL_ENV_INDICES = torch.arange(self.num_instances, dtype=torch.long, device=self.device)
+        self._ALL_OBJ_INDICES = torch.arange(self.num_objects, dtype=torch.long, device=self.device)
+        self._ALL_ENV_INDICES_WP = wp.from_torch(self._ALL_ENV_INDICES.to(torch.int32), dtype=wp.int32)
+        self._ALL_OBJ_INDICES_WP = wp.from_torch(self._ALL_OBJ_INDICES.to(torch.int32), dtype=wp.int32)
 
-        # external forces and torques
-        self.has_external_wrench = False
-        self._external_force_b = torch.zeros(
-            (self.num_instances, self.num_objects, 3), device=self.device
-        )
-        self._external_torque_b = torch.zeros_like(self._external_force_b)
-        self._external_wrench_positions_b = torch.zeros_like(self._external_force_b)
-        self.uses_external_wrench_positions = False
-        self._use_global_wrench_frame = False
+        # external wrench composer
+        self._instantaneous_wrench_composer = WrenchComposer(self)
+        self._permanent_wrench_composer = WrenchComposer(self)
 
         # set information about rigid body into data
         self._data.object_names = self.object_names
-        self._data.default_mass = self.reshape_view_to_data(
-            self.root_physx_view.get_masses().clone()
-        )
-        self._data.default_inertia = self.reshape_view_to_data(
-            self.root_physx_view.get_inertias().clone()
-        )
+        self._data.default_mass = self.reshape_view_to_data(self.root_physx_view.get_masses().clone())
+        self._data.default_inertia = self.reshape_view_to_data(self.root_physx_view.get_inertias().clone())
 
     def _process_cfg(self):
         """Post processing of configuration parameters."""
@@ -793,9 +766,7 @@ class RigidObjectCollection(AssetBase):
                 + tuple(rigid_object_cfg.init_state.ang_vel)
             )
             default_object_state = (
-                torch.tensor(
-                    default_object_state, dtype=torch.float, device=self.device
-                )
+                torch.tensor(default_object_state, dtype=torch.float, device=self.device)
                 .repeat(self.num_instances, 1)
                 .unsqueeze(1)
             )
@@ -849,9 +820,7 @@ class RigidObjectCollection(AssetBase):
             return
         for prim_path_expr in self._prim_paths:
             result = re.match(
-                pattern="^"
-                + "/".join(prim_path_expr.split("/")[: prim_path.count("/") + 1])
-                + "$",
+                pattern="^" + "/".join(prim_path_expr.split("/")[: prim_path.count("/") + 1]) + "$",
                 string=prim_path,
             )
             if result:

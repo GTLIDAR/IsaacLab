@@ -14,12 +14,7 @@ import gymnasium as gym
 import numpy as np
 import torch
 
-from isaaclab.managers import (
-    CommandManager,
-    CurriculumManager,
-    RewardManager,
-    TerminationManager,
-)
+from isaaclab.managers import CommandManager, CurriculumManager, RewardManager, TerminationManager
 from isaaclab.ui.widgets import ManagerLiveVisualizer
 from isaaclab.utils import check_nan
 
@@ -99,8 +94,12 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # store the render mode
         self.render_mode = render_mode
 
+        # buffer that stores the final observation for each env
+        self.final_obs_buf: dict | None = None
+
         # initialize data and constants
-        # -- set the framerate of the gym video recorder wrapper so that the playback speed of the produced video matches the simulation
+        # -- set the framerate of the gym video recorder wrapper so that the playback speed of the
+        #    produced video matches the simulation
         self.metadata["render_fps"] = 1 / self.step_dt
 
         print("[INFO]: Completed setting up the environment...")
@@ -212,12 +211,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         Returns:
             A tuple containing the observations, rewards, resets (terminated and truncated) and extras.
         """
-        # quick validation to avoid silent NaNs propagating further; detailed
-        # per-term sanitization happens inside ActionManager.
-        if torch.isnan(action).any():
-            print(
-                "[WARN] NaNs detected in incoming actions – will be sanitized per ActionTerm."
-            )
+        assert not torch.isnan(action).any(), "Action contains NaN values"
         # process actions
         self.action_manager.process_action(action.to(self.device))
 
@@ -266,16 +260,29 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
         # -- reset envs that terminated/timed-out and log the episode information
         reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
-
+        # Clear any stale terminal info from previous steps.
+        for key in ("final_obs", "final_info"):
+            if key in self.extras:
+                del self.extras[key]
         if len(reset_env_ids) > 0:
-            # record the final observation
-            # Use the last known good observation to avoid propagating NaNs.
-            if self._last_valid_obs_buf is not None:
-                self.final_obs_buf: dict = self._clone_obs_buf(self._last_valid_obs_buf)
-            else:
-                # fallback (should not generally happen)
-                self.final_obs_buf: dict = self.observation_manager.compute()
-            self.extras["final_obs_buf"] = self.final_obs_buf
+            # Populate Gymnasium-style terminal observation info for vector envs.
+            # final_obs/final_info are object arrays with None for non-reset envs.
+            final_obs = np.empty(self.num_envs, dtype=object)
+            final_obs[:] = None
+            final_info = np.empty(self.num_envs, dtype=object)
+            final_info[:] = None
+
+            def _slice_obs(obs: dict | torch.Tensor, env_id: int):
+                if isinstance(obs, dict):
+                    return {k: _slice_obs(v, env_id) for k, v in obs.items()}
+                return obs[env_id]
+
+            for env_id in reset_env_ids.tolist():
+                final_obs[env_id] = _slice_obs(self.obs_buf, env_id)
+                final_info[env_id] = {}
+
+            self.extras["final_obs"] = final_obs
+            self.extras["final_info"] = final_info
 
             # trigger recorder terms for pre-reset calls
             self.recorder_manager.record_pre_reset(reset_env_ids)

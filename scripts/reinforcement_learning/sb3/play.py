@@ -14,18 +14,14 @@ from pathlib import Path
 from isaaclab.app import AppLauncher
 
 # add argparse arguments
-parser = argparse.ArgumentParser(
-    description="Play a checkpoint of an RL agent from Stable-Baselines3."
-)
+parser = argparse.ArgumentParser(description="Play a checkpoint of an RL agent from Stable-Baselines3.")
 parser.add_argument(
     "--disable_fabric",
     action="store_true",
     default=False,
     help="Disable fabric and use USD I/O operations.",
 )
-parser.add_argument(
-    "--num_envs", type=int, default=None, help="Number of environments to simulate."
-)
+parser.add_argument("--num_envs", type=int, default=None, help="Number of environments to simulate.")
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument(
     "--agent", type=str, default="sb3_cfg_entry_point", help="Name of the RL agent configuration entry point."
@@ -66,13 +62,12 @@ simulation_app = app_launcher.app
 
 """Rest everything follows."""
 
-import gymnasium as gym
 import os
 import random
 import time
-import torch
-from datetime import datetime
 
+import gymnasium as gym
+import torch
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import VecNormalize
 
@@ -226,14 +221,10 @@ def main_recurrentl2t_teacher():
     agent_cfg = process_sb3_cfg(agent_cfg)  # type: ignore
 
     # directory for logging into
-    log_dir = os.path.join(
-        "logs", "sb3", args_cli.task, datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    )
+    log_dir = os.path.join("logs", "sb3", args_cli.task, datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
 
     # create isaac environment
-    env = gym.make(
-        args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None
-    )
+    env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
     # wrap for video recording
     if args_cli.video:
         video_kwargs = {
@@ -253,10 +244,8 @@ def main_recurrentl2t_teacher():
         env = VecNormalize(
             env,
             training=True,
-            norm_obs="normalize_input" in agent_cfg
-            and agent_cfg.pop("normalize_input"),
-            norm_reward="normalize_value" in agent_cfg
-            and agent_cfg.pop("normalize_value"),
+            norm_obs="normalize_input" in agent_cfg and agent_cfg.pop("normalize_input"),
+            norm_reward="normalize_value" in agent_cfg and agent_cfg.pop("normalize_value"),
             clip_obs="clip_obs" in agent_cfg and agent_cfg.pop("clip_obs"),
             gamma=agent_cfg["gamma"],
             clip_reward=np.inf,
@@ -322,14 +311,10 @@ def main_recurrentl2t_student():
     agent_cfg = process_sb3_cfg(agent_cfg)  # type: ignore
 
     # directory for logging into
-    log_dir = os.path.join(
-        "logs", "sb3", args_cli.task, datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    )
+    log_dir = os.path.join("logs", "sb3", args_cli.task, datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
 
     # create isaac environment
-    env = gym.make(
-        args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None
-    )
+    env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
     # wrap for video recording
     if args_cli.video:
         video_kwargs = {
@@ -349,10 +334,8 @@ def main_recurrentl2t_student():
         env = VecNormalize(
             env,
             training=True,
-            norm_obs="normalize_input" in agent_cfg
-            and agent_cfg.pop("normalize_input"),
-            norm_reward="normalize_value" in agent_cfg
-            and agent_cfg.pop("normalize_value"),
+            norm_obs="normalize_input" in agent_cfg and agent_cfg.pop("normalize_input"),
+            norm_reward="normalize_value" in agent_cfg and agent_cfg.pop("normalize_value"),
             clip_obs="clip_obs" in agent_cfg and agent_cfg.pop("clip_obs"),
             gamma=agent_cfg["gamma"],
             clip_reward=np.inf,
@@ -399,9 +382,7 @@ def main_recurrentl2t_student():
 
             _last_lstm_states = lstm_states
             _last_episode_starts = dones
-            episode_starts = (
-                _last_episode_starts.clone().to(agent.device).type(torch.float32)
-            )
+            episode_starts = _last_episode_starts.clone().to(agent.device).type(torch.float32)
         print("step:", timestep)
         # i += 1
         # if i == 10:
