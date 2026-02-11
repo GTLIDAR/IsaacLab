@@ -5,11 +5,14 @@
 """Launch Isaac Sim Simulator first."""
 
 import argparse
+import os
 import signal
 import sys
 from pathlib import Path
 
 from isaaclab.app import AppLauncher
+
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Train an RL agent with Stable-Baselines3.")
@@ -83,10 +86,10 @@ from datetime import datetime
 import gymnasium as gym
 import torch
 from rlopt.agent import IPMD, PPO, SAC
+from torchrl.data import TensorDictReplayBuffer
+from torchrl.data.replay_buffers.storages import LazyMemmapStorage
 from torchrl.envs import (
     Compose,
-    ObservationNorm,
-    RewardClipping,
     RewardSum,
     StepCounter,
     TransformedEnv,
@@ -118,8 +121,6 @@ ALGORITHM_CLASS_MAP = {
     "SAC": SAC,
     "IPMD": IPMD,
 }
-
-os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 
 def resolve_agent_cfg_entry_point(task_name: str | None, agent_entry_point: str, algorithm: str) -> str:
@@ -215,6 +216,15 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # set the log directory for the environment (works for all environment types)
     env_cfg.log_dir = log_dir
 
+    # Policy input keys for VecNorm.
+    _policy_cfg = getattr(agent_cfg, "policy", None)
+    if _policy_cfg is not None and hasattr(_policy_cfg, "get_input_keys"):
+        policy_in_keys = _policy_cfg.get_input_keys()
+    elif _policy_cfg is not None and _policy_cfg.input_keys is not None:
+        policy_in_keys = list(_policy_cfg.input_keys)
+    else:
+        policy_in_keys = ["policy"]
+
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
 
@@ -245,7 +255,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         transform=Compose(
             RewardSum(),  # type: ignore
             StepCounter(1000),  # type: ignore
-            VecNormV2(in_keys=agent_cfg.policy.input_keys + ["reward"]),
+            VecNormV2(in_keys=policy_in_keys + ["reward"]),
         ),
     )
 
@@ -254,6 +264,15 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         env=env,
         config=agent_cfg,  # type: ignore
     )
+
+    if isinstance(agent, IPMD):
+        rb_dir = "/home/fwu/Documents/Research/SkillLearning/IsaacLab/logs/reference_replay/Isaac-Imitation-G1-v0/2026-02-06_16-26-44/torchrl_rb"
+        # loads() is an instance method - construct a buffer with matching storage first, then load state
+        storage = LazyMemmapStorage(max_size=4000)
+        td_buffer = TensorDictReplayBuffer(storage=storage)
+        td_buffer.loads(rb_dir)
+        print(f"[INFO] Loaded expert replay buffer with {len(td_buffer)} transitions")
+        agent.set_expert_buffer(td_buffer)
 
     # run training
     agent.train()

@@ -1,12 +1,12 @@
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Optional, Sequence, Union
+from typing import Any
 
 import torch
 from tensordict import TensorDict
 
 import isaaclab.utils.math as math_utils
 from isaaclab.assets import Articulation
-
 from isaaclab.envs.common import VecEnvStepReturn
 from isaaclab.envs.manager_based_rl_env import ManagerBasedRLEnv
 
@@ -48,7 +48,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         reference_joint_names = ['left_hip_pitch_joint', ...]
     """
 
-    def __init__(self, cfg: Any, render_mode: Optional[str] = None, **kwargs: Any) -> None:
+    def __init__(self, cfg: Any, render_mode: str | None = None, **kwargs: Any) -> None:
         """Initialize the simplified ImitationRLEnv."""
         print(f"[ImitationRLEnv] Starting initialization with num_envs={cfg.scene.num_envs}")
 
@@ -156,7 +156,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
 
         # Store reference joint mapping
         self.reference_joint_names = reference_joint_names
-        self._joint_mapping_cache: Optional[torch.Tensor] = None
+        self._joint_mapping_cache: torch.Tensor | None = None
         self.replay_reference = getattr(cfg, "replay_reference", False)
         self.replay_only = getattr(cfg, "replay_only", False)
         if self.replay_only and not self.replay_reference:
@@ -213,8 +213,8 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         return super().step(action)
 
     def get_reference_data(
-        self, key: Optional[str] = None, joint_indices: Optional[Sequence[int]] = None
-    ) -> Union[TensorDict, torch.Tensor]:
+        self, key: str | None = None, joint_indices: Sequence[int] | None = None
+    ) -> TensorDict | torch.Tensor:
         """
         Get the current reference data.
 
@@ -244,7 +244,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         else:
             return data  # type: ignore[return-value]
 
-    def _replay_reference(self, env_ids: Optional[torch.Tensor] = None):
+    def _replay_reference(self, env_ids: torch.Tensor | None = None):
         """Replay the reference data. If env_ids is provided, only replay the reference data for the given environments.
         If env_ids is not provided, replay the reference data for all environments."""
 

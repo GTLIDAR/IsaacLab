@@ -1,19 +1,39 @@
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import field
-from typing import Any, Literal
+import os
 
 import gymnasium as gym
 import torch
 from rlopt.agent import IPMDRLOptConfig, PPORLOptConfig, SACRLOptConfig  # noqa: F401
 from rlopt.config_base import RLOptConfig
-from tensordict import TensorDict
 from torchrl.data.tensor_specs import Bounded, Composite, Unbounded
 from torchrl.envs.libs.gym import GymWrapper, _gym_to_torchrl_spec_transform, terminal_obs_reader
 
 from isaaclab.envs import ManagerBasedRLEnv
-from isaaclab.utils import configclass
+
+
+def _flatten_obs(obs: dict) -> dict:
+    """Flatten one level of nested observation dicts.
+
+    IsaacLab with ``concatenate_terms=False`` produces::
+
+        {"policy": {"joint_pos": tensor, "joint_vel": tensor, ...}}
+
+    This hoists the leaf tensors to top-level keys::
+
+        {"joint_pos": tensor, "joint_vel": tensor, ...}
+
+    Groups whose value is already a tensor (``concatenate_terms=True``)
+    are kept as-is.
+    """
+    flat: dict = {}
+    for k, v in obs.items():
+        if isinstance(v, dict):
+            flat.update(v)
+        else:
+            flat[k] = v
+    return flat
 
 
 class IsaacLabWrapper(GymWrapper):
@@ -141,6 +161,21 @@ class IsaacLabWrapper(GymWrapper):
         if reward_space is not None:
             reward_spec = reward_spec.expand(*batch_size, *reward_spec.shape)  # type: ignore
 
+        # Flatten nested Composite specs produced by concatenate_terms=False
+        # groups so that individual term keys are top-level TensorDict keys.
+        flat_entries: dict = {}
+        needs_flatten = False
+        for key in list(observation_spec.keys()):
+            child = observation_spec[key]
+            if isinstance(child, Composite):
+                needs_flatten = True
+                for subkey in child.keys():
+                    flat_entries[subkey] = child[subkey]
+            else:
+                flat_entries[key] = child
+        if needs_flatten:
+            observation_spec = Composite(flat_entries, shape=observation_spec.shape)
+
         self.done_spec = self._make_done_spec()  # type: ignore
         self.action_spec = action_spec  # type: ignore
         self.reward_spec = reward_spec  # type: ignore
@@ -153,14 +188,7 @@ class IsaacLabWrapper(GymWrapper):
         observations, reward, terminated, truncated, info = step_outputs_tuple
         if isinstance(info, dict) and "log" in info:
             self.log_infos.append(info["log"])
-        for k, v in observations.items():
-            if torch.isnan(v).any():
-                # print the first row with nan
-                print(f"NaN values found in observation {k} during step. First row: {v[0]}")
-                raise ValueError(
-                    f"NaN values found in observation {k} during step. "
-                    "This is likely due to an error in the environment or the model."
-                )
+
         if torch.isnan(reward).any():
             raise ValueError(
                 "NaN values found in reward during step. "
@@ -170,12 +198,15 @@ class IsaacLabWrapper(GymWrapper):
         done = terminated | truncated
         reward = reward.clone().unsqueeze(-1).to(dtype=torch.float32)  # to get to (num_envs, 1)
 
-        observations = CloneObsBuf(observations)
+        # IsaacLab emits Gymnasium-style keys: final_obs / final_info.
+        # Keep only terminal entries to avoid introducing scalar log info into
+        # the tensordict info path.
+        obs = _flatten_obs(CloneObsBuf(observations))
 
-        if "final_obs_buf" in info:
-            info = {"final_obs_buf": CloneObsBuf(info["final_obs_buf"])}
+        if isinstance(info, dict) and "final_obs" in info:
+            info = {"final_obs": info["final_obs"]}
             return (
-                observations,
+                obs,
                 reward,
                 terminated.clone().to(dtype=torch.bool),
                 truncated.clone().to(dtype=torch.bool),
@@ -184,7 +215,7 @@ class IsaacLabWrapper(GymWrapper):
             )
         else:
             return (
-                observations,
+                obs,
                 reward,
                 terminated.clone().to(dtype=torch.bool),
                 truncated.clone().to(dtype=torch.bool),
@@ -195,7 +226,7 @@ class IsaacLabWrapper(GymWrapper):
     def _reset_output_transform(self, reset_data):
         """Transform the output of the reset method."""
         observations, info = reset_data
-        return (CloneObsBuf(observations), {})
+        return (_flatten_obs(CloneObsBuf(observations)), {})
 
 
 def CloneObsBuf(
@@ -224,6 +255,21 @@ def CloneObsBuf(
     return cloned
 
 
+def CheckObsBufForNaN(obs_buf: dict[str, torch.Tensor | dict], prefix: str = "") -> None:
+    """Recursively check nested observation dicts for NaNs."""
+    for k, v in obs_buf.items():
+        key = f"{prefix}.{k}" if prefix else k
+        if isinstance(v, dict):
+            CheckObsBufForNaN(v, key)
+        elif isinstance(v, torch.Tensor) and torch.isnan(v).any():
+            first_row = v[0] if v.ndim > 0 else v
+            print(f"NaN values found in observation {key} during step. First row: {first_row}")
+            raise ValueError(
+                f"NaN values found in observation {key} during step. "
+                "This is likely due to an error in the environment or the model."
+            )
+
+
 class IsaacLabTerminalObsReader(terminal_obs_reader):
     """A terminal observation reader for IsaacLab environments.
 
@@ -235,37 +281,35 @@ class IsaacLabTerminalObsReader(terminal_obs_reader):
         # Provide info specs upfront to avoid dummy rollouts in set_info_dict_reader.
         self._info_spec = Composite({self.name: observation_spec.clone()}, shape=[])
 
-    # def __call__(self, info_dict, tensordict):
-    #     """Read the terminal observation from the info dictionary and update the tensordict.
+    def __call__(self, info_dict, tensordict):
+        # IsaacLab: info_dict["final_obs"] is np.ndarray(num_envs, dtype=object);
+        # each entry is None or a nested dict produced by _slice_obs.
+        # We flatten exactly like _flatten_obs so keys match the flattened spec.
+        backend_key = self.backend_key[self.backend]
+        final_obs_arr = info_dict.pop(backend_key, None)
+        info_dict.pop(self.backend_info_key[self.backend], None)
 
-    #     Args:
-    #         info_dict (dict): The info dictionary from the environment.
-    #         tensordict (TensorDictBase): The tensordict to update with the terminal observation.
-    #     Returns:
-    #         TensorDictBase: The updated tensordict with the terminal observation.
-    #     """
-    #     # convert info_dict to a tensordict
-    #     info_dict = TensorDict(info_dict)
-    #     # get the terminal observation
-    #     terminal_obs = info_dict.pop("final_obs_buf", None)
+        super().__call__(info_dict, tensordict)
+        if not self._final_validated:
+            self.info_spec[self.name] = self._obs_spec.update(self.info_spec)
+            self._final_validated = True
 
-    #     # get the terminal info dict
-    #     terminal_info = info_dict.pop(self.backend_info_key[self.backend], None)
-
-    #     if terminal_info is None:
-    #         terminal_info = {}
-
-    #     super().__call__(info_dict, tensordict)
-    #     if not self._final_validated:
-    #         self.info_spec[self.name] = self._obs_spec.update(self.info_spec)  # type: ignore
-    #         self._final_validated = True
-    #     final_info = terminal_info.copy()  # type: ignore
-    #     if terminal_obs is not None:
-    #         final_info["observation"] = terminal_obs
-
-    #     for key in self.info_spec[self.name].keys():  # type: ignore
-    #         tensordict.set(
-    #             (self.name, key),
-    #             (terminal_obs[key] if terminal_obs is not None else self.info_spec[self.name, key].zero()),  # type: ignore
-    #         )
-    #     return tensordict
+        num_envs = len(final_obs_arr) if final_obs_arr is not None else 0
+        for key in self.info_spec[self.name].keys():
+            spec = self.info_spec[self.name, key]
+            final_obs_buffer = spec.zero()
+            device = final_obs_buffer.device
+            if num_envs > 0:
+                for i in range(num_envs):
+                    if final_obs_arr[i] is None:
+                        continue
+                    flat = _flatten_obs(final_obs_arr[i])
+                    if key not in flat:
+                        continue
+                    val = flat[key]
+                    if isinstance(val, torch.Tensor):
+                        final_obs_buffer[i] = val.to(device=device)
+                    else:
+                        final_obs_buffer[i] = torch.as_tensor(val, device=device)
+            tensordict.set((self.name, key), final_obs_buffer)
+        return tensordict

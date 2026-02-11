@@ -1,8 +1,3 @@
-# Copyright (c) 2022-2025, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
-# All rights reserved.
-#
-# SPDX-License-Identifier: BSD-3-Clause
-
 from isaaclab.managers import (
     ObservationGroupCfg as ObsGroup,
 )
@@ -34,6 +29,25 @@ from isaaclab_tasks.manager_based.imitation.mdp import (
 )
 
 from isaaclab_assets.robots.unitree import G1_MINIMAL_CFG
+
+
+# Policy observation term keys in the same order as ``PolicyCfg`` below.
+G1_POLICY_OBS_KEYS: list[str] = [
+    "base_lin_vel",
+    "base_ang_vel",
+    "projected_gravity",
+    "joint_pos",
+    "joint_vel",
+    "reference_joint_pos",
+    "reference_root_pos_obs",
+    "reference_root_quat_obs",
+    "reference_root_lin_vel_obs",
+    "reference_root_ang_vel_obs",
+    "last_actions",
+]
+
+# IRL reward estimator keys: same state terms but without previous-action history.
+G1_REWARD_OBS_KEYS: list[str] = [key for key in G1_POLICY_OBS_KEYS if key != "last_actions"]
 
 
 # --- Observation ---
@@ -103,17 +117,17 @@ class G1ObservationCfg:
             func=reference_root_ang_vel,
             params={"asset_cfg": SceneEntityCfg("robot")},
         )
-        actions = ObsTerm(func=mdp.last_action)
-        height_scan = ObsTerm(
-            func=mdp.height_scan,
-            params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-            noise=Unoise(n_min=-0.1, n_max=0.1),
-            clip=(-1.0, 1.0),
-        )
+        last_actions = ObsTerm(func=mdp.last_action)
+        # height_scan = ObsTerm(
+        #     func=mdp.height_scan,
+        #     params={"sensor_cfg": SceneEntityCfg("height_scanner")},
+        #     noise=Unoise(n_min=-0.1, n_max=0.1),
+        #     clip=(-1.0, 1.0),
+        # )
 
         def __post_init__(self):
             self.enable_corruption = True
-            self.concatenate_terms = True
+            self.concatenate_terms = False
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
@@ -320,7 +334,7 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
     loader_type: str = "loco_mujoco"  # Loader type (required if Zarr does not exist)
     loader_kwargs: dict = {
         "env_name": "UnitreeG1",
-        "n_substeps": 10,
+        "n_substeps": 4,
         "dataset": {
             "trajectories": {
                 "default": ["walk"],

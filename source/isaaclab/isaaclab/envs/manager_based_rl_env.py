@@ -13,6 +13,7 @@ from typing import Any, ClassVar
 import gymnasium as gym
 import numpy as np
 import torch
+from tensordict import TensorDictBase
 
 from isaaclab.managers import CommandManager, CurriculumManager, RewardManager, TerminationManager
 from isaaclab.ui.widgets import ManagerLiveVisualizer
@@ -65,9 +66,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
     cfg: ManagerBasedRLEnvCfg
     """Configuration for the environment."""
 
-    def __init__(
-        self, cfg: ManagerBasedRLEnvCfg, render_mode: str | None = None, **kwargs
-    ):
+    def __init__(self, cfg: ManagerBasedRLEnvCfg, render_mode: str | None = None, **kwargs):
         """Initialize the environment.
 
         Args:
@@ -79,23 +78,15 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         self.common_step_counter = 0
 
         # initialize the episode length buffer BEFORE loading the managers to use it in mdp functions.
-        self.episode_length_buf = torch.zeros(
-            cfg.scene.num_envs, device=cfg.sim.device, dtype=torch.long
-        )
+        self.episode_length_buf = torch.zeros(cfg.scene.num_envs, device=cfg.sim.device, dtype=torch.long)
 
         # initialize the base class to setup the scene.
         super().__init__(cfg=cfg)
         # buffer that stores the most recent NaN-free observation for each env
         self._last_valid_obs_buf: dict | None = None
 
-        # buffer that stores the final observation for each env
-        self.final_obs_buf: dict | None = None
-
         # store the render mode
         self.render_mode = render_mode
-
-        # buffer that stores the final observation for each env
-        self.final_obs_buf: dict | None = None
 
         # initialize data and constants
         # -- set the framerate of the gym video recorder wrapper so that the playback speed of the
@@ -160,17 +151,11 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
 
         self.manager_visualizers = {
             "action_manager": ManagerLiveVisualizer(manager=self.action_manager),
-            "observation_manager": ManagerLiveVisualizer(
-                manager=self.observation_manager
-            ),
+            "observation_manager": ManagerLiveVisualizer(manager=self.observation_manager),
             "command_manager": ManagerLiveVisualizer(manager=self.command_manager),
-            "termination_manager": ManagerLiveVisualizer(
-                manager=self.termination_manager
-            ),
+            "termination_manager": ManagerLiveVisualizer(manager=self.termination_manager),
             "reward_manager": ManagerLiveVisualizer(manager=self.reward_manager),
-            "curriculum_manager": ManagerLiveVisualizer(
-                manager=self.curriculum_manager
-            ),
+            "curriculum_manager": ManagerLiveVisualizer(manager=self.curriculum_manager),
         }
 
     """
@@ -211,7 +196,6 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         Returns:
             A tuple containing the observations, rewards, resets (terminated and truncated) and extras.
         """
-        assert not torch.isnan(action).any(), "Action contains NaN values"
         # process actions
         self.action_manager.process_action(action.to(self.device))
 
@@ -234,10 +218,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
             # render between steps only if the GUI or an RTX sensor needs it
             # note: we assume the render interval to be the shortest accepted rendering interval.
             #    If a camera needs rendering at a faster frequency, this will lead to unexpected behavior.
-            if (
-                self._sim_step_counter % self.cfg.sim.render_interval == 0
-                and is_rendering
-            ):
+            if self._sim_step_counter % self.cfg.sim.render_interval == 0 and is_rendering:
                 self.sim.render()
             # update buffers at sim dt
             self.scene.update(dt=self.physics_dt)
@@ -264,6 +245,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         for key in ("final_obs", "final_info"):
             if key in self.extras:
                 del self.extras[key]
+
         if len(reset_env_ids) > 0:
             # Populate Gymnasium-style terminal observation info for vector envs.
             # final_obs/final_info are object arrays with None for non-reset envs.
@@ -275,7 +257,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
             def _slice_obs(obs: dict | torch.Tensor, env_id: int):
                 if isinstance(obs, dict):
                     return {k: _slice_obs(v, env_id) for k, v in obs.items()}
-                return obs[env_id]
+                return obs[env_id].clone()
 
             for env_id in reset_env_ids.tolist():
                 final_obs[env_id] = _slice_obs(self.obs_buf, env_id)
@@ -305,27 +287,6 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # -- compute observations
         # note: done after reset to get the correct observations for reset envs
         self.obs_buf = self.observation_manager.compute(update_history=True)
-
-        nan_mask = check_nan(self.obs_buf)
-
-        # ------------------------------------------------------------------
-        # Maintain a cache of the most recent NaN-free observation (per env)
-        # and sanitize the current obs before they leave the environment.
-        # ------------------------------------------------------------------
-        if not torch.any(nan_mask):
-            # All environments are clean – clone whole buffer.
-            self._last_valid_obs_buf = self._clone_obs_buf(self.obs_buf)
-        else:
-            # Update cache with currently valid envs (those _without_ NaNs).
-            valid_env_ids = (~nan_mask).nonzero(as_tuple=False).squeeze(-1)
-            if valid_env_ids.numel() > 0:
-                if self._last_valid_obs_buf is None:
-                    self._last_valid_obs_buf = self._clone_obs_buf(self.obs_buf)
-                else:
-                    self._update_obs_buf(
-                        self._last_valid_obs_buf, self.obs_buf, valid_env_ids
-                    )
-
         # return observations, rewards, resets and extras
         return (
             self.obs_buf,
@@ -382,9 +343,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
                     self.cfg.viewer.cam_prim_path, self.cfg.viewer.resolution
                 )
                 # create rgb annotator -- used to read data from the render product
-                self._rgb_annotator = rep.AnnotatorRegistry.get_annotator(
-                    "rgb", device="cpu"
-                )
+                self._rgb_annotator = rep.AnnotatorRegistry.get_annotator("rgb", device="cpu")
                 self._rgb_annotator.attach([self._render_product])  # type: ignore
             # obtain the rgb data
             rgb_data = self._rgb_annotator.get_data()
@@ -457,9 +416,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
             group_term_names,
         ) in self.observation_manager.active_terms.items():
             # extract quantities about the group
-            has_concatenated_obs = self.observation_manager.group_obs_concatenate[
-                group_name
-            ]
+            has_concatenated_obs = self.observation_manager.group_obs_concatenate[group_name]
             group_dim = self.observation_manager.group_obs_dim[group_name]
             # check if group is concatenated or not
             # if not concatenated, then we need to add each term separately as a dictionary
@@ -470,32 +427,20 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
                     shape=group_dim,  # type: ignore
                 )
             else:
-                group_term_cfgs = self.observation_manager._group_obs_term_cfgs[
-                    group_name
-                ]
+                group_term_cfgs = self.observation_manager._group_obs_term_cfgs[group_name]
                 term_dict = {}
-                for term_name, term_dim, term_cfg in zip(
-                    group_term_names, group_dim, group_term_cfgs
-                ):
+                for term_name, term_dim, term_cfg in zip(group_term_names, group_dim, group_term_cfgs):
                     low = -np.inf if term_cfg.clip is None else term_cfg.clip[0]
                     high = np.inf if term_cfg.clip is None else term_cfg.clip[1]
-                    term_dict[term_name] = gym.spaces.Box(
-                        low=low, high=high, shape=term_dim
-                    )
+                    term_dict[term_name] = gym.spaces.Box(low=low, high=high, shape=term_dim)
                 self.single_observation_space[group_name] = gym.spaces.Dict(term_dict)
         # action space (unbounded since we don't impose any limits)
         action_dim = sum(self.action_manager.action_term_dim)
-        self.single_action_space = gym.spaces.Box(
-            low=-1.0, high=1.0, shape=(action_dim,)
-        )
+        self.single_action_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(action_dim,))
 
         # batch the spaces for vectorized environments
-        self.observation_space = gym.vector.utils.batch_space(
-            self.single_observation_space, self.num_envs
-        )
-        self.action_space = gym.vector.utils.batch_space(
-            self.single_action_space, self.num_envs
-        )
+        self.observation_space = gym.vector.utils.batch_space(self.single_observation_space, self.num_envs)
+        self.action_space = gym.vector.utils.batch_space(self.single_action_space, self.num_envs)
 
     def _reset_idx(self, env_ids: Sequence[int]):
         """Reset environments based on specified indices.
@@ -510,9 +455,7 @@ class ManagerBasedRLEnv(ManagerBasedEnv, gym.Env):
         # apply events such as randomizations for environments that need a reset
         if "reset" in self.event_manager.available_modes:
             env_step_count = self._sim_step_counter // self.cfg.decimation
-            self.event_manager.apply(
-                mode="reset", env_ids=env_ids, global_env_step_count=env_step_count
-            )
+            self.event_manager.apply(mode="reset", env_ids=env_ids, global_env_step_count=env_step_count)
 
         # iterate over all managers and reset them
         # this returns a dictionary of information which is stored in the extras
