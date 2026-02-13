@@ -174,21 +174,6 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     env_cfg.seed = agent_cfg.seed
     env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
 
-    if args_cli.algorithm == "SAC":
-        # Off-policy: replay buffer and SAC-specific settings
-        agent_cfg.collector.init_random_frames = 0
-        agent_cfg.sac.utd_ratio = 24.0 / 4096.0 * 24  # ~num_envs updates per batch
-        agent_cfg.replay_buffer.size = 1_000_000
-        agent_cfg.loss.mini_batch_size = 4906 * 6  # Smaller batch for off-policy
-        agent_cfg.optim.lr = 3e-4
-        agent_cfg.replay_buffer.prb = False
-        agent_cfg.replay_buffer.prefetch = 3
-        agent_cfg.compile.compile = False
-        agent_cfg.compile.compile_mode = "default"
-        agent_cfg.compile.cudagraphs = False
-        agent_cfg.sac.skip_done_states = False
-    # IPMD is PPO-based: use PPO-style config (value function, epochs, no SAC/replay overrides)
-
     # directory for logging into
     run_info = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     log_root_path = os.path.abspath(os.path.join("logs", "rlopt", args_cli.algorithm.lower(), args_cli.task))
@@ -200,7 +185,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # dump the configuration into log-directory
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
-
+    agent_cfg.logger.log_dir = log_dir
+    agent_cfg.save_interval = 50
     # save command used to run the script
     command = " ".join(sys.orig_argv)
     (Path(log_dir) / "command.txt").write_text(command)
