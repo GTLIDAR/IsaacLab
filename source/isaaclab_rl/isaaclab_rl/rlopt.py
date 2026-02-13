@@ -289,27 +289,34 @@ class IsaacLabTerminalObsReader(terminal_obs_reader):
         final_obs_arr = info_dict.pop(backend_key, None)
         info_dict.pop(self.backend_info_key[self.backend], None)
 
+        # Let the parent handle any remaining info entries and run spec
+        # validation, but skip its terminal-obs loop (we already popped the
+        # keys so the parent finds nothing and only writes zeros).
         super().__call__(info_dict, tensordict)
         if not self._final_validated:
             self.info_spec[self.name] = self._obs_spec.update(self.info_spec)
             self._final_validated = True
 
+        # Flatten per-env dicts once, then scatter into batched zero buffers.
         num_envs = len(final_obs_arr) if final_obs_arr is not None else 0
+        flat_per_env: list[dict | None] = [None] * num_envs
+        for i in range(num_envs):
+            if final_obs_arr[i] is not None:
+                flat_per_env[i] = _flatten_obs(final_obs_arr[i])
+
         for key in self.info_spec[self.name].keys():
             spec = self.info_spec[self.name, key]
-            final_obs_buffer = spec.zero()
-            device = final_obs_buffer.device
-            if num_envs > 0:
-                for i in range(num_envs):
-                    if final_obs_arr[i] is None:
-                        continue
-                    flat = _flatten_obs(final_obs_arr[i])
-                    if key not in flat:
-                        continue
-                    val = flat[key]
-                    if isinstance(val, torch.Tensor):
-                        final_obs_buffer[i] = val.to(device=device)
-                    else:
-                        final_obs_buffer[i] = torch.as_tensor(val, device=device)
-            tensordict.set((self.name, key), final_obs_buffer)
+            buf = spec.zero()
+            device = buf.device
+            for i in range(num_envs):
+                flat = flat_per_env[i]
+                if flat is None or key not in flat:
+                    continue
+                val = flat[key]
+                if isinstance(val, torch.Tensor):
+                    buf[i] = val.to(device=device)
+                else:
+                    buf[i] = torch.as_tensor(val, device=device)
+            tensordict.set((self.name, key), buf)
+
         return tensordict

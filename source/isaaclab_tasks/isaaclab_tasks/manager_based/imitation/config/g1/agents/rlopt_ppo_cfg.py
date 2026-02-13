@@ -1,7 +1,10 @@
 from isaaclab.utils import configclass
 
 from isaaclab_rl.rlopt import PPORLOptConfig
-
+from isaaclab_tasks.manager_based.imitation.config.g1.imitation_g1_env_cfg import (
+    G1_POLICY_OBS_KEYS,
+    G1_REWARD_OBS_KEYS,
+)
 
 # Convenience configurations for different scenarios
 @configclass

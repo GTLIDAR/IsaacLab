@@ -191,7 +191,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     # directory for logging into
     run_info = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    log_root_path = os.path.abspath(os.path.join("logs", "rlopt", args_cli.task))
+    log_root_path = os.path.abspath(os.path.join("logs", "rlopt", args_cli.algorithm.lower(), args_cli.task))
     print(f"[INFO] Logging experiment in directory: {log_root_path}")
     # The Ray Tune workflow extracts experiment name using the logging line below, hence,
     # do not change it (see PR #2346, comment-2819298849)
@@ -266,7 +266,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     )
 
     if isinstance(agent, IPMD):
-        rb_dir = "/home/fwu/Documents/Research/SkillLearning/IsaacLab/logs/reference_replay/Isaac-Imitation-G1-v0/2026-02-06_16-26-44/torchrl_rb"
+        rb_dir = "/home/fwu/Documents/Research/SkillLearning/IsaacLab/logs/reference_replay/Isaac-Imitation-G1-v0/2026-02-11_19-58-45/torchrl_rb"
         # loads() is an instance method - construct a buffer with matching storage first, then load state
         storage = LazyMemmapStorage(max_size=4000)
         td_buffer = TensorDictReplayBuffer(storage=storage)

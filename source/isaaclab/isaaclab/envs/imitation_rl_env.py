@@ -2,7 +2,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import torch
+import zarr
 from tensordict import TensorDict
 
 import isaaclab.utils.math as math_utils
@@ -156,6 +158,8 @@ class ImitationRLEnv(ManagerBasedRLEnv):
 
         # Store reference joint mapping
         self.reference_joint_names = reference_joint_names
+        self.reference_body_names: list[str] = []
+        self.reference_site_names: list[str] = []
         self._joint_mapping_cache: torch.Tensor | None = None
         self.replay_reference = getattr(cfg, "replay_reference", False)
         self.replay_only = getattr(cfg, "replay_only", False)
@@ -166,6 +170,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         # Store initial poses for replay
         self._init_root_pos = torch.zeros((num_envs, 3), device=device)
         self._init_root_quat = torch.zeros((num_envs, 4), device=device)
+        self._load_reference_metadata(zarr_path)
 
         # Initialize parent class
         super().__init__(cfg, render_mode, **kwargs)
@@ -175,6 +180,38 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         print("[ImitationRLEnv] G1 Joint names: ", joint_names)
 
         print("[ImitationRLEnv] Initialization complete")
+
+    def _load_reference_metadata(self, zarr_path: Path) -> None:
+        """Load reference body/site names from zarr metadata if available."""
+        try:
+            root = zarr.open(str(zarr_path), mode="r")
+        except Exception as exc:
+            print(f"[ImitationRLEnv] Could not open zarr metadata at {zarr_path}: {exc}")
+            return
+
+        dataset_group = None
+        try:
+            group_keys = list(root.group_keys())  # type: ignore[attr-defined]
+            for key in group_keys:
+                group = root[key]
+                if "body_names" in group.attrs:
+                    dataset_group = group
+                    break
+        except Exception:
+            dataset_group = None
+
+        if dataset_group is None:
+            print("[ImitationRLEnv] No dataset group with body/site metadata found in zarr.")
+            return
+
+        body_names = dataset_group.attrs.get("body_names", [])
+        site_names = dataset_group.attrs.get("site_names", [])
+        self.reference_body_names = list(body_names) if body_names is not None else []
+        self.reference_site_names = list(site_names) if site_names is not None else []
+        print(
+            f"[ImitationRLEnv] Loaded reference metadata: {len(self.reference_body_names)} bodies,"
+            f" {len(self.reference_site_names)} sites"
+        )
 
     def _reset_idx(self, env_ids: Sequence[int]):
         """Reset the specified environments."""
@@ -188,7 +225,8 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         self.trajectory_manager.reset_envs(env_ids_tensor)
 
         # Get initial reference data for all envs (manager handles indexing)
-        self.current_reference = self.trajectory_manager.sample(advance=True)
+        # Keep the reset frame as-is so replay starts from the first frame.
+        self.current_reference = self.trajectory_manager.sample(advance=False)
 
         # Trigger the reset events
         result = super()._reset_idx(env_ids_tensor)  # type: ignore
@@ -203,14 +241,95 @@ class ImitationRLEnv(ManagerBasedRLEnv):
 
     def step(self, action: torch.Tensor) -> VecEnvStepReturn:
         """Step the environment and update reference data."""
+        # Standard RL stepping path.
+        if not self.replay_only:
+            # Get next reference data point (advance=True to move to next step)
+            self.current_reference = self.trajectory_manager.sample(advance=True)
+            return super().step(action)
 
-        # Get next reference data point (advance=True to move to next step)
-        self.current_reference: TensorDict = self.trajectory_manager.sample(advance=True)
+        # Replay-only path: ignore physics stepping and evaluate rewards exactly
+        # on the replayed reference state.
+        self.action_manager.process_action(action.to(self.device))
+        self.recorder_manager.record_pre_step()
 
-        if self.replay_only:
-            self._replay_reference()
+        # Advance and replay the next reference frame.
+        self.current_reference = self.trajectory_manager.sample(advance=True)
+        self._replay_reference(reference=self.current_reference)
+        self.scene.update(dt=0.0)
 
-        return super().step(action)
+        # post-step:
+        # -- update env counters (used for curriculum generation)
+        self.episode_length_buf += 1  # step in current episode (per env)
+        self.common_step_counter += 1  # total step (common for all envs)
+        # -- check terminations
+        self.reset_buf = self.termination_manager.compute()
+        self.reset_terminated = self.termination_manager.terminated
+        self.reset_time_outs = self.termination_manager.time_outs
+        # -- reward computation
+        self.reward_buf = self.reward_manager.compute(dt=self.step_dt)
+
+        if len(self.recorder_manager.active_terms) > 0:
+            # update observations for recording if needed
+            self.obs_buf = self.observation_manager.compute()
+            self.recorder_manager.record_post_step()
+
+        # -- reset envs that terminated/timed-out and log the episode information
+        reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
+        # Clear any stale terminal info from previous steps.
+        for key in ("final_obs", "final_info"):
+            if key in self.extras:
+                del self.extras[key]
+
+        if len(reset_env_ids) > 0:
+            reset_env_ids_list = reset_env_ids.tolist()
+            # Populate Gymnasium-style terminal observation info for vector envs.
+            # final_obs/final_info are object arrays with None for non-reset envs.
+            final_obs = np.empty(self.num_envs, dtype=object)
+            final_obs[:] = None
+            final_info = np.empty(self.num_envs, dtype=object)
+            final_info[:] = None
+
+            def _slice_obs(obs: dict | torch.Tensor, env_id: int):
+                if isinstance(obs, dict):
+                    return {k: _slice_obs(v, env_id) for k, v in obs.items()}
+                return obs[env_id].clone()
+
+            for env_id in reset_env_ids_list:
+                final_obs[env_id] = _slice_obs(self.obs_buf, env_id)
+                final_info[env_id] = {}
+
+            self.extras["final_obs"] = final_obs
+            self.extras["final_info"] = final_info
+
+            # trigger recorder terms for pre-reset calls
+            self.recorder_manager.record_pre_reset(reset_env_ids_list)
+
+            self._reset_idx(reset_env_ids_list)
+
+            # if sensors are added to the scene, make sure we render to reflect changes in reset
+            if self.sim.has_rtx_sensors() and self.cfg.num_rerenders_on_reset > 0:
+                for _ in range(self.cfg.num_rerenders_on_reset):
+                    self.sim.render()
+
+            # trigger recorder terms for post-reset calls
+            self.recorder_manager.record_post_reset(reset_env_ids_list)
+
+        # -- update command
+        self.command_manager.compute(dt=self.step_dt)
+        # -- step interval events
+        if "interval" in self.event_manager.available_modes:
+            self.event_manager.apply(mode="interval", dt=self.step_dt)
+        # -- compute observations
+        # note: done after reset to get the correct observations for reset envs
+        self.obs_buf = self.observation_manager.compute(update_history=True)
+        # return observations, rewards, resets and extras
+        return (
+            self.obs_buf,
+            self.reward_buf,
+            self.reset_terminated,
+            self.reset_time_outs,
+            self.extras,
+        )
 
     def get_reference_data(
         self, key: str | None = None, joint_indices: Sequence[int] | None = None
@@ -244,25 +363,26 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         else:
             return data  # type: ignore[return-value]
 
-    def _replay_reference(self, env_ids: torch.Tensor | None = None):
+    def _replay_reference(
+        self, env_ids: torch.Tensor | None = None, reference: TensorDict | None = None
+    ):
         """Replay the reference data. If env_ids is provided, only replay the reference data for the given environments.
         If env_ids is not provided, replay the reference data for all environments."""
 
         if env_ids is None:
             init_pos = self._init_root_pos
             init_quat = self._init_root_quat
-            ref = self.current_reference
+            ref = self.current_reference if reference is None else reference
             defaults_pos = self.robot.data.default_joint_pos
             defaults_vel = self.robot.data.default_joint_vel
-            write_env_ids = None
         else:
             env_ids_tensor = env_ids
             init_pos = self._init_root_pos[env_ids_tensor]
             init_quat = self._init_root_quat[env_ids_tensor]
-            ref = self.current_reference[env_ids_tensor]
+            full_reference = self.current_reference if reference is None else reference
+            ref = full_reference[env_ids_tensor]
             defaults_pos = self.robot.data.default_joint_pos[env_ids_tensor]
             defaults_vel = self.robot.data.default_joint_vel[env_ids_tensor]
-            write_env_ids = env_ids_tensor
 
         # Rotate reference root_pos by initial orientation, then translate by initial position
         root_pos = math_utils.quat_apply(init_quat, ref["root_pos"])
@@ -283,7 +403,12 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         # Replace NaN positions with default values
         joint_pos = torch.where(torch.isnan(joint_pos), defaults_pos, joint_pos)
         joint_vel = torch.where(torch.isnan(joint_vel), defaults_vel, joint_vel)
-        self.robot.write_root_pose_to_sim(root_pose, env_ids=env_ids)
-        self.robot.write_root_velocity_to_sim(root_vel, env_ids=env_ids)
+        # Use link/com-specific writers so all articulation data buffers stay coherent.
+        # `base_lin_vel` uses root_com_vel_w + root_link_quat_w internally.
+        self.robot.write_root_link_pose_to_sim(root_pose, env_ids=env_ids)
+        self.robot.write_root_com_velocity_to_sim(root_vel, env_ids=env_ids)
         self.robot.write_joint_state_to_sim(joint_pos, joint_vel, env_ids=env_ids)
         self.robot.write_data_to_sim()
+        # Refresh cached kinematics buffers (e.g. root_lin_vel_b) after direct state writes.
+        self.scene.update(dt=0.0)
+        self.robot.update(dt=0.0)

@@ -72,7 +72,7 @@ class G1ImitationRLOptIPMDConfig(IPMDRLOptConfig):
         self.collector.total_frames = 300000000
 
         # IPMD-specific settings
-        self.ipmd.reward_input_type = "s"
+        self.ipmd.reward_input_type = "s'"
         self.ipmd.use_estimated_rewards_for_ppo = True
         self.ipmd.bc_loss_coeff = 0.0
         self.ipmd.expert_batch_size = 4000

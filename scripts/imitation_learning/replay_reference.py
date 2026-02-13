@@ -139,22 +139,21 @@ def _to_cpu(data: Any) -> Any:
     return data
 
 
-def _apply_final_obs(
-    next_obs: Dict[str, Any],
-    final_obs: Dict[str, Any],
-    done_mask: torch.Tensor,
-) -> Dict[str, Any]:
-    updated = {}
-    for key, value in next_obs.items():
-        if isinstance(value, dict):
-            updated[key] = _apply_final_obs(value, final_obs.get(key, {}), done_mask)
-        elif torch.is_tensor(value) and key in final_obs:
-            value = value.clone()
-            value[done_mask] = final_obs[key][done_mask]
-            updated[key] = value
+def _flatten_obs(obs: dict) -> dict:
+    """Flatten one level of nested observation dicts.
+
+    With ``concatenate_terms=False``, IsaacLab produces
+    ``{"policy": {"joint_pos": tensor, ...}}``.
+    This hoists leaf tensors to top-level: ``{"joint_pos": tensor, ...}``.
+    Groups that are already tensors (``concatenate_terms=True``) stay as-is.
+    """
+    flat: dict = {}
+    for k, v in obs.items():
+        if isinstance(v, dict):
+            flat.update(v)
         else:
-            updated[key] = value
-    return updated
+            flat[k] = v
+    return flat
 
 
 def _init_replay_buffer(rb_dir: str, max_size: int) -> "TensorDictReplayBuffer":
@@ -337,7 +336,7 @@ class LeRobotExporter:
         env_id: int,
     ) -> Dict[str, Any]:
         frame: Dict[str, Any] = {"task": self.task_name}
-        obs_env = _index_data(obs, env_id)
+        obs_env = _index_data(_flatten_obs(obs), env_id)
         ref_env = _index_data(reference, env_id)
         obs_flat: Dict[str, Any] = {}
         ref_flat: Dict[str, Any] = {}
@@ -527,27 +526,48 @@ def main(env_cfg, agent_cfg):  # noqa: ARG001
         next_reference = env.unwrapped.get_reference_data()
         if rb is not None:
             done = terminated | truncated
-            final_obs = extras.get("final_obs_buf")
-            if final_obs is not None:
-                next_obs = _apply_final_obs(next_obs, final_obs, done)
 
-            obs_td = _as_tensordict(_to_cpu(obs), batch_size=[num_envs])
-            ref_td = _as_tensordict(_to_cpu(reference), batch_size=[num_envs])
-            next_obs_td = _as_tensordict(_to_cpu(next_obs), batch_size=[num_envs])
-            next_ref_td = _as_tensordict(_to_cpu(next_reference), batch_size=[num_envs])
+            # Flatten observation groups to top-level keys (handles both
+            # concatenate_terms=True and False) and move to CPU.
+            flat_obs = _to_cpu(_flatten_obs(obs))
+            flat_next_obs = _to_cpu(_flatten_obs(next_obs))
 
             transition = TensorDict({}, batch_size=[num_envs])
-            transition.set("observation", obs_td)
-            transition.set("reference", ref_td)
+            for key, val in flat_obs.items():
+                transition.set(key, val)
+            transition.set("reference", _as_tensordict(_to_cpu(reference), batch_size=[num_envs]))
             transition.set("action", _to_cpu(action))
             transition.set("reward", _to_cpu(reward))
             transition.set("terminated", _to_cpu(terminated))
             transition.set("truncated", _to_cpu(truncated))
             transition.set("done", _to_cpu(done))
-            transition.set(("next", "observation"), next_obs_td)
-            transition.set(("next", "reference"), next_ref_td)
+            for key, val in flat_next_obs.items():
+                transition.set(("next", key), val)
+            transition.set(("next", "reference"), _as_tensordict(_to_cpu(next_reference), batch_size=[num_envs]))
             transition.set(("next", "reward"), _to_cpu(reward))
             transition.set(("next", "done"), _to_cpu(done))
+
+            # Overwrite next-obs for done envs with their true terminal obs.
+            # IsaacLab stores final_obs as np.ndarray(num_envs, dtype=object)
+            # where each element is None (not done) or a per-env obs dict.
+            final_obs_arr = extras.get("final_obs")
+            if final_obs_arr is not None:
+                done_ids = done.nonzero(as_tuple=False).squeeze(-1).tolist()
+                if isinstance(done_ids, int):
+                    done_ids = [done_ids]
+                for env_id in done_ids:
+                    if final_obs_arr[env_id] is None:
+                        continue
+                    flat_final = _flatten_obs(final_obs_arr[env_id])
+                    for key, val in flat_final.items():
+                        buf = transition.get(("next", key), default=None)
+                        if buf is None:
+                            continue
+                        if torch.is_tensor(val):
+                            buf[env_id] = val.cpu()
+                        else:
+                            buf[env_id] = torch.as_tensor(val)
+
             rb.extend(transition)
 
         if lerobot_exporter is not None:

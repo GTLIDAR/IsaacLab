@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import torch
+
 from isaaclab.envs import ImitationRLEnv
 from isaaclab.managers import SceneEntityCfg
 
@@ -26,9 +27,9 @@ def reference_joint_vel(
     Note: Only the joints configured in :attr:`asset_cfg.joint_ids` will have their positions returned.
     """
     # extract the used quantities (to enable type-hinting)
-    ref_joint_pos = env.current_reference.get("joint_pos")
+    ref_joint_vel = env.current_reference.get("joint_vel")
 
-    return ref_joint_pos[..., asset_cfg.joint_ids]  # type: ignore
+    return ref_joint_vel[..., asset_cfg.joint_ids]  # type: ignore
 
 
 def reference_root_lin_vel(

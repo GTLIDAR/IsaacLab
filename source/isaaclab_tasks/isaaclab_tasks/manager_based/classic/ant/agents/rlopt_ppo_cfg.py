@@ -27,5 +27,5 @@ class AntRLOptPPOConfig(RLOptPPOConfig):
         self.value_net.num_cells = [512, 256, 128]
         self.collector.total_frames = 300000000  # Fewer frames for flat terrain
 
-        self.policy_in_keys = ["policy"]
+        self.policy_in_keys = ["policy"] 
         self.value_net_in_keys = ["policy"]

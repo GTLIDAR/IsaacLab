@@ -22,6 +22,7 @@ from isaaclab_tasks.manager_based.imitation.mdp import (
     reference_root_pos,
     reference_root_quat,
     track_joint_pos,
+    track_joint_vel,
     track_root_ang_vel,
     track_root_lin_vel,
     track_root_pos,
@@ -29,7 +30,6 @@ from isaaclab_tasks.manager_based.imitation.mdp import (
 )
 
 from isaaclab_assets.robots.unitree import G1_MINIMAL_CFG
-
 
 # Policy observation term keys in the same order as ``PolicyCfg`` below.
 G1_POLICY_OBS_KEYS: list[str] = [
@@ -47,7 +47,9 @@ G1_POLICY_OBS_KEYS: list[str] = [
 ]
 
 # IRL reward estimator keys: same state terms but without previous-action history.
-G1_REWARD_OBS_KEYS: list[str] = [key for key in G1_POLICY_OBS_KEYS if key != "last_actions"]
+G1_REWARD_OBS_KEYS: list[str] = [
+    key for key in G1_POLICY_OBS_KEYS if key != "last_actions"
+]
 
 
 # --- Observation ---
@@ -60,13 +62,19 @@ class G1ObservationCfg:
         """Observations for policy group."""
 
         # observation terms (order preserved)
-        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
-        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
+        base_lin_vel = ObsTerm(
+            func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1)
+        )
+        base_ang_vel = ObsTerm(
+            func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2)
+        )
         projected_gravity = ObsTerm(
             func=mdp.projected_gravity,
             noise=Unoise(n_min=-0.05, n_max=0.05),
         )
-        joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
+        joint_pos = ObsTerm(
+            func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01)
+        )
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
         reference_joint_pos = ObsTerm(
             func=reference_joint_pos,
@@ -127,7 +135,7 @@ class G1ObservationCfg:
 
         def __post_init__(self):
             self.enable_corruption = True
-            self.concatenate_terms = False
+            self.concatenate_terms = True
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
@@ -172,55 +180,55 @@ class G1RewardsCfg:
             "sigma": 1.0,
         },
     )
-    # tracking_joint_vel = RewTerm(
-    #     func=track_joint_vel,
-    #     weight=1.0,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             joint_names=[
-    #                 "left_hip_pitch_joint",
-    #                 "left_hip_roll_joint",
-    #                 "left_hip_yaw_joint",
-    #                 "left_knee_joint",
-    #                 "left_ankle_pitch_joint",
-    #                 "left_ankle_roll_joint",
-    #                 "right_hip_pitch_joint",
-    #                 "right_hip_roll_joint",
-    #                 "right_hip_yaw_joint",
-    #                 "right_knee_joint",
-    #                 "right_ankle_pitch_joint",
-    #                 "right_ankle_roll_joint",
-    #                 "torso_joint",
-    #                 "left_shoulder_pitch_joint",
-    #                 "left_shoulder_roll_joint",
-    #                 "left_shoulder_yaw_joint",
-    #                 "left_elbow_pitch_joint",
-    #                 "left_elbow_roll_joint",
-    #                 "right_shoulder_pitch_joint",
-    #                 "right_shoulder_roll_joint",
-    #                 "right_shoulder_yaw_joint",
-    #                 "right_elbow_pitch_joint",
-    #                 "right_elbow_roll_joint",
-    #             ],
-    #         ),
-    #         "sigma": 1.0,
-    #     },
-    # )
+    tracking_joint_vel = RewTerm(
+        func=track_joint_vel,
+        weight=0.2,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=[
+                    "left_hip_pitch_joint",
+                    "left_hip_roll_joint",
+                    "left_hip_yaw_joint",
+                    "left_knee_joint",
+                    "left_ankle_pitch_joint",
+                    "left_ankle_roll_joint",
+                    "right_hip_pitch_joint",
+                    "right_hip_roll_joint",
+                    "right_hip_yaw_joint",
+                    "right_knee_joint",
+                    "right_ankle_pitch_joint",
+                    "right_ankle_roll_joint",
+                    "torso_joint",
+                    "left_shoulder_pitch_joint",
+                    "left_shoulder_roll_joint",
+                    "left_shoulder_yaw_joint",
+                    "left_elbow_pitch_joint",
+                    "left_elbow_roll_joint",
+                    "right_shoulder_pitch_joint",
+                    "right_shoulder_roll_joint",
+                    "right_shoulder_yaw_joint",
+                    "right_elbow_pitch_joint",
+                    "right_elbow_roll_joint",
+                ],
+            ),
+            "sigma": 1.0,
+        },
+    )
     tracking_root_pos = RewTerm(
         func=track_root_pos,
-        weight=1.0,
+        weight=0.5,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
-            "sigma": 1.0,
+            "sigma": 0.1,
         },
     )
     tracking_root_quat = RewTerm(
         func=track_root_quat,
-        weight=1.0,
+        weight=0.5,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
-            "sigma": 1.0,
+            "sigma": 0.1,
         },
     )
     tracking_root_lin_vel = RewTerm(
@@ -228,17 +236,89 @@ class G1RewardsCfg:
         weight=1.0,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
-            "sigma": 1.0,
+            "sigma": 0.5,
         },
     )
     tracking_root_ang_vel = RewTerm(
         func=track_root_ang_vel,
-        weight=1.0,
+        weight=0.0,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
-            "sigma": 1.0,
+            "sigma": 0.1,
         },
     )
+    # tracking_relative_body_pos = RewTerm(
+    #     func=track_relative_body_pos,
+    #     weight=0.5,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             body_names=[
+    #                 "torso_link",
+    #                 # "left_hand_roll_link",
+    #                 "left_ankle_roll_link",
+    #                 # "right_hand_roll_link",
+    #                 "right_ankle_roll_link",
+    #             ],
+    #         ),
+    #         "reference_body_names": [
+    #             "torso_link",
+    #             # "left_hand_roll_link",
+    #             "left_ankle_roll_link",
+    #             # "right_hand_roll_link",
+    #             "right_ankle_roll_link",
+    #         ],
+    #         "sigma": 0.1,
+    #     },
+    # )
+    # tracking_relative_body_quat = RewTerm(
+    #     func=track_relative_body_quat,
+    #     weight=0.3,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             body_names=[
+    #                 "torso_link",
+    #                 "left_hand_roll_link",
+    #                 "left_ankle_roll_link",
+    #                 "right_hand_roll_link",
+    #                 "right_ankle_roll_link",
+    #             ],
+    #         ),
+    #         "reference_body_names": [
+    #             "torso_link",
+    #             "left_hand_roll_link",
+    #             "left_ankle_roll_link",
+    #             "right_hand_roll_link",
+    #             "right_ankle_roll_link",
+    #         ],
+    #         "sigma": 0.1,
+    #     },
+    # )
+    # tracking_relative_body_vel = RewTerm(
+    #     func=track_relative_body_vel,
+    #     weight=0.1,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg(
+    #             "robot",
+    #             body_names=[
+    #                 "torso_link",
+    #                 "left_hand_roll_link",
+    #                 "left_ankle_roll_link",
+    #                 "right_hand_roll_link",
+    #                 "right_ankle_roll_link",
+    #             ],
+    #         ),
+    #         "reference_body_names": [
+    #             "torso_link",
+    #             "left_hand_roll_link",
+    #             "left_ankle_roll_link",
+    #             "right_hand_roll_link",
+    #             "right_ankle_roll_link",
+    #         ],
+    #         "sigma": 0.2,
+    #     },
+    # )
 
     """Reward terms from locomotion velocity task."""
 
@@ -246,9 +326,11 @@ class G1RewardsCfg:
 
     feet_slide = RewTerm(
         func=mdp.feet_slide,
-        weight=-0.1,
+        weight=0.0,
         params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
+            "sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=".*_ankle_roll_link"
+            ),
             "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
         },
     )
@@ -257,17 +339,25 @@ class G1RewardsCfg:
     dof_pos_limits = RewTerm(
         func=mdp.joint_pos_limits,
         weight=-1.0,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"])},
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot", joint_names=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"]
+            )
+        },
     )
     # Penalize deviation from default of the joints that are not essential for locomotion
     joint_deviation_hip = RewTerm(
         func=mdp.joint_deviation_l1,
-        weight=-0.1,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_yaw_joint", ".*_hip_roll_joint"])},
+        weight=0.0,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot", joint_names=[".*_hip_yaw_joint", ".*_hip_roll_joint"]
+            )
+        },
     )
     joint_deviation_arms = RewTerm(
         func=mdp.joint_deviation_l1,
-        weight=-0.1,
+        weight=0.0,
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
@@ -283,7 +373,7 @@ class G1RewardsCfg:
     )
     joint_deviation_fingers = RewTerm(
         func=mdp.joint_deviation_l1,
-        weight=-0.05,
+        weight=0.0,
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
@@ -301,27 +391,27 @@ class G1RewardsCfg:
     )
     joint_deviation_torso = RewTerm(
         func=mdp.joint_deviation_l1,
-        weight=-0.1,
+        weight=0.0,
         params={"asset_cfg": SceneEntityCfg("robot", joint_names="torso_joint")},
     )
 
     # -- penalties
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
     ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
-    dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
-    dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
+    dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-2.0e-5)
+    dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.0e-7)
     action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
 
     undesired_contacts = RewTerm(
         func=mdp.undesired_contacts,
-        weight=-1.0,
+        weight=0.0,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*THIGH"),
             "threshold": 1.0,
         },
     )
     # -- optional penalties
-    flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=0.0)
+    flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=-0.2)
 
 
 @configclass
@@ -429,7 +519,9 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
         # Randomization
         self.events.push_robot = None
         self.events.add_base_mass = None
-        self.events.base_external_force_torque.params["asset_cfg"].body_names = ["torso_link"]
+        self.events.base_external_force_torque.params["asset_cfg"].body_names = [
+            "torso_link"
+        ]
         self.events.reset_base.params = {
             "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
             "velocity_range": {
@@ -444,20 +536,7 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
         self.events.base_com = None
 
         # Rewards
-        self.rewards.lin_vel_z_l2.weight = 0.0
         self.rewards.undesired_contacts = None  # type: ignore
-        self.rewards.flat_orientation_l2.weight = -1.0
-        self.rewards.action_rate_l2.weight = -0.005
-        self.rewards.dof_acc_l2.weight = -1.25e-7
-        self.rewards.dof_acc_l2.params["asset_cfg"] = SceneEntityCfg(  # type: ignore
-            "robot",
-            joint_names=[".*_hip_.*", ".*_knee_joint"],  # type: ignore
-        )
-        self.rewards.dof_torques_l2.weight = -1.5e-7
-        self.rewards.dof_torques_l2.params["asset_cfg"] = SceneEntityCfg(  # type: ignore
-            "robot",
-            joint_names=[".*_hip_.*", ".*_knee_joint", ".*_ankle_.*"],  # type: ignore
-        )
 
         # terminations
         self.terminations.base_contact.params["sensor_cfg"].body_names = "torso_link"
