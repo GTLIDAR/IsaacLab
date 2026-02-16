@@ -1,3 +1,8 @@
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
 from __future__ import annotations
 
 from collections import deque
@@ -5,7 +10,7 @@ import os
 
 import gymnasium as gym
 import torch
-from rlopt.agent import IPMDRLOptConfig, PPORLOptConfig, SACRLOptConfig  # noqa: F401
+from rlopt.agent import IPMDRLOptConfig, PPORLOptConfig, SACRLOptConfig, FastTD3RLOptConfig  # noqa: F401
 from rlopt.config_base import RLOptConfig
 from torchrl.data.tensor_specs import Bounded, Composite, Unbounded
 from torchrl.envs.libs.gym import GymWrapper, _gym_to_torchrl_spec_transform, terminal_obs_reader
