@@ -1,10 +1,7 @@
 from isaaclab.utils import configclass
 
 from isaaclab_rl.rlopt import PPORLOptConfig
-from isaaclab_tasks.manager_based.imitation.config.g1.imitation_g1_env_cfg import (
-    G1_POLICY_OBS_KEYS,
-    G1_REWARD_OBS_KEYS,
-)
+
 
 # Convenience configurations for different scenarios
 @configclass
@@ -65,3 +62,5 @@ class G1ImitationRLOptPPOConfig(PPORLOptConfig):
         self.loss.gamma = 0.99
 
         self.collector.total_frames = 300000000
+
+        self.save_interval = 5000

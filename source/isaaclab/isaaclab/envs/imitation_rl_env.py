@@ -11,6 +11,8 @@ import isaaclab.utils.math as math_utils
 from isaaclab.assets import Articulation
 from isaaclab.envs.common import VecEnvStepReturn
 from isaaclab.envs.manager_based_rl_env import ManagerBasedRLEnv
+from isaaclab.markers import VisualizationMarkers
+from isaaclab.markers.config import BLUE_ARROW_X_MARKER_CFG, RED_ARROW_X_MARKER_CFG
 
 # Import the new manager and utilities
 try:
@@ -161,6 +163,11 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         self.reference_body_names: list[str] = []
         self.reference_site_names: list[str] = []
         self._joint_mapping_cache: torch.Tensor | None = None
+        self._reference_vel_vis_enabled = bool(getattr(cfg, "visualize_reference_velocity", True))
+        self._reference_vel_marker: VisualizationMarkers | None = None
+        self._reference_pos_delta_marker: VisualizationMarkers | None = None
+        self._last_tracked_root_pos_w = torch.zeros((num_envs, 3), device=device)
+        self._last_tracked_root_pos_valid = torch.zeros((num_envs,), device=device, dtype=torch.bool)
         self.replay_reference = getattr(cfg, "replay_reference", False)
         self.replay_only = getattr(cfg, "replay_only", False)
         if self.replay_only and not self.replay_reference:
@@ -176,6 +183,8 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         super().__init__(cfg, render_mode, **kwargs)
 
         self.robot: Articulation = self.scene["robot"]
+        self._setup_reference_velocity_visualizer()
+        self._update_reference_velocity_visualizer()
         joint_names = self.robot.joint_names
         print("[ImitationRLEnv] G1 Joint names: ", joint_names)
 
@@ -235,7 +244,13 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         self._init_root_pos[env_ids_tensor] = self.robot.data.root_state_w[env_ids_tensor, 0:3]
         self._init_root_quat[env_ids_tensor] = self.robot.data.root_state_w[env_ids_tensor, 3:7]
 
-        self._replay_reference(env_ids_tensor)
+        if self.replay_reference:
+            self._replay_reference(env_ids_tensor)
+
+        tracked_root_pos_w = self._get_tracked_reference_root_pos_w()
+        if tracked_root_pos_w is not None:
+            self._last_tracked_root_pos_w[env_ids_tensor] = tracked_root_pos_w[env_ids_tensor]
+            self._last_tracked_root_pos_valid[env_ids_tensor] = True
 
         return result
 
@@ -245,7 +260,9 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         if not self.replay_only:
             # Get next reference data point (advance=True to move to next step)
             self.current_reference = self.trajectory_manager.sample(advance=True)
-            return super().step(action)
+            step_return = super().step(action)
+            self._update_reference_velocity_visualizer()
+            return step_return
 
         # Replay-only path: ignore physics stepping and evaluate rewards exactly
         # on the replayed reference state.
@@ -322,6 +339,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         # -- compute observations
         # note: done after reset to get the correct observations for reset envs
         self.obs_buf = self.observation_manager.compute(update_history=True)
+        self._update_reference_velocity_visualizer()
         # return observations, rewards, resets and extras
         return (
             self.obs_buf,
@@ -363,9 +381,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         else:
             return data  # type: ignore[return-value]
 
-    def _replay_reference(
-        self, env_ids: torch.Tensor | None = None, reference: TensorDict | None = None
-    ):
+    def _replay_reference(self, env_ids: torch.Tensor | None = None, reference: TensorDict | None = None):
         """Replay the reference data. If env_ids is provided, only replay the reference data for the given environments.
         If env_ids is not provided, replay the reference data for all environments."""
 
@@ -412,3 +428,84 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         # Refresh cached kinematics buffers (e.g. root_lin_vel_b) after direct state writes.
         self.scene.update(dt=0.0)
         self.robot.update(dt=0.0)
+
+    def _get_tracked_reference_root_pos_w(self) -> torch.Tensor | None:
+        """Return tracked reference root positions in world frame for all environments."""
+        if self.current_reference is None:
+            return None
+
+        reference_root_pos = self.current_reference.get("root_pos")
+        if reference_root_pos is None:
+            return None
+
+        tracked_root_pos_w = math_utils.quat_apply(self._init_root_quat, reference_root_pos)
+        tracked_root_pos_w[:, :2] += self._init_root_pos[:, :2]
+        tracked_root_pos_w[:, 2] = self._init_root_pos[:, 2]
+        return tracked_root_pos_w
+
+    def _setup_reference_velocity_visualizer(self) -> None:
+        """Create the marker used to visualize reference linear velocity."""
+        if not self._reference_vel_vis_enabled:
+            return
+        marker_cfg = RED_ARROW_X_MARKER_CFG.copy()
+        marker_cfg.prim_path = "/Visuals/Imitation/reference_root_lin_vel"
+        marker_cfg.markers["arrow"].scale = (0.5, 0.5, 0.5)
+        self._reference_vel_marker = VisualizationMarkers(marker_cfg)
+        self._reference_vel_marker.set_visibility(True)
+
+        pos_delta_cfg = BLUE_ARROW_X_MARKER_CFG.copy()
+        pos_delta_cfg.prim_path = "/Visuals/Imitation/reference_root_pos_delta"
+        pos_delta_cfg.markers["arrow"].scale = (0.5, 0.5, 0.5)
+        self._reference_pos_delta_marker = VisualizationMarkers(pos_delta_cfg)
+        self._reference_pos_delta_marker.set_visibility(True)
+
+    def _update_reference_velocity_visualizer(self) -> None:
+        """Update marker pose/scale from current reference linear velocity."""
+        if not self._reference_vel_vis_enabled:
+            return
+        if self.current_reference is None:
+            return
+        if not self.robot.is_initialized:
+            return
+
+        marker_pos_w = self.robot.data.root_pos_w.clone()
+        marker_pos_w[:, 2] += 0.5
+
+        if self._reference_vel_marker is not None:
+            reference_root_lin_vel = self.current_reference.get("root_lin_vel")
+            if reference_root_lin_vel is not None:
+                # Convert reference velocity to world frame using the reset-frame orientation.
+                reference_root_lin_vel_w = math_utils.quat_apply(self._init_root_quat, reference_root_lin_vel)
+                reference_root_lin_vel_xy_w = reference_root_lin_vel_w[:, :2]
+
+                default_scale = self._reference_vel_marker.cfg.markers["arrow"].scale
+                marker_scale = torch.tensor(default_scale, device=self.device).repeat(self.num_envs, 1)
+                marker_scale[:, 0] *= torch.linalg.norm(reference_root_lin_vel_xy_w, dim=1) * 3.0
+
+                heading_angle = torch.atan2(reference_root_lin_vel_xy_w[:, 1], reference_root_lin_vel_xy_w[:, 0])
+                zeros = torch.zeros_like(heading_angle)
+                marker_quat = math_utils.quat_from_euler_xyz(zeros, zeros, heading_angle)
+                self._reference_vel_marker.visualize(marker_pos_w, marker_quat, marker_scale)
+
+        if self._reference_pos_delta_marker is not None:
+            tracked_root_pos_w = self._get_tracked_reference_root_pos_w()
+            if tracked_root_pos_w is not None:
+                tracked_root_pos_delta_w = tracked_root_pos_w - self._last_tracked_root_pos_w
+                tracked_root_pos_delta_w[~self._last_tracked_root_pos_valid] = 0.0
+                tracked_root_pos_delta_xy_w = tracked_root_pos_delta_w[:, :2]
+
+                delta_marker_pos_w = marker_pos_w.clone()
+                delta_marker_pos_w[:, 2] += 0.2
+
+                delta_default_scale = self._reference_pos_delta_marker.cfg.markers["arrow"].scale
+                delta_marker_scale = torch.tensor(delta_default_scale, device=self.device).repeat(self.num_envs, 1)
+                delta_scale_gain = 3.0 / max(float(self.step_dt), 1.0e-6)
+                delta_marker_scale[:, 0] *= torch.linalg.norm(tracked_root_pos_delta_xy_w, dim=1) * delta_scale_gain
+
+                delta_heading_angle = torch.atan2(tracked_root_pos_delta_xy_w[:, 1], tracked_root_pos_delta_xy_w[:, 0])
+                zeros = torch.zeros_like(delta_heading_angle)
+                delta_marker_quat = math_utils.quat_from_euler_xyz(zeros, zeros, delta_heading_angle)
+                self._reference_pos_delta_marker.visualize(delta_marker_pos_w, delta_marker_quat, delta_marker_scale)
+
+                self._last_tracked_root_pos_w.copy_(tracked_root_pos_w)
+                self._last_tracked_root_pos_valid.fill_(True)

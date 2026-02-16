@@ -233,7 +233,7 @@ class G1RewardsCfg:
     )
     tracking_root_lin_vel = RewTerm(
         func=track_root_lin_vel,
-        weight=1.0,
+        weight=0.0,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
             "sigma": 0.5,
@@ -534,6 +534,8 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
             },
         }
         self.events.base_com = None
+        self.events.push_robot = None
+        self.events.base_external_force_torque = None
 
         # Rewards
         self.rewards.undesired_contacts = None  # type: ignore

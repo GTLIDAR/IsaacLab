@@ -1,6 +1,7 @@
 from isaaclab.utils import configclass
 
 from isaaclab_rl.rlopt import IPMDRLOptConfig
+
 from isaaclab_tasks.manager_based.imitation.config.g1.imitation_g1_env_cfg import (
     G1_POLICY_OBS_KEYS,
     G1_REWARD_OBS_KEYS,
@@ -69,7 +70,7 @@ class G1ImitationRLOptIPMDConfig(IPMDRLOptConfig):
         # Loss settings
         self.loss.gamma = 0.99
 
-        self.collector.total_frames = 300000000
+        self.collector.total_frames = 1000000000
 
         # IPMD-specific settings
         self.ipmd.reward_input_type = "s'"
