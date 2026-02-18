@@ -63,4 +63,4 @@ class G1ImitationRLOptPPOConfig(PPORLOptConfig):
 
         self.collector.total_frames = 300000000
 
-        self.save_interval = 5000
+        self.save_interval = 0

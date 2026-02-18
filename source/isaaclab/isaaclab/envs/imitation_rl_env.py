@@ -12,7 +12,7 @@ from isaaclab.assets import Articulation
 from isaaclab.envs.common import VecEnvStepReturn
 from isaaclab.envs.manager_based_rl_env import ManagerBasedRLEnv
 from isaaclab.markers import VisualizationMarkers
-from isaaclab.markers.config import BLUE_ARROW_X_MARKER_CFG, RED_ARROW_X_MARKER_CFG
+from isaaclab.markers.config import BLUE_ARROW_X_MARKER_CFG, GREEN_ARROW_X_MARKER_CFG, RED_ARROW_X_MARKER_CFG
 
 # Import the new manager and utilities
 try:
@@ -166,6 +166,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         self._reference_vel_vis_enabled = bool(getattr(cfg, "visualize_reference_velocity", True))
         self._reference_vel_marker: VisualizationMarkers | None = None
         self._reference_pos_delta_marker: VisualizationMarkers | None = None
+        self._initial_heading_marker: VisualizationMarkers | None = None
         self._last_tracked_root_pos_w = torch.zeros((num_envs, 3), device=device)
         self._last_tracked_root_pos_valid = torch.zeros((num_envs,), device=device, dtype=torch.bool)
         self.replay_reference = getattr(cfg, "replay_reference", False)
@@ -177,6 +178,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         # Store initial poses for replay
         self._init_root_pos = torch.zeros((num_envs, 3), device=device)
         self._init_root_quat = torch.zeros((num_envs, 4), device=device)
+        self._init_root_quat[:, 0] = 1.0
         self._load_reference_metadata(zarr_path)
 
         # Initialize parent class
@@ -459,6 +461,12 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         self._reference_pos_delta_marker = VisualizationMarkers(pos_delta_cfg)
         self._reference_pos_delta_marker.set_visibility(True)
 
+        heading_cfg = GREEN_ARROW_X_MARKER_CFG.copy()
+        heading_cfg.prim_path = "/Visuals/Imitation/reference_initial_heading"
+        heading_cfg.markers["arrow"].scale = (0.5, 0.5, 0.5)
+        self._initial_heading_marker = VisualizationMarkers(heading_cfg)
+        self._initial_heading_marker.set_visibility(True)
+
     def _update_reference_velocity_visualizer(self) -> None:
         """Update marker pose/scale from current reference linear velocity."""
         if not self._reference_vel_vis_enabled:
@@ -509,3 +517,10 @@ class ImitationRLEnv(ManagerBasedRLEnv):
 
                 self._last_tracked_root_pos_w.copy_(tracked_root_pos_w)
                 self._last_tracked_root_pos_valid.fill_(True)
+
+        if self._initial_heading_marker is not None:
+            heading_marker_pos_w = self.robot.data.root_pos_w.clone()
+            heading_marker_pos_w[:, 2] += 0.8
+            heading_default_scale = self._initial_heading_marker.cfg.markers["arrow"].scale
+            heading_marker_scale = torch.tensor(heading_default_scale, device=self.device).repeat(self.num_envs, 1)
+            self._initial_heading_marker.visualize(heading_marker_pos_w, self._init_root_quat, heading_marker_scale)

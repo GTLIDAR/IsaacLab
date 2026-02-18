@@ -78,6 +78,57 @@ parser.add_argument(
     default=False,
     help="Save replay data as a LeRobot dataset (defaults to <log_dir>/lerobot).",
 )
+parser.add_argument(
+    "--debug_reference_match",
+    action="store_true",
+    default=False,
+    help=(
+        "Debug replay correctness by comparing replayed robot root/joint state against "
+        "the transformed reference at runtime."
+    ),
+)
+parser.add_argument(
+    "--debug_reference_interval",
+    type=int,
+    default=50,
+    help="Print debug replay-match stats every N steps.",
+)
+parser.add_argument(
+    "--debug_reference_max_envs",
+    type=int,
+    default=4,
+    help="Maximum number of failing envs to print per debug report.",
+)
+parser.add_argument(
+    "--debug_reference_pos_tol",
+    type=float,
+    default=5.0e-4,
+    help="Failure threshold for root position error norm (meters).",
+)
+parser.add_argument(
+    "--debug_reference_joint_tol",
+    type=float,
+    default=1.0e-4,
+    help="Failure threshold for max absolute joint position error (radians).",
+)
+parser.add_argument(
+    "--debug_reference_quat_tol_deg",
+    type=float,
+    default=0.1,
+    help="Failure threshold for root orientation error (degrees).",
+)
+parser.add_argument(
+    "--debug_reference_xpos_tol",
+    type=float,
+    default=1.0e-2,
+    help="Failure threshold for absolute body xpos error norm (meters).",
+)
+parser.add_argument(
+    "--debug_reference_xpos_rel_tol",
+    type=float,
+    default=1.0e-2,
+    help="Failure threshold for relative body xpos error norm (meters).",
+)
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
 # parse the arguments
@@ -105,6 +156,7 @@ from datetime import datetime
 from typing import Any, Dict
 
 import isaaclab_tasks  # noqa: F401
+from isaaclab.utils.math import quat_apply, quat_apply_inverse, quat_error_magnitude, quat_mul
 from isaaclab.utils.dict import print_dict
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
@@ -277,6 +329,264 @@ def _collect_field_info(data: Any, prefix: str = "") -> Dict[str, Any]:
             else:
                 info[next_prefix] = {"type": type(value).__name__}
     return info
+
+
+def _quat_apply_batched(quat: torch.Tensor, vec: torch.Tensor) -> torch.Tensor:
+    """Apply quaternion rotation to a batched vector tensor of shape [N, K, 3]."""
+    n_envs, n_items = vec.shape[0], vec.shape[1]
+    quat_expanded = quat.unsqueeze(1).expand(n_envs, n_items, 4).reshape(-1, 4)
+    vec_flat = vec.reshape(-1, 3)
+    return quat_apply(quat_expanded, vec_flat).reshape(n_envs, n_items, 3)
+
+
+def _quat_apply_inverse_batched(quat: torch.Tensor, vec: torch.Tensor) -> torch.Tensor:
+    """Apply inverse quaternion rotation to a batched vector tensor of shape [N, K, 3]."""
+    n_envs, n_items = vec.shape[0], vec.shape[1]
+    quat_expanded = quat.unsqueeze(1).expand(n_envs, n_items, 4).reshape(-1, 4)
+    vec_flat = vec.reshape(-1, 3)
+    return quat_apply_inverse(quat_expanded, vec_flat).reshape(n_envs, n_items, 3)
+
+
+def _resolve_reference_to_asset_body_map(env) -> tuple[torch.Tensor, torch.Tensor, list[tuple[str, str]]]:
+    """Resolve reference body indices to asset body indices using conservative name matching."""
+    reference_names = list(getattr(env.unwrapped, "reference_body_names", []) or [])
+    asset_names = list(getattr(env.unwrapped.robot.data, "body_names", []) or [])
+    if len(reference_names) == 0 or len(asset_names) == 0:
+        return (
+            torch.empty(0, dtype=torch.long, device=env.unwrapped.device),
+            torch.empty(0, dtype=torch.long, device=env.unwrapped.device),
+            [],
+        )
+
+    asset_lookup = {name: idx for idx, name in enumerate(asset_names)}
+    asset_lookup_lower = {name.lower(): idx for idx, name in enumerate(asset_names)}
+
+    special_alias = {
+        "left_wrist_roll_rubber_hand": "left_palm_link",
+        "right_wrist_roll_rubber_hand": "right_palm_link",
+        "left_elbow_link": "left_elbow_pitch_link",
+        "right_elbow_link": "right_elbow_pitch_link",
+    }
+
+    ref_ids: list[int] = []
+    asset_ids: list[int] = []
+    name_pairs: list[tuple[str, str]] = []
+
+    for ref_idx, ref_name in enumerate(reference_names):
+        asset_idx = None
+        matched_asset_name = None
+        if ref_name in asset_lookup:
+            asset_idx = asset_lookup[ref_name]
+            matched_asset_name = ref_name
+        elif ref_name.lower() in asset_lookup_lower:
+            asset_idx = asset_lookup_lower[ref_name.lower()]
+            matched_asset_name = asset_names[asset_idx]
+        else:
+            alias_name = special_alias.get(ref_name)
+            if alias_name is not None and alias_name in asset_lookup:
+                asset_idx = asset_lookup[alias_name]
+                matched_asset_name = alias_name
+
+        if asset_idx is None or matched_asset_name is None:
+            continue
+
+        ref_ids.append(ref_idx)
+        asset_ids.append(asset_idx)
+        name_pairs.append((ref_name, matched_asset_name))
+
+    device = env.unwrapped.device
+    return (
+        torch.tensor(ref_ids, dtype=torch.long, device=device),
+        torch.tensor(asset_ids, dtype=torch.long, device=device),
+        name_pairs,
+    )
+
+
+def _compute_replay_reference_match_errors(env, reference: TensorDictBase) -> dict[str, torch.Tensor]:
+    """Compute replay-vs-reference errors for root pose and joint positions."""
+    unwrapped = env.unwrapped
+    robot = unwrapped.robot
+
+    init_pos = unwrapped._init_root_pos
+    init_quat = unwrapped._init_root_quat
+
+    # Expected root state follows the same transform path used in ImitationRLEnv._replay_reference.
+    expected_root_pos = quat_apply(init_quat, reference["root_pos"])
+    expected_root_pos[:, :2] += init_pos[:, :2]
+    expected_root_pos[:, 2] = init_pos[:, 2]
+    expected_root_quat = quat_mul(init_quat, reference["root_quat"])
+
+    actual_root_state = robot.data.root_state_w
+    actual_root_pos = actual_root_state[:, :3]
+    actual_root_quat = actual_root_state[:, 3:7]
+
+    root_pos_err = torch.linalg.norm(actual_root_pos - expected_root_pos, dim=-1)
+    root_pos_xy_err = torch.linalg.norm(actual_root_pos[:, :2] - expected_root_pos[:, :2], dim=-1)
+    root_pos_z_err = torch.abs(actual_root_pos[:, 2] - expected_root_pos[:, 2])
+    root_quat_err_rad = quat_error_magnitude(actual_root_quat, expected_root_quat)
+    root_quat_err_deg = torch.rad2deg(root_quat_err_rad)
+
+    # Expected joint positions also follow _replay_reference (NaNs replaced by defaults).
+    ref_joint_pos = reference["joint_pos"]
+    expected_joint_pos = torch.where(
+        torch.isnan(ref_joint_pos), robot.data.default_joint_pos, ref_joint_pos
+    )
+    actual_joint_pos = robot.data.joint_pos
+    joint_abs_err = torch.abs(actual_joint_pos - expected_joint_pos)
+    joint_linf_err = torch.max(joint_abs_err, dim=-1).values
+    joint_l2_err = torch.linalg.norm(actual_joint_pos - expected_joint_pos, dim=-1)
+
+    # Optional body xpos check (reference `xpos` vs actual body_link_pos_w) under the same
+    # initial rigid transform used by replay.
+    xpos_abs_err = torch.empty(0, device=unwrapped.device)
+    xpos_rel_err = torch.empty(0, device=unwrapped.device)
+    xpos_num_bodies = torch.tensor(0, device=unwrapped.device, dtype=torch.int64)
+    if ("xpos" in reference.keys()) and hasattr(unwrapped, "trajectory_manager"):
+        ref_body_ids, asset_body_ids, _ = _resolve_reference_to_asset_body_map(env)
+        if ref_body_ids.numel() > 0:
+            tm = unwrapped.trajectory_manager
+            traj_ranks = tm.env_traj_rank.to(dtype=torch.int64)
+            start_idx = tm._start[traj_ranks]
+            start_td = tm.rb[start_idx]
+            start_td = start_td.to(unwrapped.device)
+            start_qpos = start_td.get("qpos")
+            start_root_pos = start_qpos[:, 0:3]
+            start_root_quat = start_qpos[:, 3:7]
+
+            ref_xpos = reference["xpos"][:, ref_body_ids, :]
+            ref_xpos_rel_start = _quat_apply_inverse_batched(
+                start_root_quat, ref_xpos - start_root_pos.unsqueeze(1)
+            )
+            expected_xpos_w = _quat_apply_batched(unwrapped._init_root_quat, ref_xpos_rel_start)
+            expected_xpos_w = expected_xpos_w + unwrapped._init_root_pos.unsqueeze(1)
+
+            # Match the root z clamping behavior used in replay.
+            rigid_root_unclamped = quat_apply(unwrapped._init_root_quat, reference["root_pos"])
+            rigid_root_unclamped = rigid_root_unclamped + unwrapped._init_root_pos
+            z_shift = rigid_root_unclamped[:, 2] - unwrapped._init_root_pos[:, 2]
+            expected_xpos_w[:, :, 2] -= z_shift.unsqueeze(1)
+
+            actual_xpos_w = robot.data.body_link_pos_w[:, asset_body_ids, :]
+            xpos_abs_err_per_body = torch.linalg.norm(actual_xpos_w - expected_xpos_w, dim=-1)
+            xpos_abs_err = torch.mean(xpos_abs_err_per_body, dim=-1)
+
+            actual_rel = actual_xpos_w - actual_xpos_w[:, :1, :]
+            expected_rel = expected_xpos_w - expected_xpos_w[:, :1, :]
+            xpos_rel_err_per_body = torch.linalg.norm(actual_rel - expected_rel, dim=-1)
+            xpos_rel_err = torch.mean(xpos_rel_err_per_body, dim=-1)
+            xpos_num_bodies = torch.tensor(ref_body_ids.numel(), device=unwrapped.device, dtype=torch.int64)
+
+    return {
+        "root_pos_err": root_pos_err,
+        "root_pos_xy_err": root_pos_xy_err,
+        "root_pos_z_err": root_pos_z_err,
+        "root_quat_err_deg": root_quat_err_deg,
+        "joint_linf_err": joint_linf_err,
+        "joint_l2_err": joint_l2_err,
+        "xpos_abs_err": xpos_abs_err,
+        "xpos_rel_err": xpos_rel_err,
+        "xpos_num_bodies": xpos_num_bodies,
+    }
+
+
+def _print_replay_reference_match_debug(
+    env,
+    step: int,
+    errors: dict[str, torch.Tensor],
+    *,
+    max_envs: int,
+    pos_tol: float,
+    joint_tol: float,
+    quat_tol_deg: float,
+    xpos_tol: float,
+    xpos_rel_tol: float,
+) -> dict[str, float]:
+    """Print compact replay-vs-reference error stats and return max metrics."""
+    root_pos_err = errors["root_pos_err"]
+    root_pos_xy_err = errors["root_pos_xy_err"]
+    root_pos_z_err = errors["root_pos_z_err"]
+    root_quat_err_deg = errors["root_quat_err_deg"]
+    joint_linf_err = errors["joint_linf_err"]
+    joint_l2_err = errors["joint_l2_err"]
+    xpos_abs_err = errors["xpos_abs_err"]
+    xpos_rel_err = errors["xpos_rel_err"]
+    xpos_num_bodies = int(errors["xpos_num_bodies"].item())
+
+    pos_fail = root_pos_err > pos_tol
+    joint_fail = joint_linf_err > joint_tol
+    quat_fail = root_quat_err_deg > quat_tol_deg
+    if xpos_abs_err.numel() == 0:
+        xpos_fail = torch.zeros_like(pos_fail)
+        xpos_rel_fail = torch.zeros_like(pos_fail)
+    else:
+        xpos_fail = xpos_abs_err > xpos_tol
+        xpos_rel_fail = xpos_rel_err > xpos_rel_tol
+    any_fail = pos_fail | joint_fail | quat_fail | xpos_fail | xpos_rel_fail
+
+    n_envs = root_pos_err.shape[0]
+    n_fail = int(any_fail.sum().item())
+    xpos_abs_err_mean = float("nan")
+    xpos_rel_err_mean = float("nan")
+    xpos_stats = ""
+    if xpos_abs_err.numel() > 0:
+        xpos_abs_err_mean = xpos_abs_err.mean().item()
+        xpos_rel_err_mean = xpos_rel_err.mean().item()
+        xpos_stats = (
+            f" xpos_abs(mean/max)={xpos_abs_err_mean:.3e}/{xpos_abs_err.max().item():.3e}"
+            f" xpos_rel(mean/max)={xpos_rel_err_mean:.3e}/{xpos_rel_err.max().item():.3e}"
+            f" xpos_bodies={xpos_num_bodies}"
+        )
+    print(
+        "[DEBUG][reference_match] "
+        f"step={step} "
+        f"root_pos(mean/max)={root_pos_err.mean().item():.3e}/{root_pos_err.max().item():.3e} "
+        f"root_xy(max)={root_pos_xy_err.max().item():.3e} "
+        f"root_z(max)={root_pos_z_err.max().item():.3e} "
+        f"root_quat_deg(mean/max)={root_quat_err_deg.mean().item():.3e}/{root_quat_err_deg.max().item():.3e} "
+        f"joint_linf(mean/max)={joint_linf_err.mean().item():.3e}/{joint_linf_err.max().item():.3e} "
+        f"joint_l2(mean/max)={joint_l2_err.mean().item():.3e}/{joint_l2_err.max().item():.3e} "
+        f"{xpos_stats}"
+        f"fails={n_fail}/{n_envs}"
+    )
+
+    if n_fail > 0:
+        failing_ids = any_fail.nonzero(as_tuple=False).squeeze(-1).tolist()
+        failing_ids = failing_ids[: max(0, max_envs)]
+        tm = getattr(env.unwrapped, "trajectory_manager", None)
+        for env_id in failing_ids:
+            traj_msg = ""
+            if tm is not None:
+                dataset, motion, trajectory = tm.get_env_traj_info(env_id)
+                rank = int(tm.env_traj_rank[env_id].item())
+                local_step = int(tm.env_step[env_id].item())
+                traj_msg = (
+                    f" traj={dataset}/{motion}/{trajectory} rank={rank} local_step={local_step}"
+                )
+            print(
+                "[DEBUG][reference_match][env] "
+                f"env={env_id} "
+                f"root_pos={root_pos_err[env_id].item():.3e} "
+                f"root_quat_deg={root_quat_err_deg[env_id].item():.3e} "
+                f"joint_linf={joint_linf_err[env_id].item():.3e} "
+                f"xpos_abs={(xpos_abs_err[env_id].item() if xpos_abs_err.numel() > 0 else float('nan')):.3e} "
+                f"xpos_rel={(xpos_rel_err[env_id].item() if xpos_rel_err.numel() > 0 else float('nan')):.3e}"
+                f"{traj_msg}"
+            )
+
+    return {
+        "root_pos_err_max": root_pos_err.max().item(),
+        "root_pos_xy_err_max": root_pos_xy_err.max().item(),
+        "root_pos_z_err_max": root_pos_z_err.max().item(),
+        "root_quat_err_deg_max": root_quat_err_deg.max().item(),
+        "joint_linf_err_max": joint_linf_err.max().item(),
+        "joint_l2_err_max": joint_l2_err.max().item(),
+        "xpos_abs_err_max": xpos_abs_err.max().item() if xpos_abs_err.numel() > 0 else 0.0,
+        "xpos_rel_err_max": xpos_rel_err.max().item() if xpos_rel_err.numel() > 0 else 0.0,
+        "xpos_abs_err_mean": xpos_abs_err_mean,
+        "xpos_rel_err_mean": xpos_rel_err_mean,
+        "xpos_available": float(xpos_abs_err.numel() > 0),
+        "n_fail": float(n_fail),
+    }
 
 
 class LeRobotExporter:
@@ -494,6 +804,46 @@ def main(env_cfg, agent_cfg):  # noqa: ARG001
     action = torch.as_tensor(env.action_space.sample(), device=env.unwrapped.device)
     action = torch.zeros_like(action)
     reference = env.unwrapped.get_reference_data()
+    debug_interval = max(1, int(args_cli.debug_reference_interval))
+    debug_agg_max: dict[str, float] = {
+        "root_pos_err_max": 0.0,
+        "root_pos_xy_err_max": 0.0,
+        "root_pos_z_err_max": 0.0,
+        "root_quat_err_deg_max": 0.0,
+        "joint_linf_err_max": 0.0,
+        "joint_l2_err_max": 0.0,
+        "xpos_abs_err_max": 0.0,
+        "xpos_rel_err_max": 0.0,
+    }
+    debug_fail_steps = 0
+    debug_eval_steps = 0
+    debug_xpos_eval_steps = 0
+    debug_xpos_abs_time_sum = 0.0
+    debug_xpos_rel_time_sum = 0.0
+    if args_cli.debug_reference_match:
+        ref_body_ids_dbg, asset_body_ids_dbg, name_pairs_dbg = _resolve_reference_to_asset_body_map(env)
+        print(
+            "[INFO] Replay-reference debug checks enabled:"
+            f" interval={debug_interval},"
+            f" pos_tol={args_cli.debug_reference_pos_tol:.3e} m,"
+            f" joint_tol={args_cli.debug_reference_joint_tol:.3e} rad,"
+            f" quat_tol={args_cli.debug_reference_quat_tol_deg:.3e} deg,"
+            f" xpos_tol={args_cli.debug_reference_xpos_tol:.3e} m,"
+            f" xpos_rel_tol={args_cli.debug_reference_xpos_rel_tol:.3e} m"
+        )
+        print(
+            "[INFO] Replay-reference xpos debug mapping:"
+            f" mapped_reference_bodies={int(ref_body_ids_dbg.numel())}/"
+            f"{len(getattr(env.unwrapped, 'reference_body_names', []))}, "
+            f"mapped_asset_bodies={int(asset_body_ids_dbg.numel())}/"
+            f"{len(env.unwrapped.robot.data.body_names)}"
+        )
+        if len(name_pairs_dbg) > 0:
+            preview = ", ".join([f"{r}->{a}" for r, a in name_pairs_dbg[:8]])
+            print(f"[INFO] Replay-reference xpos mapping preview: {preview}")
+        else:
+            print("[WARN] Replay-reference xpos mapping found no overlapping bodies; xpos errors disabled.")
+
     lerobot_exporter = None
     lerobot_dir = args_cli.lerobot_dir
     if args_cli.save_lerobot and lerobot_dir is None:
@@ -524,6 +874,28 @@ def main(env_cfg, agent_cfg):  # noqa: ARG001
         start_time = time.time()
         next_obs, reward, terminated, truncated, extras = env.step(action)
         next_reference = env.unwrapped.get_reference_data()
+        if args_cli.debug_reference_match and (timestep % debug_interval == 0):
+            errors = _compute_replay_reference_match_errors(env, next_reference)
+            debug_report = _print_replay_reference_match_debug(
+                env,
+                timestep,
+                errors,
+                max_envs=args_cli.debug_reference_max_envs,
+                pos_tol=args_cli.debug_reference_pos_tol,
+                joint_tol=args_cli.debug_reference_joint_tol,
+                quat_tol_deg=args_cli.debug_reference_quat_tol_deg,
+                xpos_tol=args_cli.debug_reference_xpos_tol,
+                xpos_rel_tol=args_cli.debug_reference_xpos_rel_tol,
+            )
+            debug_eval_steps += 1
+            for key in debug_agg_max:
+                debug_agg_max[key] = max(debug_agg_max[key], float(debug_report[key]))
+            if int(debug_report["xpos_available"]) > 0:
+                debug_xpos_eval_steps += 1
+                debug_xpos_abs_time_sum += float(debug_report["xpos_abs_err_mean"])
+                debug_xpos_rel_time_sum += float(debug_report["xpos_rel_err_mean"])
+            if int(debug_report["n_fail"]) > 0:
+                debug_fail_steps += 1
         if rb is not None:
             done = terminated | truncated
 
@@ -586,6 +958,27 @@ def main(env_cfg, agent_cfg):  # noqa: ARG001
             time.sleep(sleep_time)
 
     env.close()
+
+    if args_cli.debug_reference_match:
+        xpos_abs_time_avg = None
+        xpos_rel_time_avg = None
+        if debug_xpos_eval_steps > 0:
+            xpos_abs_time_avg = debug_xpos_abs_time_sum / float(debug_xpos_eval_steps)
+            xpos_rel_time_avg = debug_xpos_rel_time_sum / float(debug_xpos_eval_steps)
+        print("[INFO] Replay-reference debug summary:")
+        print(json.dumps(
+            {
+                **debug_agg_max,
+                "fail_steps": debug_fail_steps,
+                "debug_eval_steps": debug_eval_steps,
+                "xpos_eval_steps": debug_xpos_eval_steps,
+                "xpos_abs_err_time_avg": xpos_abs_time_avg,
+                "xpos_rel_err_time_avg": xpos_rel_time_avg,
+                "evaluated_steps": timestep,
+            },
+            indent=2,
+            sort_keys=True,
+        ))
 
     if rb is not None and rb_dir is not None:
         if hasattr(rb, "dump"):

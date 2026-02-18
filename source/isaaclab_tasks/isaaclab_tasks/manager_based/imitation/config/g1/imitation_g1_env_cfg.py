@@ -17,12 +17,16 @@ from isaaclab_tasks.manager_based.imitation.imitation_env_cfg import (
 )
 from isaaclab_tasks.manager_based.imitation.mdp import (
     reference_joint_pos,
+    reference_joint_vel,
     reference_root_ang_vel,
     reference_root_lin_vel,
     reference_root_pos,
     reference_root_quat,
     track_joint_pos,
     track_joint_vel,
+    track_relative_body_pos,
+    track_relative_body_quat,
+    track_relative_body_vel,
     track_root_ang_vel,
     track_root_lin_vel,
     track_root_pos,
@@ -30,6 +34,121 @@ from isaaclab_tasks.manager_based.imitation.mdp import (
 )
 
 from isaaclab_assets.robots.unitree import G1_MINIMAL_CFG
+
+G1_IMITATION_JOINT_NAMES: list[str] = [
+    "left_hip_pitch_joint",
+    "left_hip_roll_joint",
+    "left_hip_yaw_joint",
+    "left_knee_joint",
+    "left_ankle_pitch_joint",
+    "left_ankle_roll_joint",
+    "right_hip_pitch_joint",
+    "right_hip_roll_joint",
+    "right_hip_yaw_joint",
+    "right_knee_joint",
+    "right_ankle_pitch_joint",
+    "right_ankle_roll_joint",
+    "torso_joint",
+    "left_shoulder_pitch_joint",
+    "left_shoulder_roll_joint",
+    "left_shoulder_yaw_joint",
+    "left_elbow_pitch_joint",
+    "left_elbow_roll_joint",
+    "right_shoulder_pitch_joint",
+    "right_shoulder_roll_joint",
+    "right_shoulder_yaw_joint",
+    "right_elbow_pitch_joint",
+    "right_elbow_roll_joint",
+]
+
+# Tracked body names in IsaacLab articulation naming (used by SceneEntityCfg/asset lookups).
+G1_WBT_TRACKED_ASSET_BODY_NAMES: list[str] = [
+    "pelvis",
+    "left_hip_roll_link",
+    "left_knee_link",
+    "left_ankle_roll_link",
+    "right_hip_roll_link",
+    "right_knee_link",
+    "right_ankle_roll_link",
+    "torso_link",
+    "left_shoulder_roll_link",
+    "left_elbow_pitch_link",
+    "left_palm_link",
+    "right_shoulder_roll_link",
+    "right_elbow_pitch_link",
+    "right_palm_link",
+]
+
+# Matching tracked body names in loco-mujoco reference metadata order.
+G1_WBT_TRACKED_REFERENCE_BODY_NAMES: list[str] = [
+    "pelvis",
+    "left_hip_roll_link",
+    "left_knee_link",
+    "left_ankle_roll_link",
+    "right_hip_roll_link",
+    "right_knee_link",
+    "right_ankle_roll_link",
+    "torso_link",
+    "left_shoulder_roll_link",
+    "left_elbow_link",
+    "left_wrist_roll_rubber_hand",
+    "right_shoulder_roll_link",
+    "right_elbow_link",
+    "right_wrist_roll_rubber_hand",
+]
+
+# XPOS tracking groups:
+# - core/legs: stronger weight for locomotion-critical body placement.
+# - upper: separate term so arm/hand tracking can be tuned independently.
+G1_WBT_CORE_ASSET_BODY_NAMES: list[str] = [
+    "pelvis",
+    "left_hip_roll_link",
+    "left_knee_link",
+    "left_ankle_roll_link",
+    "right_hip_roll_link",
+    "right_knee_link",
+    "right_ankle_roll_link",
+    "torso_link",
+]
+
+G1_WBT_CORE_REFERENCE_BODY_NAMES: list[str] = [
+    "pelvis",
+    "left_hip_roll_link",
+    "left_knee_link",
+    "left_ankle_roll_link",
+    "right_hip_roll_link",
+    "right_knee_link",
+    "right_ankle_roll_link",
+    "torso_link",
+]
+
+G1_WBT_UPPER_ASSET_BODY_NAMES: list[str] = [
+    "left_shoulder_roll_link",
+    "left_elbow_pitch_link",
+    "left_palm_link",
+    "right_shoulder_roll_link",
+    "right_elbow_pitch_link",
+    "right_palm_link",
+]
+
+G1_WBT_UPPER_REFERENCE_BODY_NAMES: list[str] = [
+    "left_shoulder_roll_link",
+    "left_elbow_link",
+    "left_wrist_roll_rubber_hand",
+    "right_shoulder_roll_link",
+    "right_elbow_link",
+    "right_wrist_roll_rubber_hand",
+]
+
+# Backward-compatible alias used by tooling/scripts that import the old name.
+G1_WBT_TRACKED_BODY_NAMES: list[str] = G1_WBT_TRACKED_ASSET_BODY_NAMES
+
+G1_WBT_UNDESIRED_CONTACT_PATTERN = (
+    "^(?!left_foot_contact_point$)(?!right_foot_contact_point$)"
+    "(?!left_wrist_yaw_link$)(?!right_wrist_yaw_link$)"
+    "(?!left_palm_link$)(?!right_palm_link$)"
+    "(?!left_ankle_roll_link$)(?!right_ankle_roll_link$).+$"
+)
 
 # Policy observation term keys in the same order as ``PolicyCfg`` below.
 G1_POLICY_OBS_KEYS: list[str] = [
@@ -47,9 +166,7 @@ G1_POLICY_OBS_KEYS: list[str] = [
 ]
 
 # IRL reward estimator keys: same state terms but without previous-action history.
-G1_REWARD_OBS_KEYS: list[str] = [
-    key for key in G1_POLICY_OBS_KEYS if key != "last_actions"
-]
+G1_REWARD_OBS_KEYS: list[str] = [key for key in G1_POLICY_OBS_KEYS if key != "last_actions"]
 
 
 # --- Observation ---
@@ -62,53 +179,27 @@ class G1ObservationCfg:
         """Observations for policy group."""
 
         # observation terms (order preserved)
-        base_lin_vel = ObsTerm(
-            func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1)
-        )
-        base_ang_vel = ObsTerm(
-            func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2)
-        )
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
         projected_gravity = ObsTerm(
             func=mdp.projected_gravity,
             noise=Unoise(n_min=-0.05, n_max=0.05),
         )
-        joint_pos = ObsTerm(
-            func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01)
-        )
+        joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
         reference_joint_pos = ObsTerm(
             func=reference_joint_pos,
             params={
                 "asset_cfg": SceneEntityCfg(
                     "robot",
-                    joint_names=[
-                        "left_hip_pitch_joint",
-                        "left_hip_roll_joint",
-                        "left_hip_yaw_joint",
-                        "left_knee_joint",
-                        "left_ankle_pitch_joint",
-                        "left_ankle_roll_joint",
-                        "right_hip_pitch_joint",
-                        "right_hip_roll_joint",
-                        "right_hip_yaw_joint",
-                        "right_knee_joint",
-                        "right_ankle_pitch_joint",
-                        "right_ankle_roll_joint",
-                        "torso_joint",
-                        "left_shoulder_pitch_joint",
-                        "left_shoulder_roll_joint",
-                        "left_shoulder_yaw_joint",
-                        "left_elbow_pitch_joint",
-                        "left_elbow_roll_joint",
-                        "right_shoulder_pitch_joint",
-                        "right_shoulder_roll_joint",
-                        "right_shoulder_yaw_joint",
-                        "right_elbow_pitch_joint",
-                        "right_elbow_roll_joint",
-                    ],
+                    joint_names=G1_IMITATION_JOINT_NAMES,
                 )
             },
         )
+        # reference_joint_vel = ObsTerm(
+        #     func=reference_joint_vel,
+        #     params={"asset_cfg": SceneEntityCfg("robot", joint_names=G1_IMITATION_JOINT_NAMES)},
+        # )
         reference_root_pos_obs = ObsTerm(
             func=reference_root_pos,
             params={"asset_cfg": SceneEntityCfg("robot")},
@@ -151,174 +242,90 @@ class G1RewardsCfg:
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
-                joint_names=[
-                    "left_hip_pitch_joint",
-                    "left_hip_roll_joint",
-                    "left_hip_yaw_joint",
-                    "left_knee_joint",
-                    "left_ankle_pitch_joint",
-                    "left_ankle_roll_joint",
-                    "right_hip_pitch_joint",
-                    "right_hip_roll_joint",
-                    "right_hip_yaw_joint",
-                    "right_knee_joint",
-                    "right_ankle_pitch_joint",
-                    "right_ankle_roll_joint",
-                    "torso_joint",
-                    "left_shoulder_pitch_joint",
-                    "left_shoulder_roll_joint",
-                    "left_shoulder_yaw_joint",
-                    "left_elbow_pitch_joint",
-                    "left_elbow_roll_joint",
-                    "right_shoulder_pitch_joint",
-                    "right_shoulder_roll_joint",
-                    "right_shoulder_yaw_joint",
-                    "right_elbow_pitch_joint",
-                    "right_elbow_roll_joint",
-                ],
+                joint_names=G1_IMITATION_JOINT_NAMES,
             ),
             "sigma": 1.0,
         },
     )
     tracking_joint_vel = RewTerm(
         func=track_joint_vel,
-        weight=0.2,
+        weight=0.0,
         params={
             "asset_cfg": SceneEntityCfg(
                 "robot",
-                joint_names=[
-                    "left_hip_pitch_joint",
-                    "left_hip_roll_joint",
-                    "left_hip_yaw_joint",
-                    "left_knee_joint",
-                    "left_ankle_pitch_joint",
-                    "left_ankle_roll_joint",
-                    "right_hip_pitch_joint",
-                    "right_hip_roll_joint",
-                    "right_hip_yaw_joint",
-                    "right_knee_joint",
-                    "right_ankle_pitch_joint",
-                    "right_ankle_roll_joint",
-                    "torso_joint",
-                    "left_shoulder_pitch_joint",
-                    "left_shoulder_roll_joint",
-                    "left_shoulder_yaw_joint",
-                    "left_elbow_pitch_joint",
-                    "left_elbow_roll_joint",
-                    "right_shoulder_pitch_joint",
-                    "right_shoulder_roll_joint",
-                    "right_shoulder_yaw_joint",
-                    "right_elbow_pitch_joint",
-                    "right_elbow_roll_joint",
-                ],
+                joint_names=G1_IMITATION_JOINT_NAMES,
             ),
             "sigma": 1.0,
         },
     )
     tracking_root_pos = RewTerm(
         func=track_root_pos,
-        weight=0.5,
+        weight=1.0,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
-            "sigma": 0.1,
+            "sigma": 1.0,
         },
     )
     tracking_root_quat = RewTerm(
         func=track_root_quat,
-        weight=0.5,
+        weight=1.0,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
-            "sigma": 0.1,
+            "sigma": 2.0,
         },
     )
     tracking_root_lin_vel = RewTerm(
         func=track_root_lin_vel,
-        weight=0.0,
+        weight=1.0,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
-            "sigma": 0.5,
+            "sigma": 1.0,
         },
     )
     tracking_root_ang_vel = RewTerm(
         func=track_root_ang_vel,
-        weight=0.0,
+        weight=1.0,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
-            "sigma": 0.1,
+            "sigma": 1.0,
         },
     )
-    # tracking_relative_body_pos = RewTerm(
-    #     func=track_relative_body_pos,
-    #     weight=0.5,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             body_names=[
-    #                 "torso_link",
-    #                 # "left_hand_roll_link",
-    #                 "left_ankle_roll_link",
-    #                 # "right_hand_roll_link",
-    #                 "right_ankle_roll_link",
-    #             ],
-    #         ),
-    #         "reference_body_names": [
-    #             "torso_link",
-    #             # "left_hand_roll_link",
-    #             "left_ankle_roll_link",
-    #             # "right_hand_roll_link",
-    #             "right_ankle_roll_link",
-    #         ],
-    #         "sigma": 0.1,
-    #     },
-    # )
-    # tracking_relative_body_quat = RewTerm(
-    #     func=track_relative_body_quat,
-    #     weight=0.3,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             body_names=[
-    #                 "torso_link",
-    #                 "left_hand_roll_link",
-    #                 "left_ankle_roll_link",
-    #                 "right_hand_roll_link",
-    #                 "right_ankle_roll_link",
-    #             ],
-    #         ),
-    #         "reference_body_names": [
-    #             "torso_link",
-    #             "left_hand_roll_link",
-    #             "left_ankle_roll_link",
-    #             "right_hand_roll_link",
-    #             "right_ankle_roll_link",
-    #         ],
-    #         "sigma": 0.1,
-    #     },
-    # )
-    # tracking_relative_body_vel = RewTerm(
-    #     func=track_relative_body_vel,
-    #     weight=0.1,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg(
-    #             "robot",
-    #             body_names=[
-    #                 "torso_link",
-    #                 "left_hand_roll_link",
-    #                 "left_ankle_roll_link",
-    #                 "right_hand_roll_link",
-    #                 "right_ankle_roll_link",
-    #             ],
-    #         ),
-    #         "reference_body_names": [
-    #             "torso_link",
-    #             "left_hand_roll_link",
-    #             "left_ankle_roll_link",
-    #             "right_hand_roll_link",
-    #             "right_ankle_roll_link",
-    #         ],
-    #         "sigma": 0.2,
-    #     },
-    # )
+    tracking_relative_body_pos_core = RewTerm(
+        func=track_relative_body_pos,
+        weight=0.5,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_CORE_ASSET_BODY_NAMES),
+            "reference_body_names": G1_WBT_CORE_REFERENCE_BODY_NAMES,
+            "sigma": 0.2,
+        },
+    )
+    tracking_relative_body_pos_upper = RewTerm(
+        func=track_relative_body_pos,
+        weight=0.5,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_UPPER_ASSET_BODY_NAMES),
+            "reference_body_names": G1_WBT_UPPER_REFERENCE_BODY_NAMES,
+            "sigma": 0.25,
+        },
+    )
+    tracking_relative_body_quat = RewTerm(
+        func=track_relative_body_quat,
+        weight=0.5,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
+            "reference_body_names": G1_WBT_TRACKED_REFERENCE_BODY_NAMES,
+            "sigma": 0.4,
+        },
+    )
+    tracking_relative_body_vel = RewTerm(
+        func=track_relative_body_vel,
+        weight=0.5,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
+            "reference_body_names": G1_WBT_TRACKED_REFERENCE_BODY_NAMES,
+            "sigma": 1.0,
+        },
+    )
 
     """Reward terms from locomotion velocity task."""
 
@@ -328,9 +335,7 @@ class G1RewardsCfg:
         func=mdp.feet_slide,
         weight=0.0,
         params={
-            "sensor_cfg": SceneEntityCfg(
-                "contact_forces", body_names=".*_ankle_roll_link"
-            ),
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
             "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
         },
     )
@@ -339,21 +344,13 @@ class G1RewardsCfg:
     dof_pos_limits = RewTerm(
         func=mdp.joint_pos_limits,
         weight=-1.0,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot", joint_names=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"]
-            )
-        },
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"])},
     )
     # Penalize deviation from default of the joints that are not essential for locomotion
     joint_deviation_hip = RewTerm(
         func=mdp.joint_deviation_l1,
         weight=0.0,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot", joint_names=[".*_hip_yaw_joint", ".*_hip_roll_joint"]
-            )
-        },
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_yaw_joint", ".*_hip_roll_joint"])},
     )
     joint_deviation_arms = RewTerm(
         func=mdp.joint_deviation_l1,
@@ -404,7 +401,7 @@ class G1RewardsCfg:
 
     undesired_contacts = RewTerm(
         func=mdp.undesired_contacts,
-        weight=0.0,
+        weight=-1.0,
         params={
             "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*THIGH"),
             "threshold": 1.0,
@@ -515,15 +512,15 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
         super().__post_init__()  # type: ignore
         # Scene
         self.scene.robot = G1_MINIMAL_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore
+        self.scene.terrain.terrain_type = "plane"
+        self.scene.terrain.terrain_generator = None
 
         # Randomization
         self.events.push_robot = None
         self.events.add_base_mass = None
-        self.events.base_external_force_torque.params["asset_cfg"].body_names = [
-            "torso_link"
-        ]
+        self.events.base_external_force_torque.params["asset_cfg"].body_names = ["torso_link"]
         self.events.reset_base.params = {
-            "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
+            "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (0.0, 0.0)},
             "velocity_range": {
                 "x": (0.0, 0.0),
                 "y": (0.0, 0.0),
