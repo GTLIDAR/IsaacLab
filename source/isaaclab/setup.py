@@ -47,6 +47,9 @@ INSTALL_REQUIRES = [
     "flatdict==4.0.1",
     "flaky",
     "packaging",
+    # imitation branch: reference datasets and loaders (default)
+    "iltools @ git+https://github.com/GTLIDAR/ImitationLearningTools.git",
+    "loco-mujoco @ git+https://github.com/robfiras/loco-mujoco.git",
 ]
 
 # Append Linux x86_64 and ARM64 deps via PEP 508 markers

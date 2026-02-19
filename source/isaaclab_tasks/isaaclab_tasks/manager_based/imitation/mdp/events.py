@@ -31,3 +31,7 @@ def reset_joints_to_reference(
 
     # set into the physics simulation
     asset.write_joint_state_to_sim(joint_pos, joint_vel, env_ids=env_ids)
+    asset.write_data_to_sim()
+    # Refresh cached kinematics buffers (e.g. root_lin_vel_b) after direct state writes.
+    env.scene.update(dt=0.0)
+    asset.update(dt=0.0)

@@ -87,10 +87,36 @@ def _resolve_reference_body_indices(
     return ref_indices_t
 
 
+def _reference_body_pose_w(
+    env: ImitationRLEnv, reference_body_names: Sequence[str]
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Return reference body positions/quaternions in world frame."""
+    device = env.device
+    ref_body_ids = _resolve_reference_body_indices(env, reference_body_names, device)
+    ref_pos = env.get_reference_data(key="xpos")[..., ref_body_ids, :]
+    ref_quat = env.get_reference_data(key="xquat")[..., ref_body_ids, :]
+
+    num_envs, num_bodies = ref_pos.shape[0], ref_pos.shape[1]
+    init_quat = env._init_root_quat.unsqueeze(1).expand(-1, num_bodies, -1).reshape(-1, 4)
+
+    ref_pos_w = quat_apply(init_quat, ref_pos.reshape(-1, 3)).reshape(num_envs, num_bodies, 3)
+    ref_pos_w = ref_pos_w + env._init_root_pos.unsqueeze(1)
+    ref_quat_w = quat_mul(init_quat, ref_quat.reshape(-1, 4)).reshape(num_envs, num_bodies, 4)
+    return ref_pos_w, ref_quat_w
+
+
 def _relative_pose_from_bodies(body_pos: torch.Tensor, body_quat: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-    """Compute relative positions and quaternions against the first body in the list."""
+    """Compute relative poses against the first body in the list.
+
+    Relative positions are expressed in the main-body local frame (not world),
+    which keeps this term invariant to global heading offsets.
+    """
     main_pos = body_pos[:, :1, :]
-    rel_pos = body_pos[:, 1:, :] - main_pos
+    rel_pos_w = body_pos[:, 1:, :] - main_pos
+    main_quat_pos = body_quat[:, :1, :].expand_as(body_quat[:, 1:, :]).reshape(-1, 4)
+    rel_pos = quat_apply_inverse(main_quat_pos, rel_pos_w.reshape(-1, 3)).reshape(
+        body_pos.shape[0], -1, 3
+    )
 
     main_quat = body_quat[:, :1, :].expand_as(body_quat[:, 1:, :]).reshape(-1, 4)
     child_quat = body_quat[:, 1:, :].reshape(-1, 4)
@@ -328,10 +354,10 @@ def track_root_lin_vel(
     # Extract the robot
     asset: Articulation = env.scene[asset_cfg.name]
 
-    # See note in track_root_pos: use root_state_w to avoid stale root buffers.
-    root_state_actual = asset.data.root_state_w
-    root_quat_actual = root_state_actual[:, 3:7]
-    root_lin_vel_actual_w = root_state_actual[:, 7:10]
+    # Use root-link kinematics to align with MuJoCo free-joint/root-link velocity semantics.
+    root_link_state_actual = asset.data.root_link_state_w
+    root_quat_actual = root_link_state_actual[:, 3:7]
+    root_lin_vel_actual_w = root_link_state_actual[:, 7:10]
     root_lin_vel_actual_b = quat_apply_inverse(root_quat_actual, root_lin_vel_actual_w)
 
     init_quat = env._init_root_quat
@@ -375,9 +401,9 @@ def track_root_ang_vel(
     # Extract the robot
     asset: Articulation = env.scene[asset_cfg.name]
 
-    # See note in track_root_pos: use root_state_w to avoid stale root buffers.
-    root_state_actual = asset.data.root_state_w
-    root_ang_vel_actual = root_state_actual[:, 10:13]
+    # Use root-link angular velocity to stay consistent with root-link tracking.
+    root_link_state_actual = asset.data.root_link_state_w
+    root_ang_vel_actual = root_link_state_actual[:, 10:13]
 
     init_quat = env._init_root_quat
 
@@ -485,3 +511,129 @@ def track_relative_body_vel(
 
     squared_error = torch.mean((actual_rel_vel - ref_rel_vel) ** 2, dim=(1, 2))
     return torch.exp(-squared_error / (2 * sigma**2))
+
+
+def reference_global_anchor_position_error_exp(
+    env: ImitationRLEnv,
+    asset_cfg: SceneEntityCfg | None = None,
+    anchor_body_name: str = "torso_link",
+    std: float = 0.3,
+) -> torch.Tensor:
+    """Tracking-style anchor position reward using reference body poses."""
+    asset: Articulation = env.scene[asset_cfg.name]
+    anchor_idx = asset.body_names.index(anchor_body_name)
+    robot_anchor_pos_w = asset.data.body_link_pos_w[:, anchor_idx]
+    ref_anchor_pos_w, _ = _reference_body_pose_w(env, [anchor_body_name])
+    error = torch.sum((ref_anchor_pos_w[:, 0, :] - robot_anchor_pos_w) ** 2, dim=-1)
+    return torch.exp(-error / std**2)
+
+
+def reference_global_anchor_orientation_error_exp(
+    env: ImitationRLEnv,
+    asset_cfg: SceneEntityCfg | None = None,
+    anchor_body_name: str = "torso_link",
+    std: float = 0.4,
+) -> torch.Tensor:
+    """Tracking-style anchor orientation reward using reference body poses."""
+    asset: Articulation = env.scene[asset_cfg.name]
+    anchor_idx = asset.body_names.index(anchor_body_name)
+    robot_anchor_quat_w = asset.data.body_link_quat_w[:, anchor_idx]
+    _, ref_anchor_quat_w = _reference_body_pose_w(env, [anchor_body_name])
+    error = quat_error_magnitude(ref_anchor_quat_w[:, 0, :], robot_anchor_quat_w) ** 2
+    return torch.exp(-error / std**2)
+
+
+def reference_relative_body_position_error_exp(
+    env: ImitationRLEnv,
+    asset_cfg: SceneEntityCfg | None = None,
+    reference_body_names: Sequence[str] = (),
+    std: float = 0.3,
+) -> torch.Tensor:
+    """Tracking-style relative-body position reward against reference `xpos`."""
+    asset: Articulation = env.scene[asset_cfg.name]
+    body_ids = torch.as_tensor(asset_cfg.body_ids, dtype=torch.long, device=asset.data.body_link_pos_w.device)
+    if body_ids.numel() < 2:
+        raise ValueError("reference_relative_body_position_error_exp requires at least 2 body ids.")
+    if len(reference_body_names) != int(body_ids.numel()):
+        raise ValueError("reference_body_names must match the number of selected body names.")
+
+    ref_pos_w, ref_quat_w = _reference_body_pose_w(env, reference_body_names)
+    actual_pos_w = asset.data.body_link_pos_w[:, body_ids, :]
+    actual_quat_w = asset.data.body_link_quat_w[:, body_ids, :]
+
+    actual_rel_pos, _ = _relative_pose_from_bodies(actual_pos_w, actual_quat_w)
+    ref_rel_pos, _ = _relative_pose_from_bodies(ref_pos_w, ref_quat_w)
+    error = torch.sum((actual_rel_pos - ref_rel_pos) ** 2, dim=-1)
+    return torch.exp(-error.mean(-1) / std**2)
+
+
+def reference_relative_body_orientation_error_exp(
+    env: ImitationRLEnv,
+    asset_cfg: SceneEntityCfg | None = None,
+    reference_body_names: Sequence[str] = (),
+    std: float = 0.4,
+) -> torch.Tensor:
+    """Tracking-style relative-body orientation reward against reference `xquat`."""
+    asset: Articulation = env.scene[asset_cfg.name]
+    body_ids = torch.as_tensor(asset_cfg.body_ids, dtype=torch.long, device=asset.data.body_link_pos_w.device)
+    if body_ids.numel() < 2:
+        raise ValueError("reference_relative_body_orientation_error_exp requires at least 2 body ids.")
+    if len(reference_body_names) != int(body_ids.numel()):
+        raise ValueError("reference_body_names must match the number of selected body names.")
+
+    ref_pos_w, ref_quat_w = _reference_body_pose_w(env, reference_body_names)
+    actual_pos_w = asset.data.body_link_pos_w[:, body_ids, :]
+    actual_quat_w = asset.data.body_link_quat_w[:, body_ids, :]
+
+    _, actual_rel_quat = _relative_pose_from_bodies(actual_pos_w, actual_quat_w)
+    _, ref_rel_quat = _relative_pose_from_bodies(ref_pos_w, ref_quat_w)
+    error = quat_error_magnitude(actual_rel_quat.reshape(-1, 4), ref_rel_quat.reshape(-1, 4)).reshape(
+        actual_rel_quat.shape[0], -1
+    ) ** 2
+    return torch.exp(-error.mean(-1) / std**2)
+
+
+def reference_global_body_linear_velocity_error_exp(
+    env: ImitationRLEnv,
+    asset_cfg: SceneEntityCfg | None = None,
+    reference_body_names: Sequence[str] = (),
+    std: float = 1.0,
+) -> torch.Tensor:
+    """Tracking-style global body linear-velocity reward."""
+    asset: Articulation = env.scene[asset_cfg.name]
+    body_ids = torch.as_tensor(asset_cfg.body_ids, dtype=torch.long, device=asset.data.body_link_pos_w.device)
+    if len(reference_body_names) != int(body_ids.numel()):
+        raise ValueError("reference_body_names must match the number of selected body names.")
+
+    ref_body_ids = _resolve_reference_body_indices(env, reference_body_names, body_ids.device)
+    ref_cvel = env.get_reference_data(key="cvel")[..., ref_body_ids, :]
+    ref_lin_vel = ref_cvel[..., 3:]
+    init_quat = env._init_root_quat.unsqueeze(1).expand(-1, int(body_ids.numel()), -1).reshape(-1, 4)
+    ref_lin_vel_w = quat_apply(init_quat, ref_lin_vel.reshape(-1, 3)).reshape(ref_lin_vel.shape)
+
+    actual_lin_vel_w = asset.data.body_lin_vel_w[:, body_ids, :]
+    error = torch.sum((ref_lin_vel_w - actual_lin_vel_w) ** 2, dim=-1)
+    return torch.exp(-error.mean(-1) / std**2)
+
+
+def reference_global_body_angular_velocity_error_exp(
+    env: ImitationRLEnv,
+    asset_cfg: SceneEntityCfg | None = None,
+    reference_body_names: Sequence[str] = (),
+    std: float = 3.14,
+) -> torch.Tensor:
+    """Tracking-style global body angular-velocity reward."""
+    asset: Articulation = env.scene[asset_cfg.name]
+    body_ids = torch.as_tensor(asset_cfg.body_ids, dtype=torch.long, device=asset.data.body_link_pos_w.device)
+    if len(reference_body_names) != int(body_ids.numel()):
+        raise ValueError("reference_body_names must match the number of selected body names.")
+
+    ref_body_ids = _resolve_reference_body_indices(env, reference_body_names, body_ids.device)
+    ref_cvel = env.get_reference_data(key="cvel")[..., ref_body_ids, :]
+    ref_ang_vel = ref_cvel[..., :3]
+    init_quat = env._init_root_quat.unsqueeze(1).expand(-1, int(body_ids.numel()), -1).reshape(-1, 4)
+    ref_ang_vel_w = quat_apply(init_quat, ref_ang_vel.reshape(-1, 3)).reshape(ref_ang_vel.shape)
+
+    actual_ang_vel_w = asset.data.body_ang_vel_w[:, body_ids, :]
+    error = torch.sum((ref_ang_vel_w - actual_ang_vel_w) ** 2, dim=-1)
+    return torch.exp(-error.mean(-1) / std**2)

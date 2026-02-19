@@ -5,6 +5,7 @@ from isaaclab_rl.rlopt import IPMDRLOptConfig
 from isaaclab_tasks.manager_based.imitation.config.g1.imitation_g1_env_cfg import (
     G1_POLICY_OBS_KEYS,
     G1_REWARD_OBS_KEYS,
+    G1_VALUE_OBS_KEYS,
 )
 
 
@@ -13,13 +14,9 @@ from isaaclab_tasks.manager_based.imitation.config.g1.imitation_g1_env_cfg impor
 class G1ImitationRLOptIPMDConfig(IPMDRLOptConfig):
     """RLOpt IPMD (PPO-based) configuration for G1 imitation.
 
-    Observation key convention (``concatenate_terms=False``):
-
-    The IsaacLab wrapper flattens nested observation groups so that each
-    term name (e.g. ``"joint_pos"``) is a top-level TensorDict key.
-    ``input_keys`` therefore lists the flat term names directly.
-    The reward estimator can use a *subset* of those terms (e.g. excluding
-    ``last_actions``).
+    Observation key convention:
+    - actor consumes ``policy`` group
+    - critic and reward estimator consume ``critic`` group
     """
 
     def __post_init__(self):
@@ -29,12 +26,9 @@ class G1ImitationRLOptIPMDConfig(IPMDRLOptConfig):
         assert isinstance(self, IPMDRLOptConfig)
         assert self.value_function is not None, "Value function configuration must be provided."
 
-        # -- Observation key wiring (concatenate_terms=False) --
-        # Wrapper flattens "policy" group → term names become top-level keys.
         self.policy.input_keys = list(G1_POLICY_OBS_KEYS)
-        self.value_function.input_keys = list(G1_POLICY_OBS_KEYS)
+        self.value_function.input_keys = list(G1_VALUE_OBS_KEYS)
 
-        # Reward estimator uses a subset (no last_actions).
         self.ipmd.reward_input_keys = list(G1_REWARD_OBS_KEYS)
 
         self.collector.init_random_frames = 0
@@ -54,7 +48,7 @@ class G1ImitationRLOptIPMDConfig(IPMDRLOptConfig):
         # PPO-specific settings to match RSL-RL
         self.ppo.clip_epsilon = 0.2
         self.ppo.gae_lambda = 0.95
-        self.ppo.entropy_coeff = 0.008
+        self.ppo.entropy_coeff = 0.005
         self.ppo.critic_coeff = 1.0
         self.ppo.clip_value = True
         self.ppo.normalize_advantage = True
@@ -70,7 +64,11 @@ class G1ImitationRLOptIPMDConfig(IPMDRLOptConfig):
         # Loss settings
         self.loss.gamma = 0.99
 
-        self.collector.total_frames = 1000000000
+        self.policy.num_cells = [512, 256, 128]
+        self.value_function.num_cells = [512, 256, 128]
+
+        self.collector.total_frames = 30000 * 4096 * 24
+        self.save_interval = 500
 
         # IPMD-specific settings
         self.ipmd.reward_input_type = "s'"

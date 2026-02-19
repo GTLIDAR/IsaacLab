@@ -237,7 +237,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
 
         # Get initial reference data for all envs (manager handles indexing)
         # Keep the reset frame as-is so replay starts from the first frame.
-        self.current_reference = self.trajectory_manager.sample(advance=False)
+        self.current_reference = self.trajectory_manager.sample(advance=True)
 
         # Trigger the reset events
         result = super()._reset_idx(env_ids_tensor)  # type: ignore
@@ -264,6 +264,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
             self.current_reference = self.trajectory_manager.sample(advance=True)
             step_return = super().step(action)
             self._update_reference_velocity_visualizer()
+            self._update_env0_velocity_metrics()
             return step_return
 
         # Replay-only path: ignore physics stepping and evaluate rewards exactly
@@ -342,6 +343,7 @@ class ImitationRLEnv(ManagerBasedRLEnv):
         # note: done after reset to get the correct observations for reset envs
         self.obs_buf = self.observation_manager.compute(update_history=True)
         self._update_reference_velocity_visualizer()
+        self._update_env0_velocity_metrics()
         # return observations, rewards, resets and extras
         return (
             self.obs_buf,
@@ -523,4 +525,33 @@ class ImitationRLEnv(ManagerBasedRLEnv):
             heading_marker_pos_w[:, 2] += 0.8
             heading_default_scale = self._initial_heading_marker.cfg.markers["arrow"].scale
             heading_marker_scale = torch.tensor(heading_default_scale, device=self.device).repeat(self.num_envs, 1)
-            self._initial_heading_marker.visualize(heading_marker_pos_w, self._init_root_quat, heading_marker_scale)
+            robot_root_lin_vel_xy_w = self.robot.data.root_lin_vel_w[:, :2]
+            heading_marker_scale[:, 0] *= torch.linalg.norm(robot_root_lin_vel_xy_w, dim=1) * 3.0
+            heading_angle = torch.atan2(robot_root_lin_vel_xy_w[:, 1], robot_root_lin_vel_xy_w[:, 0])
+            zeros = torch.zeros_like(heading_angle)
+            heading_marker_quat = math_utils.quat_from_euler_xyz(zeros, zeros, heading_angle)
+            self._initial_heading_marker.visualize(heading_marker_pos_w, heading_marker_quat, heading_marker_scale)
+
+    def _update_env0_velocity_metrics(self) -> None:
+        """Expose env[0] velocity tracking metrics in extras for easy logging."""
+        if self.current_reference is None or self.num_envs < 1:
+            return
+        reference_root_lin_vel = self.current_reference.get("root_lin_vel")
+        if reference_root_lin_vel is None:
+            return
+
+        reference_root_lin_vel_w = math_utils.quat_apply(self._init_root_quat, reference_root_lin_vel)
+        reference_vel_env0 = reference_root_lin_vel_w[0]
+        actual_vel_env0 = self.robot.data.root_lin_vel_w[0]
+        diff_vel_env0 = actual_vel_env0 - reference_vel_env0
+
+        self.extras["metrics/env0/reference_root_lin_vel_x"] = reference_vel_env0[0].item()
+        self.extras["metrics/env0/reference_root_lin_vel_y"] = reference_vel_env0[1].item()
+        self.extras["metrics/env0/reference_root_lin_vel_z"] = reference_vel_env0[2].item()
+        self.extras["metrics/env0/actual_root_lin_vel_x"] = actual_vel_env0[0].item()
+        self.extras["metrics/env0/actual_root_lin_vel_y"] = actual_vel_env0[1].item()
+        self.extras["metrics/env0/actual_root_lin_vel_z"] = actual_vel_env0[2].item()
+        self.extras["metrics/env0/root_lin_vel_diff_x"] = diff_vel_env0[0].item()
+        self.extras["metrics/env0/root_lin_vel_diff_y"] = diff_vel_env0[1].item()
+        self.extras["metrics/env0/root_lin_vel_diff_z"] = diff_vel_env0[2].item()
+        self.extras["metrics/env0/root_lin_vel_diff_norm"] = torch.linalg.norm(diff_vel_env0).item()

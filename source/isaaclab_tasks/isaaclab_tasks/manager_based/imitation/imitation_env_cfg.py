@@ -209,14 +209,14 @@ class EventCfg:
         params={"asset_cfg": SceneEntityCfg("robot", body_names=".*")},
     )
 
-    reset_robot_joints = EventTerm(
-        func=mdp.reset_joints_by_offset,
-        mode="reset",
-        params={
-            "position_range": (-0.2, 0.2),
-            "velocity_range": (-0.1, 0.1),
-        },
-    )
+    # reset_robot_joints = EventTerm(
+    #     func=mdp.reset_joints_by_offset,
+    #     mode="reset",
+    #     params={
+    #         "position_range": (-0.2, 0.2),
+    #         "velocity_range": (-0.1, 0.1),
+    #     },
+    # )
 
     # interval
     push_robot = EventTerm(

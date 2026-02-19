@@ -1,39 +1,42 @@
-from isaaclab.managers import (
-    ObservationGroupCfg as ObsGroup,
-)
-from isaaclab.managers import (
-    ObservationTermCfg as ObsTerm,
-)
+from isaaclab.managers import EventTermCfg as EventTerm
+from isaaclab.managers import ObservationGroupCfg as ObsGroup
+from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import RewardTermCfg as RewTerm
-from isaaclab.managers import (
-    SceneEntityCfg,
-)
+from isaaclab.managers import SceneEntityCfg
+from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.utils import configclass
 from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 
 import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
-from isaaclab_tasks.manager_based.imitation.imitation_env_cfg import (
-    ImitationLearningEnvCfg,
-)
+from isaaclab_tasks.manager_based.imitation.imitation_env_cfg import ImitationLearningEnvCfg
 from isaaclab_tasks.manager_based.imitation.mdp import (
-    reference_joint_pos,
-    reference_joint_vel,
-    reference_root_ang_vel,
-    reference_root_lin_vel,
-    reference_root_pos,
-    reference_root_quat,
-    track_joint_pos,
-    track_joint_vel,
-    track_relative_body_pos,
-    track_relative_body_quat,
-    track_relative_body_vel,
-    track_root_ang_vel,
-    track_root_lin_vel,
-    track_root_pos,
-    track_root_quat,
+    bad_anchor_ori,
+    bad_anchor_pos_z_only,
+    bad_reference_body_pos_z_only,
+    reference_anchor_ori_b,
+    reference_anchor_pos_b,
+    reference_global_anchor_orientation_error_exp,
+    reference_global_anchor_position_error_exp,
+    reference_global_body_angular_velocity_error_exp,
+    reference_global_body_linear_velocity_error_exp,
+    reference_motion_command,
+    reference_relative_body_orientation_error_exp,
+    reference_relative_body_position_error_exp,
+    reset_joints_to_reference,
+    robot_body_ori_b,
+    robot_body_pos_b,
 )
 
 from isaaclab_assets.robots.unitree import G1_MINIMAL_CFG
+
+VELOCITY_RANGE = {
+    "x": (-0.5, 0.5),
+    "y": (-0.5, 0.5),
+    "z": (-0.2, 0.2),
+    "roll": (-0.52, 0.52),
+    "pitch": (-0.52, 0.52),
+    "yaw": (-0.78, 0.78),
+}
 
 G1_IMITATION_JOINT_NAMES: list[str] = [
     "left_hip_pitch_joint",
@@ -61,7 +64,7 @@ G1_IMITATION_JOINT_NAMES: list[str] = [
     "right_elbow_roll_joint",
 ]
 
-# Tracked body names in IsaacLab articulation naming (used by SceneEntityCfg/asset lookups).
+# Tracked body names in IsaacLab articulation naming.
 G1_WBT_TRACKED_ASSET_BODY_NAMES: list[str] = [
     "pelvis",
     "left_hip_roll_link",
@@ -97,46 +100,17 @@ G1_WBT_TRACKED_REFERENCE_BODY_NAMES: list[str] = [
     "right_wrist_roll_rubber_hand",
 ]
 
-# XPOS tracking groups:
-# - core/legs: stronger weight for locomotion-critical body placement.
-# - upper: separate term so arm/hand tracking can be tuned independently.
-G1_WBT_CORE_ASSET_BODY_NAMES: list[str] = [
-    "pelvis",
-    "left_hip_roll_link",
-    "left_knee_link",
+G1_EE_ASSET_BODY_NAMES: list[str] = [
     "left_ankle_roll_link",
-    "right_hip_roll_link",
-    "right_knee_link",
     "right_ankle_roll_link",
-    "torso_link",
+    "left_wrist_yaw_link",
+    "right_wrist_yaw_link",
 ]
 
-G1_WBT_CORE_REFERENCE_BODY_NAMES: list[str] = [
-    "pelvis",
-    "left_hip_roll_link",
-    "left_knee_link",
+G1_EE_REFERENCE_BODY_NAMES: list[str] = [
     "left_ankle_roll_link",
-    "right_hip_roll_link",
-    "right_knee_link",
     "right_ankle_roll_link",
-    "torso_link",
-]
-
-G1_WBT_UPPER_ASSET_BODY_NAMES: list[str] = [
-    "left_shoulder_roll_link",
-    "left_elbow_pitch_link",
-    "left_palm_link",
-    "right_shoulder_roll_link",
-    "right_elbow_pitch_link",
-    "right_palm_link",
-]
-
-G1_WBT_UPPER_REFERENCE_BODY_NAMES: list[str] = [
-    "left_shoulder_roll_link",
-    "left_elbow_link",
     "left_wrist_roll_rubber_hand",
-    "right_shoulder_roll_link",
-    "right_elbow_link",
     "right_wrist_roll_rubber_hand",
 ]
 
@@ -144,51 +118,25 @@ G1_WBT_UPPER_REFERENCE_BODY_NAMES: list[str] = [
 G1_WBT_TRACKED_BODY_NAMES: list[str] = G1_WBT_TRACKED_ASSET_BODY_NAMES
 
 G1_WBT_UNDESIRED_CONTACT_PATTERN = (
-    "^(?!left_foot_contact_point$)(?!right_foot_contact_point$)"
-    "(?!left_wrist_yaw_link$)(?!right_wrist_yaw_link$)"
-    "(?!left_palm_link$)(?!right_palm_link$)"
-    "(?!left_ankle_roll_link$)(?!right_ankle_roll_link$).+$"
+    "^(?!left_ankle_roll_link$)(?!right_ankle_roll_link$)(?!left_wrist_yaw_link$)(?!right_wrist_yaw_link$).+$"
 )
 
-# Policy observation term keys in the same order as ``PolicyCfg`` below.
-G1_POLICY_OBS_KEYS: list[str] = [
-    "base_lin_vel",
-    "base_ang_vel",
-    "projected_gravity",
-    "joint_pos",
-    "joint_vel",
-    "reference_joint_pos",
-    "reference_root_pos_obs",
-    "reference_root_quat_obs",
-    "reference_root_lin_vel_obs",
-    "reference_root_ang_vel_obs",
-    "last_actions",
-]
-
-# IRL reward estimator keys: same state terms but without previous-action history.
-G1_REWARD_OBS_KEYS: list[str] = [key for key in G1_POLICY_OBS_KEYS if key != "last_actions"]
+# Observation keys used by rlopt configs (flattened by IsaacLab wrapper).
+G1_POLICY_OBS_KEYS: list[str] = ["policy"]
+G1_VALUE_OBS_KEYS: list[str] = ["critic"]
+G1_REWARD_OBS_KEYS: list[str] = ["critic"]
 
 
-# --- Observation ---
 @configclass
 class G1ObservationCfg:
     """Observation specifications for the MDP."""
 
     @configclass
     class PolicyCfg(ObsGroup):
-        """Observations for policy group."""
+        """Policy observations aligned with tracking_env_cfg (reference-driven)."""
 
-        # observation terms (order preserved)
-        base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
-        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
-        projected_gravity = ObsTerm(
-            func=mdp.projected_gravity,
-            noise=Unoise(n_min=-0.05, n_max=0.05),
-        )
-        joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
-        joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
-        reference_joint_pos = ObsTerm(
-            func=reference_joint_pos,
+        reference_motion = ObsTerm(
+            func=reference_motion_command,
             params={
                 "asset_cfg": SceneEntityCfg(
                     "robot",
@@ -196,248 +144,254 @@ class G1ObservationCfg:
                 )
             },
         )
-        # reference_joint_vel = ObsTerm(
-        #     func=reference_joint_vel,
-        #     params={"asset_cfg": SceneEntityCfg("robot", joint_names=G1_IMITATION_JOINT_NAMES)},
-        # )
-        reference_root_pos_obs = ObsTerm(
-            func=reference_root_pos,
-            params={"asset_cfg": SceneEntityCfg("robot")},
+        reference_anchor_ori_b = ObsTerm(
+            func=reference_anchor_ori_b,
+            params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link"},
+            noise=Unoise(n_min=-0.05, n_max=0.05),
         )
-        reference_root_quat_obs = ObsTerm(
-            func=reference_root_quat,
-            params={"asset_cfg": SceneEntityCfg("robot")},
-        )
-        reference_root_lin_vel_obs = ObsTerm(
-            func=reference_root_lin_vel,
-            params={"asset_cfg": SceneEntityCfg("robot")},
-        )
-        reference_root_ang_vel_obs = ObsTerm(
-            func=reference_root_ang_vel,
-            params={"asset_cfg": SceneEntityCfg("robot")},
-        )
-        last_actions = ObsTerm(func=mdp.last_action)
-        # height_scan = ObsTerm(
-        #     func=mdp.height_scan,
-        #     params={"sensor_cfg": SceneEntityCfg("height_scanner")},
-        #     noise=Unoise(n_min=-0.1, n_max=0.1),
-        #     clip=(-1.0, 1.0),
-        # )
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
+        joint_pos_rel = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
+        joint_vel_rel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-0.5, n_max=0.5))
+        last_action = ObsTerm(func=mdp.last_action)
 
         def __post_init__(self):
             self.enable_corruption = True
             self.concatenate_terms = True
 
-    # observation groups
+    @configclass
+    class CriticCfg(ObsGroup):
+        """Privileged critic observations aligned with tracking_env_cfg."""
+
+        reference_motion = ObsTerm(
+            func=reference_motion_command,
+            params={
+                "asset_cfg": SceneEntityCfg(
+                    "robot",
+                    joint_names=G1_IMITATION_JOINT_NAMES,
+                )
+            },
+        )
+        reference_anchor_pos_b = ObsTerm(
+            func=reference_anchor_pos_b,
+            params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link"},
+        )
+        reference_anchor_ori_b = ObsTerm(
+            func=reference_anchor_ori_b,
+            params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link"},
+        )
+        body_pos = ObsTerm(
+            func=robot_body_pos_b,
+            params={
+                "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
+                "anchor_body_name": "torso_link",
+            },
+        )
+        body_ori = ObsTerm(
+            func=robot_body_ori_b,
+            params={
+                "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
+                "anchor_body_name": "torso_link",
+            },
+        )
+        base_lin_vel = ObsTerm(func=mdp.base_lin_vel)
+        base_ang_vel = ObsTerm(func=mdp.base_ang_vel)
+        joint_pos = ObsTerm(func=mdp.joint_pos_rel)
+        joint_vel = ObsTerm(func=mdp.joint_vel_rel)
+        actions = ObsTerm(func=mdp.last_action)
+
     policy: PolicyCfg = PolicyCfg()
+    critic: CriticCfg = CriticCfg()
 
 
-# --- Rewards ---
+@configclass
+class G1EventCfg:
+    """Tracking-style randomization/events with imitation reset hooks."""
+
+    physics_material = EventTerm(
+        func=mdp.randomize_rigid_body_material,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
+            "static_friction_range": (0.3, 1.6),
+            "dynamic_friction_range": (0.3, 1.2),
+            "restitution_range": (0.0, 0.5),
+            "num_buckets": 64,
+        },
+    )
+
+    add_joint_default_pos = EventTerm(
+        func=mdp.randomize_joint_default_pos,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
+            "pos_distribution_params": (-0.01, 0.01),
+            "operation": "add",
+        },
+    )
+
+    base_com = EventTerm(
+        func=mdp.randomize_rigid_body_com,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names="torso_link"),
+            "com_range": {"x": (-0.025, 0.025), "y": (-0.05, 0.05), "z": (-0.05, 0.05)},
+        },
+    )
+
+    reset_base = EventTerm(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "pose_range": {"x": (-0.05, 0.05), "y": (-0.05, 0.05), "yaw": (-0.2, 0.2)},
+            "velocity_range": {
+                "x": (0.0, 0.0),
+                "y": (0.0, 0.0),
+                "z": (0.0, 0.0),
+                "roll": (0.0, 0.0),
+                "pitch": (0.0, 0.0),
+                "yaw": (0.0, 0.0),
+            },
+        },
+    )
+
+    reset_robot_joints_to_reference = EventTerm(
+        func=reset_joints_to_reference,
+        mode="reset",
+        params={"asset_cfg": SceneEntityCfg("robot")},
+    )
+
+    push_robot = EventTerm(
+        func=mdp.push_by_setting_velocity,
+        mode="interval",
+        interval_range_s=(1.0, 3.0),
+        params={"velocity_range": VELOCITY_RANGE},
+    )
+
+
 @configclass
 class G1RewardsCfg:
-    # Borrow all velocity task rewards, then add imitation-specific ones
-    tracking_joint_pos = RewTerm(
-        func=track_joint_pos,
-        weight=1.0,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                joint_names=G1_IMITATION_JOINT_NAMES,
-            ),
-            "sigma": 1.0,
-        },
-    )
-    tracking_joint_vel = RewTerm(
-        func=track_joint_vel,
-        weight=0.0,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                joint_names=G1_IMITATION_JOINT_NAMES,
-            ),
-            "sigma": 1.0,
-        },
-    )
-    tracking_root_pos = RewTerm(
-        func=track_root_pos,
-        weight=1.0,
-        params={
-            "asset_cfg": SceneEntityCfg("robot"),
-            "sigma": 1.0,
-        },
-    )
-    tracking_root_quat = RewTerm(
-        func=track_root_quat,
-        weight=1.0,
-        params={
-            "asset_cfg": SceneEntityCfg("robot"),
-            "sigma": 2.0,
-        },
-    )
-    tracking_root_lin_vel = RewTerm(
-        func=track_root_lin_vel,
-        weight=1.0,
-        params={
-            "asset_cfg": SceneEntityCfg("robot"),
-            "sigma": 1.0,
-        },
-    )
-    tracking_root_ang_vel = RewTerm(
-        func=track_root_ang_vel,
-        weight=1.0,
-        params={
-            "asset_cfg": SceneEntityCfg("robot"),
-            "sigma": 1.0,
-        },
-    )
-    tracking_relative_body_pos_core = RewTerm(
-        func=track_relative_body_pos,
-        weight=0.5,
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_CORE_ASSET_BODY_NAMES),
-            "reference_body_names": G1_WBT_CORE_REFERENCE_BODY_NAMES,
-            "sigma": 0.2,
-        },
-    )
-    tracking_relative_body_pos_upper = RewTerm(
-        func=track_relative_body_pos,
-        weight=0.5,
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_UPPER_ASSET_BODY_NAMES),
-            "reference_body_names": G1_WBT_UPPER_REFERENCE_BODY_NAMES,
-            "sigma": 0.25,
-        },
-    )
-    tracking_relative_body_quat = RewTerm(
-        func=track_relative_body_quat,
-        weight=0.5,
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
-            "reference_body_names": G1_WBT_TRACKED_REFERENCE_BODY_NAMES,
-            "sigma": 0.4,
-        },
-    )
-    tracking_relative_body_vel = RewTerm(
-        func=track_relative_body_vel,
-        weight=0.5,
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
-            "reference_body_names": G1_WBT_TRACKED_REFERENCE_BODY_NAMES,
-            "sigma": 1.0,
-        },
-    )
+    """Reward terms aligned to unitree tracking_env_cfg."""
 
-    """Reward terms from locomotion velocity task."""
-
-    termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)
-
-    feet_slide = RewTerm(
-        func=mdp.feet_slide,
-        weight=0.0,
-        params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*_ankle_roll_link"),
-            "asset_cfg": SceneEntityCfg("robot", body_names=".*_ankle_roll_link"),
-        },
-    )
-
-    # Penalize ankle joint limits
-    dof_pos_limits = RewTerm(
+    # -- base
+    joint_acc = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
+    joint_torque = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
+    action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-1.0e-1)
+    joint_limit = RewTerm(
         func=mdp.joint_pos_limits,
-        weight=-1.0,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_ankle_pitch_joint", ".*_ankle_roll_joint"])},
-    )
-    # Penalize deviation from default of the joints that are not essential for locomotion
-    joint_deviation_hip = RewTerm(
-        func=mdp.joint_deviation_l1,
-        weight=0.0,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*_hip_yaw_joint", ".*_hip_roll_joint"])},
-    )
-    joint_deviation_arms = RewTerm(
-        func=mdp.joint_deviation_l1,
-        weight=0.0,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                joint_names=[
-                    ".*_shoulder_pitch_joint",
-                    ".*_shoulder_roll_joint",
-                    ".*_shoulder_yaw_joint",
-                    ".*_elbow_pitch_joint",
-                    ".*_elbow_roll_joint",
-                ],
-            )
-        },
-    )
-    joint_deviation_fingers = RewTerm(
-        func=mdp.joint_deviation_l1,
-        weight=0.0,
-        params={
-            "asset_cfg": SceneEntityCfg(
-                "robot",
-                joint_names=[
-                    ".*_five_joint",
-                    ".*_three_joint",
-                    ".*_six_joint",
-                    ".*_four_joint",
-                    ".*_zero_joint",
-                    ".*_one_joint",
-                    ".*_two_joint",
-                ],
-            )
-        },
-    )
-    joint_deviation_torso = RewTerm(
-        func=mdp.joint_deviation_l1,
-        weight=0.0,
-        params={"asset_cfg": SceneEntityCfg("robot", joint_names="torso_joint")},
+        weight=-10.0,
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*"])},
     )
 
-    # -- penalties
-    lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
-    ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
-    dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-2.0e-5)
-    dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.0e-7)
-    action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
+    # -- tracking
+    motion_global_anchor_pos = RewTerm(
+        func=reference_global_anchor_position_error_exp,
+        weight=0.5,
+        params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "std": 0.3},
+    )
+    motion_global_anchor_ori = RewTerm(
+        func=reference_global_anchor_orientation_error_exp,
+        weight=0.5,
+        params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "std": 0.4},
+    )
+    motion_body_pos = RewTerm(
+        func=reference_relative_body_position_error_exp,
+        weight=1.0,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
+            "reference_body_names": G1_WBT_TRACKED_REFERENCE_BODY_NAMES,
+            "std": 0.3,
+        },
+    )
+    motion_body_ori = RewTerm(
+        func=reference_relative_body_orientation_error_exp,
+        weight=1.0,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
+            "reference_body_names": G1_WBT_TRACKED_REFERENCE_BODY_NAMES,
+            "std": 0.4,
+        },
+    )
+    motion_body_lin_vel = RewTerm(
+        func=reference_global_body_linear_velocity_error_exp,
+        weight=1.0,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
+            "reference_body_names": G1_WBT_TRACKED_REFERENCE_BODY_NAMES,
+            "std": 1.0,
+        },
+    )
+    motion_body_ang_vel = RewTerm(
+        func=reference_global_body_angular_velocity_error_exp,
+        weight=1.0,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
+            "reference_body_names": G1_WBT_TRACKED_REFERENCE_BODY_NAMES,
+            "std": 3.14,
+        },
+    )
 
     undesired_contacts = RewTerm(
         func=mdp.undesired_contacts,
-        weight=-1.0,
+        weight=-0.1,
         params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*THIGH"),
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=[G1_WBT_UNDESIRED_CONTACT_PATTERN]),
             "threshold": 1.0,
         },
     )
-    # -- optional penalties
-    flat_orientation_l2 = RewTerm(func=mdp.flat_orientation_l2, weight=-0.2)
+
+
+@configclass
+class G1TerminationsCfg:
+    """Termination terms aligned to unitree tracking_env_cfg."""
+
+    time_out = DoneTerm(func=mdp.time_out, time_out=True)
+    anchor_pos = DoneTerm(
+        func=bad_anchor_pos_z_only,
+        params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "threshold": 0.25},
+    )
+    anchor_ori = DoneTerm(
+        func=bad_anchor_ori,
+        params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "threshold": 0.8},
+    )
+    ee_body_pos = DoneTerm(
+        func=bad_reference_body_pos_z_only,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=G1_EE_ASSET_BODY_NAMES),
+            "reference_body_names": G1_EE_REFERENCE_BODY_NAMES,
+            "threshold": 0.25,
+        },
+    )
 
 
 @configclass
 class ImitationG1EnvCfg(ImitationLearningEnvCfg):
-    # MDP settings
     observations = G1ObservationCfg()
     rewards = G1RewardsCfg()  # type: ignore
+    terminations = G1TerminationsCfg()  # type: ignore
+    events = G1EventCfg()
+
     # Dataset and cache settings for ImitationRLEnv
-    device: str = "cuda"  # Torch device
-    loader_type: str = "loco_mujoco"  # Loader type (required if Zarr does not exist)
+    device: str = "cuda"
+    loader_type: str = "loco_mujoco"
     loader_kwargs: dict = {
         "env_name": "UnitreeG1",
-        "n_substeps": 4,
+        "n_substeps": 10,
         "dataset": {
             "trajectories": {
-                "default": ["walk"],
+                "default": ["dance"],
                 "amass": [],
                 "lafan1": [],
             }
         },
         "control_freq": 50.0,
         "window_size": 4,
-        "sim": {"dt": 0.005},
+        "sim": {"dt": 0.002},
         "decimation": 4,
-    }  # Loader kwargs (required if Zarr does not exist)
+    }
 
     replay_reference: bool = False
     replay_only: bool = False
-    # Reference joint names for the robot from the reference qpos order (this is the order of G1 in loco-mujoco)
+
     reference_joint_names: list[str] = [
         "left_hip_pitch_joint",
         "left_hip_roll_joint",
@@ -464,7 +418,6 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
         "right_elbow_roll_joint",
     ]
 
-    # target joint names
     target_joint_names: list[str] = [
         "left_hip_pitch_joint",
         "right_hip_pitch_joint",
@@ -505,38 +458,23 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
         "right_two_joint",
     ]
 
-    # Post initialization
     def __post_init__(self) -> None:
-        """Post initialization."""
-        # post init of parent
         super().__post_init__()  # type: ignore
-        # Scene
+
         self.scene.robot = G1_MINIMAL_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")  # type: ignore
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None
 
-        # Randomization
-        self.events.push_robot = None
-        self.events.add_base_mass = None
-        self.events.base_external_force_torque.params["asset_cfg"].body_names = ["torso_link"]
-        self.events.reset_base.params = {
-            "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (0.0, 0.0)},
-            "velocity_range": {
-                "x": (0.0, 0.0),
-                "y": (0.0, 0.0),
-                "z": (0.0, 0.0),
-                "roll": (0.0, 0.0),
-                "pitch": (0.0, 0.0),
-                "yaw": (0.0, 0.0),
-            },
-        }
-        self.events.base_com = None
-        self.events.push_robot = None
-        self.events.base_external_force_torque = None
+        self.decimation = 4
+        self.episode_length_s = 30.0
+        self.sim.dt = 0.005
+        self.sim.render_interval = self.decimation
+        self.sim.physics_material = self.scene.terrain.physics_material
+        self.sim.physx.gpu_max_rigid_patch_count = 10 * 2**15
 
-        # Rewards
-        self.rewards.undesired_contacts = None  # type: ignore
+        if self.scene.contact_forces is not None:
+            self.scene.contact_forces.update_period = self.sim.dt
+            self.scene.contact_forces.force_threshold = 10.0
+            self.scene.contact_forces.debug_vis = True
 
-        # terminations
-        self.terminations.base_contact.params["sensor_cfg"].body_names = "torso_link"
-        self.terminations.base_too_low = None
+        self.scene.height_scanner = None
