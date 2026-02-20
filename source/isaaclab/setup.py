@@ -33,7 +33,7 @@ INSTALL_REQUIRES = [
     "trimesh",
     "pyglet<2",
     # image processing
-    "transformers",
+    "transformers==4.57.6",
     "einops",  # needed for transformers, doesn't always auto-install
     "warp-lang",
     # make sure this is consistent with isaac sim version
@@ -44,7 +44,7 @@ INSTALL_REQUIRES = [
     "pytest",
     "pytest-mock",
     "junitparser",
-    "flatdict==4.0.1",
+    "flatdict==4.0.0",
     "flaky",
     "packaging",
     # imitation branch: reference datasets and loaders (default)
