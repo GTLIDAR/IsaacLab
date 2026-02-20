@@ -306,7 +306,7 @@ class ImitationLearningEnvCfg(ManagerBasedRLEnvCfg):
             "lafan1": [],
         }
     }
-    visualize_reference_velocity: bool = True
+    visualize_reference_velocity: bool = False  # reference velocity/position/heading arrows
     replay_reference: bool = False
     replay_only: bool = True
     # Reference joint names for the robot from the reference qpos order (this is the order of G1 in loco-mujoco)

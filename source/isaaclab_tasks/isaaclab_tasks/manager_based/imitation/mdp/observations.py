@@ -9,8 +9,6 @@ from isaaclab.envs import ImitationRLEnv
 from isaaclab.managers import SceneEntityCfg
 from isaaclab.utils.math import (
     matrix_from_quat,
-    quat_apply,
-    quat_mul,
     subtract_frame_transforms,
 )
 
@@ -139,13 +137,10 @@ def _reference_body_pose_w(
     ref_body_ids = _resolve_reference_body_indices(env, reference_body_names, device)
     ref_pos = env.get_reference_data(key="xpos")[..., ref_body_ids, :]
     ref_quat = env.get_reference_data(key="xquat")[..., ref_body_ids, :]
-
-    num_envs, num_bodies = ref_pos.shape[0], ref_pos.shape[1]
-    init_quat = env._init_root_quat.unsqueeze(1).expand(-1, num_bodies, -1).reshape(-1, 4)
-
-    ref_pos_w = quat_apply(init_quat, ref_pos.reshape(-1, 3)).reshape(num_envs, num_bodies, 3)
-    ref_pos_w = ref_pos_w + env._init_root_pos.unsqueeze(1)
-    ref_quat_w = quat_mul(init_quat, ref_quat.reshape(-1, 4)).reshape(num_envs, num_bodies, 4)
+    ref_pos_w, ref_quat_w_opt = env._transform_reference_pose_to_world(ref_pos, ref_quat)
+    if ref_quat_w_opt is None:
+        raise RuntimeError("Failed to transform reference body quaternions.")
+    ref_quat_w = ref_quat_w_opt
     return ref_pos_w, ref_quat_w
 
 

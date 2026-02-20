@@ -38,8 +38,9 @@ def reference_root_position_xy_deviation_too_much(
     asset: Articulation = env.scene[asset_cfg.name]
     root_pos_actual = asset.data.root_state_w[:, :3]
 
+    align_quat, align_pos = _reference_alignment_transform(env)
     root_pos_reference = env.get_reference_data(key="root_pos")
-    root_pos_reference = quat_apply(env._init_root_quat, root_pos_reference) + env._init_root_pos
+    root_pos_reference = quat_apply(align_quat, root_pos_reference) + align_pos
 
     xy_error = torch.linalg.norm(root_pos_actual[:, :2] - root_pos_reference[:, :2], dim=1)
     return xy_error > threshold
@@ -53,11 +54,25 @@ def reference_root_quat_deviation_too_much(
     """Terminate when root orientation error to reference exceeds threshold (radians)."""
     asset: Articulation = env.scene[asset_cfg.name]
     root_quat_actual = asset.data.root_state_w[:, 3:7]
-    root_quat_actual_relative = quat_mul(quat_inv(env._init_root_quat), root_quat_actual)
     root_quat_reference = env.get_reference_data(key="root_quat")
+    align_quat, _ = _reference_alignment_transform(env)
+    root_quat_reference_w = quat_mul(align_quat, root_quat_reference)
 
-    angular_error = quat_error_magnitude(root_quat_actual_relative, root_quat_reference)
+    angular_error = quat_error_magnitude(root_quat_actual, root_quat_reference_w)
     return angular_error > threshold
+
+
+def _reference_alignment_transform(env: ImitationRLEnv) -> tuple[torch.Tensor, torch.Tensor]:
+    """Rigid transform from dataset world frame to simulation world frame."""
+    ref_reset_pos = getattr(env, "_reference_reset_root_pos", None)
+    ref_reset_quat = getattr(env, "_reference_reset_root_quat", None)
+    if ref_reset_pos is None or ref_reset_quat is None:
+        # Backward-compatible fallback.
+        return env._init_root_quat, env._init_root_pos
+
+    align_quat = quat_mul(env._init_root_quat, quat_inv(ref_reset_quat))
+    align_pos = env._init_root_pos - quat_apply(align_quat, ref_reset_pos)
+    return align_quat, align_pos
 
 
 def _resolve_reference_body_indices(
@@ -119,7 +134,8 @@ def bad_anchor_pos_z_only(
 
     ref_anchor_id = _resolve_reference_body_indices(env, [anchor_body_name], robot_anchor_pos_w.device)
     ref_anchor_pos = env.get_reference_data(key="xpos")[..., ref_anchor_id, :][:, 0, :]
-    ref_anchor_pos_w = quat_apply(env._init_root_quat, ref_anchor_pos) + env._init_root_pos
+    align_quat, align_pos = _reference_alignment_transform(env)
+    ref_anchor_pos_w = quat_apply(align_quat, ref_anchor_pos) + align_pos
     return torch.abs(ref_anchor_pos_w[:, 2] - robot_anchor_pos_w[:, 2]) > threshold
 
 
@@ -136,7 +152,8 @@ def bad_anchor_ori(
 
     ref_anchor_id = _resolve_reference_body_indices(env, [anchor_body_name], robot_anchor_quat_w.device)
     ref_anchor_quat = env.get_reference_data(key="xquat")[..., ref_anchor_id, :][:, 0, :]
-    ref_anchor_quat_w = quat_mul(env._init_root_quat, ref_anchor_quat)
+    align_quat, _ = _reference_alignment_transform(env)
+    ref_anchor_quat_w = quat_mul(align_quat, ref_anchor_quat)
 
     reference_projected_gravity_b = quat_apply_inverse(ref_anchor_quat_w, asset.data.GRAVITY_VEC_W)
     robot_projected_gravity_b = quat_apply_inverse(robot_anchor_quat_w, asset.data.GRAVITY_VEC_W)
@@ -159,9 +176,10 @@ def bad_reference_body_pos_z_only(
     ref_pos = env.get_reference_data(key="xpos")[..., ref_body_ids, :]
     num_envs = ref_pos.shape[0]
     num_bodies = ref_pos.shape[1]
-    init_quat = env._init_root_quat.unsqueeze(1).expand(-1, num_bodies, -1).reshape(-1, 4)
-    ref_pos_w = quat_apply(init_quat, ref_pos.reshape(-1, 3)).reshape(num_envs, num_bodies, 3)
-    ref_pos_w = ref_pos_w + env._init_root_pos.unsqueeze(1)
+    align_quat, align_pos = _reference_alignment_transform(env)
+    align_quat_expand = align_quat.unsqueeze(1).expand(-1, num_bodies, -1).reshape(-1, 4)
+    ref_pos_w = quat_apply(align_quat_expand, ref_pos.reshape(-1, 3)).reshape(num_envs, num_bodies, 3)
+    ref_pos_w = ref_pos_w + align_pos.unsqueeze(1)
 
     body_pos_actual = asset.data.body_link_pos_w[:, body_ids, :]
     z_error = torch.abs(ref_pos_w[..., 2] - body_pos_actual[..., 2])

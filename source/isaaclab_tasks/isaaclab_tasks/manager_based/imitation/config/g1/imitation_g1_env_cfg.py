@@ -76,10 +76,10 @@ G1_WBT_TRACKED_ASSET_BODY_NAMES: list[str] = [
     "torso_link",
     "left_shoulder_roll_link",
     "left_elbow_pitch_link",
-    "left_palm_link",
+    # "left_palm_link",
     "right_shoulder_roll_link",
     "right_elbow_pitch_link",
-    "right_palm_link",
+    # "right_palm_link",
 ]
 
 # Matching tracked body names in loco-mujoco reference metadata order.
@@ -94,32 +94,30 @@ G1_WBT_TRACKED_REFERENCE_BODY_NAMES: list[str] = [
     "torso_link",
     "left_shoulder_roll_link",
     "left_elbow_link",
-    "left_wrist_roll_rubber_hand",
+    # "left_wrist_roll_rubber_hand",
     "right_shoulder_roll_link",
     "right_elbow_link",
-    "right_wrist_roll_rubber_hand",
+    # "right_wrist_roll_rubber_hand",
 ]
 
 G1_EE_ASSET_BODY_NAMES: list[str] = [
     "left_ankle_roll_link",
     "right_ankle_roll_link",
-    "left_wrist_yaw_link",
-    "right_wrist_yaw_link",
+    # "left_wrist_yaw_link",
+    # "right_wrist_yaw_link",
 ]
 
 G1_EE_REFERENCE_BODY_NAMES: list[str] = [
     "left_ankle_roll_link",
     "right_ankle_roll_link",
-    "left_wrist_roll_rubber_hand",
-    "right_wrist_roll_rubber_hand",
+    # "left_wrist_roll_rubber_hand",
+    # "right_wrist_roll_rubber_hand",
 ]
 
 # Backward-compatible alias used by tooling/scripts that import the old name.
 G1_WBT_TRACKED_BODY_NAMES: list[str] = G1_WBT_TRACKED_ASSET_BODY_NAMES
 
-G1_WBT_UNDESIRED_CONTACT_PATTERN = (
-    "^(?!left_ankle_roll_link$)(?!right_ankle_roll_link$)(?!left_wrist_yaw_link$)(?!right_wrist_yaw_link$).+$"
-)
+G1_WBT_UNDESIRED_CONTACT_PATTERN = "^(?!left_ankle_roll_link$)(?!right_ankle_roll_link$).+$"
 
 # Observation keys used by rlopt configs (flattened by IsaacLab wrapper).
 G1_POLICY_OBS_KEYS: list[str] = ["policy"]
@@ -219,13 +217,12 @@ class G1EventCfg:
         },
     )
 
-    add_joint_default_pos = EventTerm(
-        func=mdp.randomize_joint_default_pos,
-        mode="startup",
+    reset_robot_joints = EventTerm(
+        func=mdp.reset_joints_by_offset,
+        mode="reset",
         params={
-            "asset_cfg": SceneEntityCfg("robot", joint_names=[".*"]),
-            "pos_distribution_params": (-0.01, 0.01),
-            "operation": "add",
+            "position_range": (-0.2, 0.2),
+            "velocity_range": (-0.1, 0.1),
         },
     )
 
@@ -254,11 +251,11 @@ class G1EventCfg:
         },
     )
 
-    reset_robot_joints_to_reference = EventTerm(
-        func=reset_joints_to_reference,
-        mode="reset",
-        params={"asset_cfg": SceneEntityCfg("robot")},
-    )
+    # reset_robot_joints_to_reference = EventTerm(
+    #     func=reset_joints_to_reference,
+    #     mode="reset",
+    #     params={"asset_cfg": SceneEntityCfg("robot")},
+    # )
 
     push_robot = EventTerm(
         func=mdp.push_by_setting_velocity,
@@ -286,12 +283,12 @@ class G1RewardsCfg:
     motion_global_anchor_pos = RewTerm(
         func=reference_global_anchor_position_error_exp,
         weight=0.5,
-        params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "std": 0.3},
+        params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "std": 0.6},
     )
     motion_global_anchor_ori = RewTerm(
         func=reference_global_anchor_orientation_error_exp,
         weight=0.5,
-        params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "std": 0.4},
+        params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "std": 1.0},
     )
     motion_body_pos = RewTerm(
         func=reference_relative_body_position_error_exp,
@@ -299,7 +296,7 @@ class G1RewardsCfg:
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
             "reference_body_names": G1_WBT_TRACKED_REFERENCE_BODY_NAMES,
-            "std": 0.3,
+            "std": 0.6,
         },
     )
     motion_body_ori = RewTerm(
@@ -308,7 +305,7 @@ class G1RewardsCfg:
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
             "reference_body_names": G1_WBT_TRACKED_REFERENCE_BODY_NAMES,
-            "std": 0.4,
+            "std": 0.6,
         },
     )
     motion_body_lin_vel = RewTerm(
@@ -317,7 +314,7 @@ class G1RewardsCfg:
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
             "reference_body_names": G1_WBT_TRACKED_REFERENCE_BODY_NAMES,
-            "std": 1.0,
+            "std": 0.5,
         },
     )
     motion_body_ang_vel = RewTerm(
@@ -326,18 +323,18 @@ class G1RewardsCfg:
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
             "reference_body_names": G1_WBT_TRACKED_REFERENCE_BODY_NAMES,
-            "std": 3.14,
+            "std": 1.0,
         },
     )
 
-    undesired_contacts = RewTerm(
-        func=mdp.undesired_contacts,
-        weight=-0.1,
-        params={
-            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=[G1_WBT_UNDESIRED_CONTACT_PATTERN]),
-            "threshold": 1.0,
-        },
-    )
+    # undesired_contacts = RewTerm(
+    #     func=mdp.undesired_contacts,
+    #     weight=-0.1,
+    #     params={
+    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names=[G1_WBT_UNDESIRED_CONTACT_PATTERN]),
+    #         "threshold": 1.0,
+    #     },
+    # )
 
 
 @configclass
@@ -345,20 +342,34 @@ class G1TerminationsCfg:
     """Termination terms aligned to unitree tracking_env_cfg."""
 
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
-    anchor_pos = DoneTerm(
-        func=bad_anchor_pos_z_only,
-        params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "threshold": 0.25},
-    )
-    anchor_ori = DoneTerm(
-        func=bad_anchor_ori,
-        params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "threshold": 0.8},
-    )
-    ee_body_pos = DoneTerm(
-        func=bad_reference_body_pos_z_only,
+    # anchor_pos = DoneTerm(
+    #     func=bad_anchor_pos_z_only,
+    #     params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "threshold": 1.0},
+    # )
+    # anchor_ori = DoneTerm(
+    #     func=bad_anchor_ori,
+    #     params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "threshold": 1.5},
+    # )
+    # ee_body_pos = DoneTerm(
+    #     func=bad_reference_body_pos_z_only,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot", body_names=G1_EE_ASSET_BODY_NAMES),
+    #         "reference_body_names": G1_EE_REFERENCE_BODY_NAMES,
+    #         "threshold": 1.0,
+    #     },
+    # )
+    base_contact = DoneTerm(
+        func=mdp.illegal_contact,
         params={
-            "asset_cfg": SceneEntityCfg("robot", body_names=G1_EE_ASSET_BODY_NAMES),
-            "reference_body_names": G1_EE_REFERENCE_BODY_NAMES,
-            "threshold": 0.25,
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names="torso_link"),
+            "threshold": 1.0,
+        },
+    )
+    base_too_low = DoneTerm(
+        func=mdp.root_height_below_minimum,
+        params={
+            "minimum_height": 0.5,
+            "asset_cfg": SceneEntityCfg("robot", body_names="torso_link"),
         },
     )
 
@@ -371,26 +382,39 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
     events = G1EventCfg()
 
     # Dataset and cache settings for ImitationRLEnv
+    # ref_dt = sim.dt * n_substeps (loco-mujoco TrajectoryHandler interpolates to this).
+    # env_dt = self.sim.dt * self.decimation (Isaac control step, set in __post_init__).
+    # Playback speed = ref_dt / env_dt.  1 ref step is consumed per 1 env step.
+    # To slow down: lower n_substeps (smaller ref_dt -> more ref frames -> same motion takes more env steps).
+    #   n_substeps=4 -> ref_dt=0.02  -> 1x    (normal)
+    #   n_substeps=2 -> ref_dt=0.01  -> 0.5x  (2x slower)
+    #   n_substeps=1 -> ref_dt=0.005 -> 0.25x (4x slower)
     device: str = "cuda"
     loader_type: str = "loco_mujoco"
     loader_kwargs: dict = {
         "env_name": "UnitreeG1",
-        "n_substeps": 10,
+        "n_substeps": 4,
         "dataset": {
             "trajectories": {
-                "default": ["dance"],
+                "default": ["walk"],
                 "amass": [],
                 "lafan1": [],
             }
         },
         "control_freq": 50.0,
         "window_size": 4,
-        "sim": {"dt": 0.002},
+        "sim": {"dt": 0.005},
         "decimation": 4,
     }
 
     replay_reference: bool = False
     replay_only: bool = False
+    refresh_zarr_dataset: bool = True
+    reference_start_frame: int = 0
+
+    visualize_reference_arrows: bool = True
+    print_reference_velocity: bool = False
+    print_reference_velocity_every: int = 50
 
     reference_joint_names: list[str] = [
         "left_hip_pitch_joint",
@@ -466,7 +490,7 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
         self.scene.terrain.terrain_generator = None
 
         self.decimation = 4
-        self.episode_length_s = 30.0
+        self.episode_length_s = 20.0
         self.sim.dt = 0.005
         self.sim.render_interval = self.decimation
         self.sim.physics_material = self.scene.terrain.physics_material
