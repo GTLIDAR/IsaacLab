@@ -364,7 +364,11 @@ class ImitationRLEnv(ManagerBasedRLEnv):
     def _get_reference_alignment_transform(
         self, env_ids: torch.Tensor | None = None
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Return per-env rigid transform from dataset world frame to simulation world frame."""
+        """Return per-env rigid transform from dataset world frame to simulation world frame.
+
+        Alignment is yaw-only (rotation around z-axis), to avoid injecting small roll/pitch
+        frame mismatches that can tilt reference motion upward/downward.
+        """
         if env_ids is None:
             init_pos = self._init_root_pos
             init_quat = self._init_root_quat
@@ -376,7 +380,9 @@ class ImitationRLEnv(ManagerBasedRLEnv):
             ref_reset_pos = self._reference_reset_root_pos[env_ids]
             ref_reset_quat = self._reference_reset_root_quat[env_ids]
 
-        align_quat = math_utils.quat_mul(init_quat, math_utils.quat_inv(ref_reset_quat))
+        init_yaw_quat = math_utils.yaw_quat(init_quat)
+        ref_reset_yaw_quat = math_utils.yaw_quat(ref_reset_quat)
+        align_quat = math_utils.quat_mul(init_yaw_quat, math_utils.quat_inv(ref_reset_yaw_quat))
         align_pos = init_pos - math_utils.quat_apply(align_quat, ref_reset_pos)
         return align_quat, align_pos
 

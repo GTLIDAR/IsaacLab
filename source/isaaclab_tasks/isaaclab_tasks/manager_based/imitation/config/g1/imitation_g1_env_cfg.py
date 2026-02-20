@@ -217,14 +217,14 @@ class G1EventCfg:
         },
     )
 
-    reset_robot_joints = EventTerm(
-        func=mdp.reset_joints_by_offset,
-        mode="reset",
-        params={
-            "position_range": (-0.2, 0.2),
-            "velocity_range": (-0.1, 0.1),
-        },
-    )
+    # reset_robot_joints = EventTerm(
+    #     func=mdp.reset_joints_by_offset,
+    #     mode="reset",
+    #     params={
+    #         "position_range": (-0.2, 0.2),
+    #         "velocity_range": (-0.1, 0.1),
+    #     },
+    # )
 
     base_com = EventTerm(
         func=mdp.randomize_rigid_body_com,
@@ -251,11 +251,11 @@ class G1EventCfg:
         },
     )
 
-    # reset_robot_joints_to_reference = EventTerm(
-    #     func=reset_joints_to_reference,
-    #     mode="reset",
-    #     params={"asset_cfg": SceneEntityCfg("robot")},
-    # )
+    reset_robot_joints_to_reference = EventTerm(
+        func=reset_joints_to_reference,
+        mode="reset",
+        params={"asset_cfg": SceneEntityCfg("robot")},
+    )
 
     push_robot = EventTerm(
         func=mdp.push_by_setting_velocity,
@@ -296,7 +296,7 @@ class G1RewardsCfg:
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
             "reference_body_names": G1_WBT_TRACKED_REFERENCE_BODY_NAMES,
-            "std": 0.6,
+            "std": 1.0,
         },
     )
     motion_body_ori = RewTerm(
@@ -314,7 +314,7 @@ class G1RewardsCfg:
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
             "reference_body_names": G1_WBT_TRACKED_REFERENCE_BODY_NAMES,
-            "std": 0.5,
+            "std": 1.0,
         },
     )
     motion_body_ang_vel = RewTerm(
@@ -342,22 +342,22 @@ class G1TerminationsCfg:
     """Termination terms aligned to unitree tracking_env_cfg."""
 
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
-    # anchor_pos = DoneTerm(
-    #     func=bad_anchor_pos_z_only,
-    #     params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "threshold": 1.0},
-    # )
-    # anchor_ori = DoneTerm(
-    #     func=bad_anchor_ori,
-    #     params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "threshold": 1.5},
-    # )
-    # ee_body_pos = DoneTerm(
-    #     func=bad_reference_body_pos_z_only,
-    #     params={
-    #         "asset_cfg": SceneEntityCfg("robot", body_names=G1_EE_ASSET_BODY_NAMES),
-    #         "reference_body_names": G1_EE_REFERENCE_BODY_NAMES,
-    #         "threshold": 1.0,
-    #     },
-    # )
+    anchor_pos = DoneTerm(
+        func=bad_anchor_pos_z_only,
+        params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "threshold": 1.0},
+    )
+    anchor_ori = DoneTerm(
+        func=bad_anchor_ori,
+        params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "threshold": 1.5},
+    )
+    ee_body_pos = DoneTerm(
+        func=bad_reference_body_pos_z_only,
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names=G1_EE_ASSET_BODY_NAMES),
+            "reference_body_names": G1_EE_REFERENCE_BODY_NAMES,
+            "threshold": 1.0,
+        },
+    )
     base_contact = DoneTerm(
         func=mdp.illegal_contact,
         params={
