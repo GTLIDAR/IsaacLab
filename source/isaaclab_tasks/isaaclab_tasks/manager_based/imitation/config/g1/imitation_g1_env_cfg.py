@@ -25,6 +25,7 @@ from isaaclab_tasks.manager_based.imitation.mdp import (
     reset_joints_to_reference,
     robot_body_ori_b,
     robot_body_pos_b,
+    track_joint_pos,
 )
 
 from isaaclab_assets.robots.unitree import G1_MINIMAL_CFG
@@ -324,6 +325,42 @@ class G1RewardsCfg:
             "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
             "reference_body_names": G1_WBT_TRACKED_REFERENCE_BODY_NAMES,
             "std": 1.0,
+        },
+    )
+
+    joint_tracking = RewTerm(
+        func=track_joint_pos,
+        weight=1.0,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=[
+                    "left_hip_pitch_joint",
+                    "right_hip_pitch_joint",
+                    "torso_joint",
+                    "left_hip_roll_joint",
+                    "right_hip_roll_joint",
+                    "left_shoulder_pitch_joint",
+                    "right_shoulder_pitch_joint",
+                    "left_hip_yaw_joint",
+                    "right_hip_yaw_joint",
+                    "left_shoulder_roll_joint",
+                    "right_shoulder_roll_joint",
+                    "left_knee_joint",
+                    "right_knee_joint",
+                    "left_shoulder_yaw_joint",
+                    "right_shoulder_yaw_joint",
+                    "left_ankle_pitch_joint",
+                    "right_ankle_pitch_joint",
+                    "left_elbow_pitch_joint",
+                    "right_elbow_pitch_joint",
+                    "left_ankle_roll_joint",
+                    "right_ankle_roll_joint",
+                    "left_elbow_roll_joint",
+                    "right_elbow_roll_joint",
+                ],
+            ),
+            "sigma": 0.5,
         },
     )
 
