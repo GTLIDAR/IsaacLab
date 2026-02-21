@@ -280,16 +280,16 @@ class G1RewardsCfg:
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=[".*"])},
     )
 
-    # -- tracking
+    # -- tracking (std values aligned with BeyondMimic)
     motion_global_anchor_pos = RewTerm(
         func=reference_global_anchor_position_error_exp,
         weight=0.5,
-        params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "std": 0.6},
+        params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "std": 0.3},
     )
     motion_global_anchor_ori = RewTerm(
         func=reference_global_anchor_orientation_error_exp,
         weight=0.5,
-        params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "std": 1.0},
+        params={"asset_cfg": SceneEntityCfg("robot"), "anchor_body_name": "torso_link", "std": 0.4},
     )
     motion_body_pos = RewTerm(
         func=reference_relative_body_position_error_exp,
@@ -297,7 +297,8 @@ class G1RewardsCfg:
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
             "reference_body_names": G1_WBT_TRACKED_REFERENCE_BODY_NAMES,
-            "std": 1.0,
+            "anchor_body_name": "torso_link",
+            "std": 0.3,
         },
     )
     motion_body_ori = RewTerm(
@@ -306,7 +307,8 @@ class G1RewardsCfg:
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
             "reference_body_names": G1_WBT_TRACKED_REFERENCE_BODY_NAMES,
-            "std": 0.6,
+            "anchor_body_name": "torso_link",
+            "std": 0.4,
         },
     )
     motion_body_lin_vel = RewTerm(
@@ -324,7 +326,7 @@ class G1RewardsCfg:
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=G1_WBT_TRACKED_ASSET_BODY_NAMES),
             "reference_body_names": G1_WBT_TRACKED_REFERENCE_BODY_NAMES,
-            "std": 1.0,
+            "std": 3.14,
         },
     )
 
@@ -448,6 +450,9 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
     replay_only: bool = False
     refresh_zarr_dataset: bool = True
     reference_start_frame: int = 0
+
+    # Set True to emit periodic reward-error diagnostics via logging.warning.
+    _debug_rewards: bool = False
 
     visualize_reference_arrows: bool = True
     print_reference_velocity: bool = False

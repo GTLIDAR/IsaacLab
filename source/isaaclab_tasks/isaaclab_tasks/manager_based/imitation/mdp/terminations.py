@@ -13,6 +13,7 @@ from isaaclab.utils.math import (
     quat_error_magnitude,
     quat_inv,
     quat_mul,
+    yaw_quat,
 )
 
 
@@ -63,14 +64,19 @@ def reference_root_quat_deviation_too_much(
 
 
 def _reference_alignment_transform(env: ImitationRLEnv) -> tuple[torch.Tensor, torch.Tensor]:
-    """Rigid transform from dataset world frame to simulation world frame."""
+    """Rigid yaw-only transform from dataset world frame to simulation world frame.
+
+    Must stay consistent with ``ImitationRLEnv._get_reference_alignment_transform``
+    which also extracts yaw-only to avoid injecting roll/pitch mismatches.
+    """
     ref_reset_pos = getattr(env, "_reference_reset_root_pos", None)
     ref_reset_quat = getattr(env, "_reference_reset_root_quat", None)
     if ref_reset_pos is None or ref_reset_quat is None:
-        # Backward-compatible fallback.
-        return env._init_root_quat, env._init_root_pos
+        return yaw_quat(env._init_root_quat), env._init_root_pos
 
-    align_quat = quat_mul(env._init_root_quat, quat_inv(ref_reset_quat))
+    init_yaw = yaw_quat(env._init_root_quat)
+    ref_reset_yaw = yaw_quat(ref_reset_quat)
+    align_quat = quat_mul(init_yaw, quat_inv(ref_reset_yaw))
     align_pos = env._init_root_pos - quat_apply(align_quat, ref_reset_pos)
     return align_quat, align_pos
 

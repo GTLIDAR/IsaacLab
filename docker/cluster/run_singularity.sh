@@ -55,7 +55,7 @@ dir_name=$(basename "$1")
 tar -xf $CLUSTER_SIF_PATH/$2.tar  -C $TMPDIR
 
 # create a persistant overlay using apptainer with fakeroot
-apptainer overlay create --size 2048 $CLUSTER_ISAACLAB_DIR/$dir_name.img
+apptainer overlay create --size 10240 $CLUSTER_ISAACLAB_DIR/$dir_name.img
 
 # execute command in singularity container
 # NOTE: ISAACLAB_PATH is normally set in `isaaclab.sh` but we directly call the isaac-sim python because we sync the entire

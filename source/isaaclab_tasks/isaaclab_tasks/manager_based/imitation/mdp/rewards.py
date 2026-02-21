@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 
 import torch
@@ -14,7 +15,37 @@ from isaaclab.utils.math import (
     quat_inv,
     quat_mul,
     wrap_to_pi,
+    yaw_quat,
 )
+
+_logger = logging.getLogger(__name__)
+
+
+_DEBUG_REWARD_COUNTER: int = 0
+_DEBUG_REWARD_INTERVAL: int = 200
+
+
+def _log_debug_reward(
+    env: ImitationRLEnv,
+    term_name: str,
+    error: torch.Tensor,
+    reference: torch.Tensor | None = None,
+    actual: torch.Tensor | None = None,
+) -> None:
+    """Periodically log reward diagnostics (every ``_DEBUG_REWARD_INTERVAL`` calls per term)."""
+    if not getattr(env, "_debug_rewards", False):
+        return
+    global _DEBUG_REWARD_COUNTER
+    _DEBUG_REWARD_COUNTER += 1
+    if _DEBUG_REWARD_COUNTER % _DEBUG_REWARD_INTERVAL != 1:
+        return
+    parts = [
+        f"[{term_name}] err mean={error.mean().item():.5f} max={error.max().item():.5f}"
+    ]
+    if reference is not None and actual is not None:
+        delta = (actual.float() - reference.float()).reshape(error.shape[0], -1)
+        parts.append(f"delta_norm(env0)={delta[0].norm().item():.5f}")
+    _logger.warning(" | ".join(parts))
 
 
 def _print_tracking_debug(
@@ -24,7 +55,7 @@ def _print_tracking_debug(
     actual: torch.Tensor,
     reference: torch.Tensor,
 ):
-    """Compact debug print for tracking terms."""
+    """Compact debug print for tracking terms (legacy, gated by unreachable return)."""
     return
     if reward.numel() == 0:
         return
@@ -88,14 +119,19 @@ def _resolve_reference_body_indices(
 
 
 def _reference_alignment_transform(env: ImitationRLEnv) -> tuple[torch.Tensor, torch.Tensor]:
-    """Rigid transform from dataset world frame to simulation world frame."""
+    """Rigid yaw-only transform from dataset world frame to simulation world frame.
+
+    Must stay consistent with ``ImitationRLEnv._get_reference_alignment_transform``
+    which also extracts yaw-only to avoid injecting roll/pitch mismatches.
+    """
     ref_reset_pos = getattr(env, "_reference_reset_root_pos", None)
     ref_reset_quat = getattr(env, "_reference_reset_root_quat", None)
     if ref_reset_pos is None or ref_reset_quat is None:
-        # Backward-compatible fallback.
-        return env._init_root_quat, env._init_root_pos
+        return yaw_quat(env._init_root_quat), env._init_root_pos
 
-    align_quat = quat_mul(env._init_root_quat, quat_inv(ref_reset_quat))
+    init_yaw = yaw_quat(env._init_root_quat)
+    ref_reset_yaw = yaw_quat(ref_reset_quat)
+    align_quat = quat_mul(init_yaw, quat_inv(ref_reset_yaw))
     align_pos = env._init_root_pos - quat_apply(align_quat, ref_reset_pos)
     return align_quat, align_pos
 
@@ -197,6 +233,7 @@ def track_joint_pos(
 
     # Apply gaussian kernel: exp(-error^2 / (2 * sigma^2))
     gaussian_reward = torch.exp(-squared_error / (2 * sigma**2))
+    _log_debug_reward(env, "joint_pos", squared_error, qpos_reference, qpos_actual)
     return gaussian_reward
 
 
@@ -535,6 +572,7 @@ def reference_global_anchor_position_error_exp(
     robot_anchor_pos_w = asset.data.body_link_pos_w[:, anchor_idx]
     ref_anchor_pos_w, _ = _reference_body_pose_w(env, [anchor_body_name])
     error = torch.sum((ref_anchor_pos_w[:, 0, :] - robot_anchor_pos_w) ** 2, dim=-1)
+    _log_debug_reward(env, "anchor_pos", error, ref_anchor_pos_w[:, 0, :], robot_anchor_pos_w)
     return torch.exp(-error / std**2)
 
 
@@ -550,6 +588,7 @@ def reference_global_anchor_orientation_error_exp(
     robot_anchor_quat_w = asset.data.body_link_quat_w[:, anchor_idx]
     _, ref_anchor_quat_w = _reference_body_pose_w(env, [anchor_body_name])
     error = quat_error_magnitude(ref_anchor_quat_w[:, 0, :], robot_anchor_quat_w) ** 2
+    _log_debug_reward(env, "anchor_ori", error)
     return torch.exp(-error / std**2)
 
 
@@ -557,23 +596,45 @@ def reference_relative_body_position_error_exp(
     env: ImitationRLEnv,
     asset_cfg: SceneEntityCfg | None = None,
     reference_body_names: Sequence[str] = (),
+    anchor_body_name: str = "torso_link",
     std: float = 0.3,
 ) -> torch.Tensor:
-    """Tracking-style relative-body position reward against reference `xpos`."""
+    """BeyondMimic-style relative body position reward.
+
+    Re-roots reference bodies at the robot's current XY and heading (yaw-only),
+    keeping the reference Z height.  Compares the transformed reference body
+    positions against the actual robot body positions in world frame.
+    """
     asset: Articulation = env.scene[asset_cfg.name]
     body_ids = torch.as_tensor(asset_cfg.body_ids, dtype=torch.long, device=asset.data.body_link_pos_w.device)
-    if body_ids.numel() < 2:
-        raise ValueError("reference_relative_body_position_error_exp requires at least 2 body ids.")
     if len(reference_body_names) != int(body_ids.numel()):
         raise ValueError("reference_body_names must match the number of selected body names.")
 
-    ref_pos_w, ref_quat_w = _reference_body_pose_w(env, reference_body_names)
-    actual_pos_w = asset.data.body_link_pos_w[:, body_ids, :]
-    actual_quat_w = asset.data.body_link_quat_w[:, body_ids, :]
+    anchor_idx = asset.body_names.index(anchor_body_name)
+    robot_anchor_pos_w = asset.data.body_link_pos_w[:, anchor_idx]
+    robot_anchor_quat_w = asset.data.body_link_quat_w[:, anchor_idx]
 
-    actual_rel_pos, _ = _relative_pose_from_bodies(actual_pos_w, actual_quat_w)
-    ref_rel_pos, _ = _relative_pose_from_bodies(ref_pos_w, ref_quat_w)
-    error = torch.sum((actual_rel_pos - ref_rel_pos) ** 2, dim=-1)
+    ref_pos_w, ref_quat_w = _reference_body_pose_w(env, reference_body_names)
+    ref_anchor_pos_w, ref_anchor_quat_w = _reference_body_pose_w(env, [anchor_body_name])
+    ref_anchor_pos_w = ref_anchor_pos_w[:, 0, :]
+    ref_anchor_quat_w = ref_anchor_quat_w[:, 0, :]
+
+    num_bodies = ref_pos_w.shape[1]
+
+    delta_ori = yaw_quat(quat_mul(robot_anchor_quat_w, quat_inv(ref_anchor_quat_w)))
+    delta_pos = robot_anchor_pos_w.clone()
+    delta_pos[:, 2] = ref_anchor_pos_w[:, 2]
+
+    delta_ori_exp = delta_ori.unsqueeze(1).expand(-1, num_bodies, -1).reshape(-1, 4)
+    ref_anchor_pos_exp = ref_anchor_pos_w.unsqueeze(1).expand(-1, num_bodies, -1)
+    ref_offset = ref_pos_w - ref_anchor_pos_exp
+    ref_offset_rot = quat_apply(delta_ori_exp, ref_offset.reshape(-1, 3)).reshape(-1, num_bodies, 3)
+    body_pos_relative_w = delta_pos.unsqueeze(1).expand(-1, num_bodies, -1) + ref_offset_rot
+
+    actual_pos_w = asset.data.body_link_pos_w[:, body_ids, :]
+    error = torch.sum((body_pos_relative_w - actual_pos_w) ** 2, dim=-1)
+
+    _log_debug_reward(env, "body_pos_rel", error, body_pos_relative_w, actual_pos_w)
     return torch.exp(-error.mean(-1) / std**2)
 
 
@@ -581,25 +642,36 @@ def reference_relative_body_orientation_error_exp(
     env: ImitationRLEnv,
     asset_cfg: SceneEntityCfg | None = None,
     reference_body_names: Sequence[str] = (),
+    anchor_body_name: str = "torso_link",
     std: float = 0.4,
 ) -> torch.Tensor:
-    """Tracking-style relative-body orientation reward against reference `xquat`."""
+    """BeyondMimic-style relative body orientation reward.
+
+    Applies the same yaw-only delta rotation from reference anchor heading to
+    robot anchor heading, then compares orientations in world frame.
+    """
     asset: Articulation = env.scene[asset_cfg.name]
     body_ids = torch.as_tensor(asset_cfg.body_ids, dtype=torch.long, device=asset.data.body_link_pos_w.device)
-    if body_ids.numel() < 2:
-        raise ValueError("reference_relative_body_orientation_error_exp requires at least 2 body ids.")
     if len(reference_body_names) != int(body_ids.numel()):
         raise ValueError("reference_body_names must match the number of selected body names.")
 
-    ref_pos_w, ref_quat_w = _reference_body_pose_w(env, reference_body_names)
-    actual_pos_w = asset.data.body_link_pos_w[:, body_ids, :]
-    actual_quat_w = asset.data.body_link_quat_w[:, body_ids, :]
+    anchor_idx = asset.body_names.index(anchor_body_name)
+    robot_anchor_quat_w = asset.data.body_link_quat_w[:, anchor_idx]
 
-    _, actual_rel_quat = _relative_pose_from_bodies(actual_pos_w, actual_quat_w)
-    _, ref_rel_quat = _relative_pose_from_bodies(ref_pos_w, ref_quat_w)
-    error = quat_error_magnitude(actual_rel_quat.reshape(-1, 4), ref_rel_quat.reshape(-1, 4)).reshape(
-        actual_rel_quat.shape[0], -1
-    ) ** 2
+    _, ref_quat_w = _reference_body_pose_w(env, reference_body_names)
+    _, ref_anchor_quat_w = _reference_body_pose_w(env, [anchor_body_name])
+    ref_anchor_quat_w = ref_anchor_quat_w[:, 0, :]
+
+    num_bodies = ref_quat_w.shape[1]
+
+    delta_ori = yaw_quat(quat_mul(robot_anchor_quat_w, quat_inv(ref_anchor_quat_w)))
+    delta_ori_exp = delta_ori.unsqueeze(1).expand(-1, num_bodies, -1).reshape(-1, 4)
+    body_quat_relative_w = quat_mul(delta_ori_exp, ref_quat_w.reshape(-1, 4)).reshape(-1, num_bodies, 4)
+
+    actual_quat_w = asset.data.body_link_quat_w[:, body_ids, :]
+    error = quat_error_magnitude(
+        body_quat_relative_w.reshape(-1, 4), actual_quat_w.reshape(-1, 4)
+    ).reshape(-1, num_bodies) ** 2
     return torch.exp(-error.mean(-1) / std**2)
 
 
@@ -624,6 +696,7 @@ def reference_global_body_linear_velocity_error_exp(
 
     actual_lin_vel_w = asset.data.body_lin_vel_w[:, body_ids, :]
     error = torch.sum((ref_lin_vel_w - actual_lin_vel_w) ** 2, dim=-1)
+    _log_debug_reward(env, "body_lin_vel", error, ref_lin_vel_w, actual_lin_vel_w)
     return torch.exp(-error.mean(-1) / std**2)
 
 
@@ -648,4 +721,5 @@ def reference_global_body_angular_velocity_error_exp(
 
     actual_ang_vel_w = asset.data.body_ang_vel_w[:, body_ids, :]
     error = torch.sum((ref_ang_vel_w - actual_ang_vel_w) ** 2, dim=-1)
+    _log_debug_reward(env, "body_ang_vel", error, ref_ang_vel_w, actual_ang_vel_w)
     return torch.exp(-error.mean(-1) / std**2)
