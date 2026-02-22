@@ -19,6 +19,7 @@ from isaaclab.markers.config import (
 
 # Import the new manager and utilities
 try:
+    from iltools.datasets.lafan1.loader import Lafan1CsvLoader
     from iltools.datasets.loco_mujoco.loader import LocoMuJoCoLoader
     from iltools.datasets.manager import ParallelTrajectoryManager, ResetSchedule
     from iltools.datasets.utils import make_rb_from
@@ -108,6 +109,17 @@ class ImitationRLEnv(ManagerBasedRLEnv):
                     print(f"[ImitationRLEnv] Loader cfg: {loader_cfg}")
                     _ = LocoMuJoCoLoader(
                         env_name=loader_kwargs["env_name"],
+                        cfg=loader_cfg,
+                        build_zarr_dataset=True,
+                        zarr_path=str(zarr_path),
+                    )
+                elif loader_type == "lafan1_csv":
+                    from omegaconf import DictConfig
+
+                    loader_cfg_dict = loader_kwargs.get("cfg", loader_kwargs)
+                    loader_cfg = DictConfig(loader_cfg_dict)
+                    print(f"[ImitationRLEnv] Loader cfg: {loader_cfg}")
+                    _ = Lafan1CsvLoader(
                         cfg=loader_cfg,
                         build_zarr_dataset=True,
                         zarr_path=str(zarr_path),
