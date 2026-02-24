@@ -3,6 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
+import os
 from dataclasses import MISSING
 
 import isaaclab.sim as sim_utils
@@ -289,7 +290,7 @@ class ImitationLearningEnvCfg(ManagerBasedRLEnvCfg):
     # Dataset settings
     dataset_type: str = "zarr"
     # Dataset and cache settings for ImitationRLEnv
-    dataset_path: str = "/tmp/iltools_zarr"
+    dataset_path: str = os.path.join(os.environ.get("ISAACLAB_DATA_DIR", "/tmp"), "iltools_zarr")
     reset_schedule: str = "random"
     window_size: int = 64  # Window size for per-env cache
     batch_size: int = 1  # Batch size for Zarr prefetching

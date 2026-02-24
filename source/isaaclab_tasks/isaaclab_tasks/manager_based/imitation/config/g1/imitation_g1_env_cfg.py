@@ -448,7 +448,7 @@ class ImitationG1EnvCfg(ImitationLearningEnvCfg):
 
     replay_reference: bool = False
     replay_only: bool = False
-    refresh_zarr_dataset: bool = True
+    refresh_zarr_dataset: bool = False
     reference_start_frame: int = 0
 
     # Set True to emit periodic reward-error diagnostics via logging.warning.
