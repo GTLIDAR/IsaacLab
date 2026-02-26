@@ -16,7 +16,8 @@ setup_directories() {
         "${CLUSTER_ISAAC_SIM_CACHE_DIR}/cache/computecache" \
         "${CLUSTER_ISAAC_SIM_CACHE_DIR}/logs" \
         "${CLUSTER_ISAAC_SIM_CACHE_DIR}/data" \
-        "${CLUSTER_ISAAC_SIM_CACHE_DIR}/documents"; do
+        "${CLUSTER_ISAAC_SIM_CACHE_DIR}/documents" \
+        "${CLUSTER_DATA_DIR}"; do
         if [ ! -d "$dir" ]; then
             mkdir -p "$dir"
             echo "Created directory: $dir"
@@ -55,7 +56,7 @@ dir_name=$(basename "$1")
 tar -xf $CLUSTER_SIF_PATH/$2.tar  -C $TMPDIR
 
 # create a persistant overlay using apptainer with fakeroot
-apptainer overlay create --size 2048 $CLUSTER_ISAACLAB_DIR/$dir_name.img
+apptainer overlay create --size 10240 $CLUSTER_ISAACLAB_DIR/$dir_name.img
 
 # execute command in singularity container
 # NOTE: ISAACLAB_PATH is normally set in `isaaclab.sh` but we directly call the isaac-sim python because we sync the entire
@@ -71,9 +72,10 @@ singularity exec \
     -B $TMPDIR/docker-isaac-sim/documents:${DOCKER_USER_HOME}/Documents:rw \
     -B $TMPDIR/$dir_name:/workspace/isaaclab:rw \
     -B $CLUSTER_ISAACLAB_DIR/logs:/workspace/isaaclab/logs:rw \
+    -B ${CLUSTER_DATA_DIR}:/data:rw \
     --overlay $CLUSTER_ISAACLAB_DIR/$dir_name.img \
     --nv --containall $TMPDIR/$2.sif \
-    bash -c "export ISAACLAB_PATH=/workspace/isaaclab && cd /workspace/isaaclab && /isaac-sim/python.sh ${CLUSTER_PYTHON_EXECUTABLE} ${@:3}"
+    bash -c "export ISAACLAB_PATH=/workspace/isaaclab && export ISAACLAB_DATA_DIR=/data && export WANDB_API_KEY=$(cat ~/.wandb_api_key) && cd /workspace/isaaclab && /isaac-sim/python.sh ${CLUSTER_PYTHON_EXECUTABLE} ${@:3}"
 
 # copy resulting cache files back to host
 rsync -azPv $TMPDIR/docker-isaac-sim $CLUSTER_ISAAC_SIM_CACHE_DIR/..
@@ -83,7 +85,7 @@ if $REMOVE_CODE_COPY_AFTER_JOB; then
     rm -rf $1
 fi
 
-# remove the temporary image file
+# remove the temporary image filee
 if $REMOVE_OVERLAY_AFTER_JOB; then
     rm -f $CLUSTER_ISAACLAB_DIR/$dir_name.img
 fi

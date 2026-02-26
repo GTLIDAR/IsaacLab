@@ -69,7 +69,6 @@ x-default-isaac-lab-volumes: &default-isaac-lab-volumes
   - type: bind
     source: .isaac-lab-docker-history
     target: ${DOCKER_USER_HOME}/.bash_history
-
 x-default-isaac-lab-environment: &default-isaac-lab-environment
   - ISAACSIM_PATH=${DOCKER_ISAACLAB_PATH}/_isaac_sim
   - OMNI_KIT_ALLOW_ROOT=1
@@ -100,6 +99,8 @@ services:
     container_name: isaac-lab-base${DOCKER_NAME_SUFFIX-}
     environment: *default-isaac-lab-environment
     volumes: *default-isaac-lab-volumes
+    tmpfs:
+      - /tmp:size=8G
     network_mode: host
     deploy: *default-isaac-lab-deploy
     # This is the entrypoint for the container

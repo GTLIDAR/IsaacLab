@@ -36,6 +36,8 @@ INSTALL_REQUIRES = [
     # make sure this is consistent with isaac sim version
     "pillow==11.3.0",
     "packaging<24",
+    # imitation branch: RLOpt RL agents (default)
+    "rlopt @ git+https://github.com/fei-yang-wu/RLOpt.git",
 ]
 
 PYTORCH_INDEX_URL = ["https://download.pytorch.org/whl/cu128"]

@@ -1,6 +1,44 @@
 Changelog
 ---------
 
+0.54.3 (2026-02-04)
+~~~~~~~~~~~~~~~~~~~
+
+Fixed
+^^^^^
+
+* Fixed :class:`~isaaclab.envs.mdp.actions.JointPositionToLimitsAction` and
+  :class:`~isaaclab.envs.mdp.actions.EMAJointPositionToLimitsAction` ignoring
+  ``preserve_order=True`` when the number of specified joints matches the total
+  number of joints in the asset. The optimization that replaced joint indices with
+  ``slice(None)`` now correctly checks for the ``preserve_order`` flag.
+
+
+0.54.2 (2026-01-28)
+~~~~~~~~~~~~~~~~~~~
+
+Changed
+^^^^^^^
+
+* Moved :mod:`isaaclab.sensors.tacsl_sensor` to :mod:`isaaclab_contrib.sensors.tacsl_sensor` module,
+  since it is not completely ready for release yet.
+
+
+0.54.1 (2026-01-25)
+~~~~~~~~~~~~~~~~~~~
+
+Added
+^^^^^
+
+* Added test suite for ray caster patterns with comprehensive parameterized tests.
+
+Fixed
+^^^^^
+
+* Fixed incorrect horizontal angle calculation in :func:`~isaaclab.sensors.ray_caster.patterns.patterns.lidar_pattern`
+  that caused the actual angular resolution to differ from the requested resolution.
+
+
 0.54.0 (2026-01-13)
 ~~~~~~~~~~~~~~~~~~~
 

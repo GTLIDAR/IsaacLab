@@ -193,8 +193,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
     dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
     agent_cfg.logger.log_dir = log_dir
-    agent_cfg.save_interval = 50
-    # save command used to run the script
+    # log command used to run the script
     command = " ".join(sys.orig_argv)
     (Path(log_dir) / "command.txt").write_text(command)
 
@@ -253,7 +252,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         transform = Compose(RewardSum(), StepCounter(1000), VecNormV2(in_keys=agent_cfg.policy.input_keys + ["reward"]))
     env = TransformedEnv(
         env=env,
-        transform=transform,
+        transform=Compose(
+            RewardSum(),  # type: ignore
+            StepCounter(1000),  # type: ignore
+        ),
     )
 
     agent_class = ALGORITHM_CLASS_MAP[args_cli.algorithm]

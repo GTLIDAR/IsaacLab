@@ -86,6 +86,9 @@ RUN touch /bin/nvidia-smi && \
     mkdir -p /var/run/nvidia-persistenced && \
     touch /var/run/nvidia-persistenced/socket
 
+# Update pip to the latest version
+RUN ${ISAACLAB_PATH}/isaaclab.sh -p -m pip install --upgrade pip
+
 # installing Isaac Lab dependencies
 # use pip caching to avoid reinstalling large packages
 RUN --mount=type=cache,target=${DOCKER_USER_HOME}/.cache/pip \
