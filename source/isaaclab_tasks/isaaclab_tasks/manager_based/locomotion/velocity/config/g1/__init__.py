@@ -49,6 +49,7 @@ gym.register(
         "rlopt_cfg_entry_point": f"{agents.__name__}.rlopt_sac_cfg:G1RLOptSACFlatConfig",
         "rlopt_ppo_cfg_entry_point": f"{agents.__name__}.rlopt_ppo_cfg:G1RLOptPPOFlatConfig",
         "rlopt_sac_cfg_entry_point": f"{agents.__name__}.rlopt_sac_cfg:G1RLOptSACFlatConfig",
+        "rlopt_fasttd3_cfg_entry_point": f"{agents.__name__}.rlopt_fasttd3_cfg:G1RLOptFastTD3FlatConfig",
     },
 )
 

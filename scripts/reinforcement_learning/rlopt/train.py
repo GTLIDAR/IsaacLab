@@ -1,4 +1,9 @@
-# Feiyang Wu (feiyangwu@gatech.edu), based on sb3/trian.py
+# Copyright (c) 2022-2026, The Isaac Lab Project Developers (https://github.com/isaac-sim/IsaacLab/blob/main/CONTRIBUTORS.md).
+# All rights reserved.
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+# Feiyang Wu (feiyangwu@gatech.edu), based on sb3/train.py
 
 """Script to train RL agent with Stable Baselines3."""
 
@@ -35,7 +40,7 @@ parser.add_argument(
     dest="algorithm",
     type=str.upper,
     default="PPO",
-    choices=["PPO", "SAC", "IPMD"],
+    choices=["PPO", "SAC", "IPMD", "FASTTD3"],
     help="RLOpt algorithm to train (must match the agent config).",
 )
 
@@ -85,7 +90,7 @@ from datetime import datetime
 
 import gymnasium as gym
 import torch
-from rlopt.agent import IPMD, PPO, SAC
+from rlopt.agent import IPMD, PPO, SAC, FastTD3
 from torchrl.data import TensorDictReplayBuffer
 from torchrl.data.replay_buffers.storages import LazyMemmapStorage
 from torchrl.envs import (
@@ -120,6 +125,7 @@ ALGORITHM_CLASS_MAP = {
     "PPO": PPO,
     "SAC": SAC,
     "IPMD": IPMD,
+    "FASTTD3": FastTD3,
 }
 
 
@@ -169,6 +175,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             args_cli.max_iterations * agent_cfg.collector.total_frames * env_cfg.scene.num_envs
         )
     agent_cfg.collector.frames_per_batch *= env_cfg.scene.num_envs
+    agent_cfg.collector.init_random_frames *= env_cfg.scene.num_envs
     # set the environment seed
     # note: certain randomizations occur in the environment initialization so we set the seed here
     env_cfg.seed = agent_cfg.seed
@@ -235,6 +242,14 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     env = env.set_info_dict_reader(
         IsaacLabTerminalObsReader(observation_spec=env.observation_spec, backend="gymnasium")  # type: ignore
     )
+    if args_cli.algorithm in ["FASTTD3", "SAC"]:
+        # off-policy algorithms, should not use normalization in environment wrapper
+        transform = Compose(
+            RewardSum(),
+            StepCounter(1000),
+        )
+    else:
+        transform = Compose(RewardSum(), StepCounter(1000), VecNormV2(in_keys=agent_cfg.policy.input_keys + ["reward"]))
     env = TransformedEnv(
         env=env,
         transform=Compose(
